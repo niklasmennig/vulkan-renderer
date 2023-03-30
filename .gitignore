@@ -1,0 +1,8 @@
+.vscode/*
+CMakeFiles
+Debug
+renderer.dir
+x64
+*.vcxproj
+*.vcxproj.*
+*.sln
