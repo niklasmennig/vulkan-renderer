@@ -289,7 +289,7 @@ void VulkanApplication::setup() {
         app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         app_info.pEngineName = "No Engine";
         app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        app_info.apiVersion = VK_API_VERSION_1_0;
+        app_info.apiVersion = VK_API_VERSION_1_3;
 
         VkInstanceCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -441,10 +441,18 @@ void VulkanApplication::setup() {
 
         // check for device extension support
         const std::vector<const char *> device_extensions = {
+            // needed for window display
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            //VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-            //VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-            //VK_KHR_RAY_QUERY_EXTENSION_NAME
+            // needed for vulkan raytracing functionality
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+            VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            // dependencies for raytracing functionality
+            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+            VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+            VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
+            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
         };
 
         uint32_t extension_count = 0;

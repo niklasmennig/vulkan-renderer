@@ -1,5 +1,7 @@
 .vscode/*
 CMakeFiles
+CmakeCache.txt
+*.cmake
 Debug
 renderer.dir
 x64
