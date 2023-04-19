@@ -17,6 +17,10 @@ include_directories(
 set (LIB_VULKAN "C:/VulkanSDK/1.3.239.0/Lib")
 set (LIB_GLFW "C:/Users/niloe/Documents/Libraries/glfw-3.3.8.bin.WIN64/lib-vc2022")
 
+if (MSVC)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
+endif()
+
 add_subdirectory(src)
 
 add_executable(renderer ${SRC_RENDERER})

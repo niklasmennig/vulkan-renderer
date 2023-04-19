@@ -10,6 +10,19 @@ struct QueueFamilyIndices
     std::optional<uint32_t> present;
 };
 
+struct Buffer {
+    size_t buffer_size;
+    VkBuffer buffer_handle;
+    VkDeviceMemory device_memory;
+    VkDeviceAddress device_address;
+};
+
+struct ShaderBindingTable {
+    Buffer raygen;
+    Buffer hit;
+    Buffer miss;
+};
+
 struct VulkanApplication {
     private:
     GLFWwindow* window;
@@ -20,6 +33,11 @@ struct VulkanApplication {
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
     QueueFamilyIndices queue_family_indices;
     VkDevice logical_device;
+
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties;
+
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
     VkQueue graphics_queue;
     VkQueue present_queue;
@@ -32,8 +50,15 @@ struct VulkanApplication {
     std::vector<VkFramebuffer> framebuffers;
 
     VkRenderPass render_pass;
+    VkPipelineCache pipeline_cache;
     VkPipelineLayout pipeline_layout;
-    VkPipeline graphics_pipeline;
+    VkPipeline pipeline;
+
+    ShaderBindingTable shader_binding_table;
+
+    VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorPool descriptor_pool;
+    std::vector<VkDescriptorSet> descriptor_sets;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
@@ -47,8 +72,17 @@ struct VulkanApplication {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
+    Buffer create_buffer(VkBufferCreateInfo* create_info);
+    void set_buffer_data(Buffer &buffer, void* data);
+    void free_buffer(Buffer &buffer);
+
     VkShaderModule create_shader_module(const std::vector<char> &shader_code);
+    void create_descriptor_set_layout();
+    void create_descriptor_pool();
+    void create_descriptor_sets();
     void create_graphics_pipeline();
+    void create_raytracing_pipeline();
+    ShaderBindingTable create_shader_binding_table();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);
     void create_synchronization();
     void draw_frame();
