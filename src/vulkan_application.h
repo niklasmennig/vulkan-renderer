@@ -23,6 +23,24 @@ struct ShaderBindingTable {
     Buffer miss;
 };
 
+struct MeshData {
+    Buffer vertices;
+    Buffer indices;
+};
+
+struct AccelerationStructure {
+    VkAccelerationStructureKHR acceleration_structure;
+    Buffer scratch_buffer;
+    Buffer as_buffer;
+};
+
+struct BLAS : AccelerationStructure {
+};
+
+struct TLAS : AccelerationStructure {
+    Buffer instance_buffer;
+};
+
 struct VulkanApplication {
     private:
     GLFWwindow* window;
@@ -67,7 +85,14 @@ struct VulkanApplication {
     VkSemaphore render_finished_semaphore;
     VkFence in_flight_fence;
 
+    VkFence immediate_fence;
+
     VkDebugUtilsMessengerEXT debug_messenger;
+
+    MeshData scene_mesh_data;
+    VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
+    BLAS scene_blas;
+    TLAS scene_tlas;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
@@ -75,6 +100,17 @@ struct VulkanApplication {
     Buffer create_buffer(VkBufferCreateInfo* create_info);
     void set_buffer_data(Buffer &buffer, void* data);
     void free_buffer(Buffer &buffer);
+
+    void free_shader_binding_table(ShaderBindingTable &sbt);
+
+    MeshData create_mesh_data(std::vector<float> &vertices, std::vector<uint32_t> &indices);
+    void free_mesh_data(MeshData &mesh_data);
+
+    BLAS build_blas(MeshData &mesh_data);
+    void free_blas(BLAS &blas);
+
+    TLAS build_tlas(BLAS &acceleration_structure);
+    void free_tlas(TLAS &tlas);
 
     VkShaderModule create_shader_module(const std::vector<char> &shader_code);
     void create_descriptor_set_layout();
