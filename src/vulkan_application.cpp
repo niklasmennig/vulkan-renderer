@@ -4,6 +4,8 @@
 #include <set>
 #include <iostream>
 
+#include "loaders/geometry_obj.h"
+
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
     "VK_LAYER_KHRONOS_validation"
@@ -334,7 +336,7 @@ void VulkanApplication::create_descriptor_set_layout() {
     as_layout_binding.binding = 1;
     as_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     as_layout_binding.descriptorCount = 1;
-    as_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    as_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutBinding bindings[] = {
         image_layout_binding,
@@ -1306,19 +1308,34 @@ void VulkanApplication::setup() {
         throw std::runtime_error("failure to create render pass");
     }
 
-    // create scene
-    std::vector<float> vertices = {
-        -1, -1, 0,
-        1, -1, 0,
-        1, 1, 0,
-        -1, 1, 0
-        };
+    // // create scene
+    // std::vector<float> vertices = {
+    //     // floor plane
+    //     -10, 0, -10,
+    //     10, 0, -10,
+    //     10, 0, 10,
+    //     -10, 0, 10,
 
-    std::vector<uint32_t> indices = {
-        0, 1, 2,
-        3, 0, 2};
+    //     // upper plane
+    //     -1,3,-1,
+    //     1,3,-1,
+    //     1,3,1,
+    //     -1,3,1
+    //     };
 
-    scene_mesh_data = create_mesh_data(vertices, indices);
+    // std::vector<uint32_t> indices = {
+    //     // floor plane
+    //     0, 1, 2,
+    //     3, 0, 2,
+
+    //     // upper plane
+    //     4, 5, 6,
+    //     7, 4, 6
+    // };
+
+    LoadedMeshData loaded_scene = loaders::load_obj("scenes/obj/test.obj");
+
+    scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.indices);
 
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
