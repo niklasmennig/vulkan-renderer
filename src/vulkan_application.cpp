@@ -1308,31 +1308,6 @@ void VulkanApplication::setup() {
         throw std::runtime_error("failure to create render pass");
     }
 
-    // // create scene
-    // std::vector<float> vertices = {
-    //     // floor plane
-    //     -10, 0, -10,
-    //     10, 0, -10,
-    //     10, 0, 10,
-    //     -10, 0, 10,
-
-    //     // upper plane
-    //     -1,3,-1,
-    //     1,3,-1,
-    //     1,3,1,
-    //     -1,3,1
-    //     };
-
-    // std::vector<uint32_t> indices = {
-    //     // floor plane
-    //     0, 1, 2,
-    //     3, 0, 2,
-
-    //     // upper plane
-    //     4, 5, 6,
-    //     7, 4, 6
-    // };
-
     LoadedMeshData loaded_scene = loaders::load_obj("scenes/obj/test.obj");
 
     scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.indices);

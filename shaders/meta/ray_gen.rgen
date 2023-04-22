@@ -1,7 +1,14 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
 
-~include "shaders/camera.glsl"
+struct CameraData
+{
+    vec3 origin;
+    vec3 forward;
+    vec3 right;
+    vec3 up;
+    float fov_y;
+};
 
 layout(location = 0) rayPayloadEXT vec4 payload;
 
