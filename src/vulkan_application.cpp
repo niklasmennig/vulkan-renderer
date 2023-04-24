@@ -1,10 +1,12 @@
 #include "vulkan_application.h"
-#include "loaders/shader_spirv.h"
 
 #include <set>
 #include <iostream>
 
+#include "loaders/shader_spirv.h"
 #include "loaders/geometry_obj.h"
+
+#include <glm/gtc/matrix_transform.hpp>
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -96,7 +98,7 @@ Buffer VulkanApplication::create_buffer(VkBufferCreateInfo* create_info) {
 
 void VulkanApplication::set_buffer_data(Buffer &buffer, void* data) {
     void* buffer_data;
-    if (vkMapMemory(logical_device, buffer.device_memory, 0, buffer.buffer_size, 0, &buffer_data) != VK_SUCCESS) {
+    if (vkMapMemory(logical_device, buffer.device_memory, 0, VK_WHOLE_SIZE, 0, &buffer_data) != VK_SUCCESS) {
         throw std::runtime_error("error mapping buffer memory");
     }
     memcpy(buffer_data, data, (size_t) buffer.buffer_size);
@@ -114,31 +116,54 @@ void VulkanApplication::free_shader_binding_table(ShaderBindingTable &sbt) {
     free_buffer(sbt.miss);
 }
 
-MeshData VulkanApplication::create_mesh_data(std::vector<float> &vertices, std::vector<uint32_t> &indices) {
+MeshData VulkanApplication::create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices) {
     MeshData res{};
 
     VkBufferCreateInfo vertex_buffer_info{};
     vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vertex_buffer_info.size = sizeof(float) * vertices.size();
-    vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+    vertex_buffer_info.size = sizeof(vec4) * vertices.size();
+    vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     res.vertices = create_buffer(&vertex_buffer_info);
 
     set_buffer_data(res.vertices, vertices.data());
 
-    VkBufferCreateInfo index_buffer_info{};
-    index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    index_buffer_info.size = sizeof(uint32_t) * indices.size();
-    index_buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
-    res.indices = create_buffer(&index_buffer_info);
+    VkBufferCreateInfo vertex_index_buffer_info{};
+    vertex_index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vertex_index_buffer_info.size = sizeof(uint32_t) * vertex_indices.size();
+    vertex_index_buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    res.vertex_indices = create_buffer(&vertex_index_buffer_info);
 
-    set_buffer_data(res.indices, indices.data());
+    set_buffer_data(res.vertex_indices, vertex_indices.data());
+
+    VkBufferCreateInfo normal_buffer_info{};
+    normal_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    normal_buffer_info.size = sizeof(vec4) * normals.size();
+    normal_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    res.normals = create_buffer(&normal_buffer_info);
+
+    set_buffer_data(res.normals, normals.data());
+
+    VkBufferCreateInfo normal_index_buffer_info{};
+    normal_index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    normal_index_buffer_info.size = sizeof(uint32_t) * normal_indices.size();
+    normal_index_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    res.normal_indices = create_buffer(&normal_index_buffer_info);
+
+    set_buffer_data(res.normal_indices, normal_indices.data());
+
+    res.vertex_count = vertices.size();
+    res.normal_count = normals.size();
+    res.vertex_index_count = vertex_indices.size();
+    res.normal_index_count = normal_indices.size();
 
     return res;
 }
 
 void VulkanApplication::free_mesh_data(MeshData &mesh_data) {
     free_buffer(mesh_data.vertices);
-    free_buffer(mesh_data.indices);
+    free_buffer(mesh_data.vertex_indices);
+    free_buffer(mesh_data.normals);
+    free_buffer(mesh_data.normal_indices);
 }
 
 BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
@@ -151,13 +176,13 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
     geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
     geometry.geometry.triangles.vertexData.deviceAddress = mesh_data.vertices.device_address;
-    geometry.geometry.triangles.vertexStride = sizeof(float) * 3;
-    geometry.geometry.triangles.maxVertex = mesh_data.vertices.buffer_size / 3;
+    geometry.geometry.triangles.vertexStride = sizeof(float) * 4;
+    geometry.geometry.triangles.maxVertex = mesh_data.vertex_count;
     geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
-    geometry.geometry.triangles.indexData.deviceAddress = mesh_data.indices.device_address;
+    geometry.geometry.triangles.indexData.deviceAddress = mesh_data.vertex_indices.device_address;
 
     VkAccelerationStructureBuildRangeInfoKHR build_range_info{};
-    build_range_info.primitiveCount = mesh_data.vertices.buffer_size / 3;
+    build_range_info.primitiveCount = mesh_data.vertex_index_count / 3;
     build_range_info.primitiveOffset = 0;
 
     VkAccelerationStructureBuildGeometryInfoKHR as_info{};
@@ -170,7 +195,7 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
 
     acceleration_structure_size_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 
-    uint32_t prim_count = mesh_data.vertices.buffer_size;
+    uint32_t prim_count = build_range_info.primitiveCount;
 
     PFN_vkGetAccelerationStructureBuildSizesKHR loaded_vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureBuildSizesKHR");
     loaded_vkGetAccelerationStructureBuildSizesKHR(logical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &as_info, &prim_count, &acceleration_structure_size_info);
@@ -338,14 +363,35 @@ void VulkanApplication::create_descriptor_set_layout() {
     as_layout_binding.descriptorCount = 1;
     as_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
+    VkDescriptorSetLayoutBinding cam_layout_binding{};
+    cam_layout_binding.binding = 2;
+    cam_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    cam_layout_binding.descriptorCount = 1;
+    cam_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    VkDescriptorSetLayoutBinding normal_index_layout_binding{};
+    normal_index_layout_binding.binding = 3;
+    normal_index_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    normal_index_layout_binding.descriptorCount = 1;
+    normal_index_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+
+    VkDescriptorSetLayoutBinding normal_layout_binding{};
+    normal_layout_binding.binding = 4;
+    normal_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    normal_layout_binding.descriptorCount = 1;
+    normal_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+
     VkDescriptorSetLayoutBinding bindings[] = {
         image_layout_binding,
-        as_layout_binding
+        as_layout_binding,
+        cam_layout_binding,
+        normal_index_layout_binding,
+        normal_layout_binding
     };
 
     VkDescriptorSetLayoutCreateInfo layout_info{};
     layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layout_info.bindingCount = 2;
+    layout_info.bindingCount = sizeof(bindings) / sizeof(VkDescriptorSetLayoutBinding);
     layout_info.pBindings = bindings;
 
     if (vkCreateDescriptorSetLayout(logical_device, &layout_info, nullptr, &descriptor_set_layout) != VK_SUCCESS) {
@@ -362,14 +408,29 @@ void VulkanApplication::create_descriptor_pool() {
     as_pool_size.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     as_pool_size.descriptorCount = swap_chain_images.size();
 
+    VkDescriptorPoolSize cam_pool_size{};
+    cam_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    cam_pool_size.descriptorCount = swap_chain_images.size();
+
+    VkDescriptorPoolSize normal_index_pool_size{};
+    normal_index_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    normal_index_pool_size.descriptorCount = swap_chain_images.size();
+
+    VkDescriptorPoolSize normal_pool_size{};
+    normal_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    normal_pool_size.descriptorCount = swap_chain_images.size();
+
     VkDescriptorPoolSize pool_sizes[] = {
         image_pool_size,
-        as_pool_size
+        as_pool_size,
+        cam_pool_size,
+        normal_index_pool_size,
+        normal_pool_size
     };
 
     VkDescriptorPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = 2;
+    pool_info.poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize);
     pool_info.pPoolSizes = pool_sizes;
     pool_info.maxSets = swap_chain_images.size();
 
@@ -391,6 +452,20 @@ void VulkanApplication::create_descriptor_sets() {
         throw std::runtime_error("error allocating descriptor sets");
     }
 
+
+    VkBufferCreateInfo cam_buffer_info{};
+    cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    cam_buffer_info.size = sizeof(Shaders::CameraData);
+    cam_buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    camera_buffer = create_buffer(&cam_buffer_info);
+
+    camera_data.origin = vec4(0.0f, 1.0f, -3.0f, 0.0f);
+    camera_data.forward = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+    camera_data.right = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+    camera_data.up = vec4(0.0f, 1.0f, 0.0f, 0.0f);
+
+    set_buffer_data(camera_buffer, &camera_data);
 
     for (int i = 0; i < swap_chain_images.size(); i++) {
         VkDescriptorImageInfo image_info{};
@@ -421,12 +496,57 @@ void VulkanApplication::create_descriptor_sets() {
 
         descriptor_write_as.pNext = &descriptor_write_as_data;
 
+        VkDescriptorBufferInfo cam_buffer_info{};
+        cam_buffer_info.buffer = camera_buffer.buffer_handle;
+        cam_buffer_info.range = VK_WHOLE_SIZE;
+        cam_buffer_info.offset = 0;
+
+        VkWriteDescriptorSet descriptor_write_cam{};
+        descriptor_write_cam.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write_cam.dstSet = descriptor_sets[i];
+        descriptor_write_cam.dstBinding = 2;
+        descriptor_write_cam.dstArrayElement = 0;
+        descriptor_write_cam.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptor_write_cam.descriptorCount = 1;
+        descriptor_write_cam.pBufferInfo = &cam_buffer_info;
+
+        VkDescriptorBufferInfo normal_index_buffer_info{};
+        normal_index_buffer_info.buffer = scene_mesh_data.normal_indices.buffer_handle;
+        normal_index_buffer_info.range = VK_WHOLE_SIZE;
+        normal_index_buffer_info.offset = 0;
+
+        VkDescriptorBufferInfo normal_buffer_info{};
+        normal_buffer_info.buffer = scene_mesh_data.normals.buffer_handle;
+        normal_buffer_info.range = VK_WHOLE_SIZE;
+        normal_buffer_info.offset = 0;
+
+        VkWriteDescriptorSet descriptor_write_normal_index{};
+        descriptor_write_normal_index.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write_normal_index.dstSet = descriptor_sets[i];
+        descriptor_write_normal_index.dstBinding = 3;
+        descriptor_write_normal_index.dstArrayElement = 0;
+        descriptor_write_normal_index.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptor_write_normal_index.descriptorCount = 1;
+        descriptor_write_normal_index.pBufferInfo = &normal_index_buffer_info;
+
+        VkWriteDescriptorSet descriptor_write_normals{};
+        descriptor_write_normals.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write_normals.dstSet = descriptor_sets[i];
+        descriptor_write_normals.dstBinding = 4;
+        descriptor_write_normals.dstArrayElement = 0;
+        descriptor_write_normals.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptor_write_normals.descriptorCount = 1;
+        descriptor_write_normals.pBufferInfo = &normal_buffer_info;
+
         VkWriteDescriptorSet descriptor_writes[] = {
             descriptor_write_image,
-            descriptor_write_as
+            descriptor_write_as,
+            descriptor_write_cam,
+            descriptor_write_normal_index,
+            descriptor_write_normals
         };
 
-        vkUpdateDescriptorSets(logical_device, 2, descriptor_writes, 0, nullptr);
+        vkUpdateDescriptorSets(logical_device, sizeof(descriptor_writes) / sizeof(VkWriteDescriptorSet), descriptor_writes, 0, nullptr);
     }
 }
 
@@ -548,9 +668,9 @@ void VulkanApplication::create_descriptor_sets() {
 
 void VulkanApplication::create_raytracing_pipeline()
 {
-    auto ray_gen_shader_code = loaders::read_spirv("shaders/ray_gen.spv");
-    auto closest_hit_shader_code = loaders::read_spirv("shaders/closest_hit.spv");
-    auto miss_shader_code = loaders::read_spirv("shaders/miss.spv");
+    auto ray_gen_shader_code = loaders::read_spirv("shaders/spirv/ray_gen.spv");
+    auto closest_hit_shader_code = loaders::read_spirv("shaders/spirv/closest_hit.spv");
+    auto miss_shader_code = loaders::read_spirv("shaders/spirv/miss.spv");
 
     VkShaderModule ray_gen_shader_module = create_shader_module(ray_gen_shader_code);
     VkShaderModule closest_hit_shader_module = create_shader_module(closest_hit_shader_code);
@@ -1089,7 +1209,7 @@ void VulkanApplication::setup() {
         }
     }
 
-    std::cout << "QUEUE FAMILIES | GRAPHICS: " << queue_family_indices.graphics.value() << " | PRESENT: " << queue_family_indices.present.value() << std::endl;
+    std::cout << "QUEUE FAMILY INDICES | GRAPHICS: " << queue_family_indices.graphics.value() << " | PRESENT: " << queue_family_indices.present.value() << std::endl;
 
     // retrieve queue handles
     vkGetDeviceQueue(logical_device, queue_family_indices.graphics.value(), 0, &graphics_queue);
@@ -1310,7 +1430,7 @@ void VulkanApplication::setup() {
 
     LoadedMeshData loaded_scene = loaders::load_obj("scenes/obj/test.obj");
 
-    scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.indices);
+    scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.vertex_indices, loaded_scene.normals, loaded_scene.normal_indices);
 
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
@@ -1401,6 +1521,90 @@ void VulkanApplication::run() {
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+
+        // camera movement
+        vec4 camera_movement = vec4(0.0f);
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            camera_movement += camera_data.forward;
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        {
+            camera_movement -= camera_data.right;
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        {
+            camera_movement -= camera_data.forward;
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        {
+            camera_movement += camera_data.right;
+        }
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        {
+            camera_movement += camera_data.up;
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        {
+            camera_movement -= camera_data.up;
+        }
+        camera_data.origin += camera_movement * 0.1f;
+
+        // camera rotation
+        // horizontal rotation
+        glm::mat4 rotation_matrix = glm::mat4(1.0f);
+        float angle = 0.05f;
+        glm::vec3 cam_up = glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z);
+        glm::vec3 cam_fwd = glm::vec3(camera_data.forward.x, camera_data.forward.y, camera_data.forward.z);
+        glm::vec3 cam_r = glm::vec3(camera_data.right.x, camera_data.right.y, camera_data.right.z);
+
+        if (glfwGetKey(window, GLFW_KEY_RIGHT)) 
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, angle, cam_up);
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT))
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, -angle, cam_up);
+        }
+
+        glm::vec3 new_fwd = camera_data.forward * rotation_matrix;
+        glm::vec3 new_right = glm::cross(new_fwd, cam_up);
+
+        // vertical rotation
+        rotation_matrix = glm::mat4(1.0f);
+
+        if (glfwGetKey(window, GLFW_KEY_UP))
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, -angle, new_right);
+        }
+        if (glfwGetKey(window, GLFW_KEY_DOWN))
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, angle, new_right);
+        }
+
+        glm::vec3 new_up = camera_data.up * rotation_matrix;
+        new_fwd = glm::cross(new_up, new_right);
+
+        // roll rotation
+        rotation_matrix = glm::mat4(1.0f);
+
+        if (glfwGetKey(window, GLFW_KEY_E))
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, -angle, new_fwd);
+        }
+        if (glfwGetKey(window, GLFW_KEY_Q))
+        {
+            rotation_matrix = glm::rotate(rotation_matrix, angle, new_fwd);
+        }
+
+        new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
+        new_fwd = glm::cross(new_up, new_right);
+
+        camera_data.forward = glm::vec4(new_fwd.x, new_fwd.y, new_fwd.z, 1.0f);
+        camera_data.right = glm::vec4(new_right.x, new_right.y, new_right.z, 1.0f);
+        camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
+
+        set_buffer_data(camera_buffer, &camera_data);
+
         draw_frame();
     }
 
@@ -1409,6 +1613,7 @@ void VulkanApplication::run() {
 
 void VulkanApplication::cleanup() {
     // deinitialization
+    free_buffer(camera_buffer);
     free_tlas(scene_tlas);
     free_blas(scene_blas);
     free_mesh_data(scene_mesh_data);

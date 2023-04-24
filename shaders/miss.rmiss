@@ -1,7 +1,11 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
-layout(location = 0) rayPayloadInEXT vec4 payload;
+
+~include "shaders/payload.glsl"
+
+layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload = vec4(0,0,1,1);
+    payload.contribution = vec4(0,0,1,1);
+    payload.distance = 99999.0;
 }

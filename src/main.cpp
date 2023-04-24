@@ -16,10 +16,14 @@ int main()
     glfwInit();
 
     VulkanApplication app;
-    app.setup();
-    app.run();
+    try {
+        app.setup();
+        app.run();
+        app.cleanup();
+    } catch (std::runtime_error err) {
+        std::cerr << "ENCOUNTERED ERROR: " << "\033[31m" << err.what() << "\033[m" << std::endl;
+    }
 
-    app.cleanup();
 
     return 0;
 }

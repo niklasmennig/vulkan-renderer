@@ -17,9 +17,11 @@ args.extend(shader_paths)
 # run shader preprocessor on shaders (processed shaders written into shaders/meta)
 subprocess.run(args)
 
+# run shader compiler (glslangValidator) on preprocessed shaders (compiled spirv written into shaders/spirv)
 for file in shader_files:
     ifile = "/".join([shaders_meta_path, file])
-    ofile = "/".join([shaders_spirv_path, file])
+    file_name = file.split(".")[0]
+    ofile = "/".join([shaders_spirv_path, file_name + ".spv"])
     compile_args = [shader_compiler_path]
     compile_args.extend(shader_compiler_args)
     compile_args.extend(["-i", ifile, "-o", ofile])

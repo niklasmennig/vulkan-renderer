@@ -3,26 +3,30 @@
 
 struct CameraData
 {
-    vec3 origin;
-    vec3 forward;
-    vec3 right;
-    vec3 up;
+    vec4 origin;
+    vec4 forward;
+    vec4 right;
+    vec4 up;
     float fov_y;
 };
 
-layout(location = 0) rayPayloadEXT vec4 payload;
-
+struct RayPayload
+{
+    vec4 contribution;
+    float distance;
+};
+layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(set = 0, binding = 0, rgba32f) uniform image2D img;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
-};
+} raygen_data;
 
 
 vec3 compute_ray_direction(vec2 ndc) {
-    vec3 right = vec3(1,0,0);
-    vec3 up = vec3(0,1,0);
-    vec3 forward = vec3(0,0,1);
+    vec3 right = raygen_data.camera.right.xyz;
+    vec3 up = raygen_data.camera.up.xyz;
+    vec3 forward = raygen_data.camera.forward.xyz;
 
     vec3 dir = forward + ndc.x * right + ndc.y * up;
     return normalize(dir);
@@ -40,12 +44,12 @@ void main() {
         0,
         0,
         0,
-        vec3(0,1,-3),
+        raygen_data.camera.origin.xyz,
         0.0,
         compute_ray_direction(ndc),
         100.0,
         0
     );
 
-    imageStore(img, ivec2(gl_LaunchIDEXT.xy), payload);
+    imageStore(img, ivec2(gl_LaunchIDEXT.xy), payload.contribution);
 }

@@ -4,6 +4,14 @@
 #include <vector>
 #include <optional>
 
+#include <glm/glm.hpp>
+using vec3 = glm::vec3;
+using vec4 = glm::vec4;
+namespace Shaders
+{
+    #include "../shaders/camera.glsl"
+}
+
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphics;
@@ -24,8 +32,14 @@ struct ShaderBindingTable {
 };
 
 struct MeshData {
+    uint32_t vertex_count;
+    uint32_t normal_count;
+    uint32_t vertex_index_count;
+    uint32_t normal_index_count;
     Buffer vertices;
-    Buffer indices;
+    Buffer vertex_indices;
+    Buffer normals;
+    Buffer normal_indices;
 };
 
 struct AccelerationStructure {
@@ -89,6 +103,9 @@ struct VulkanApplication {
 
     VkDebugUtilsMessengerEXT debug_messenger;
 
+    Shaders::CameraData camera_data;
+    Buffer camera_buffer;
+
     MeshData scene_mesh_data;
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
     BLAS scene_blas;
@@ -103,7 +120,7 @@ struct VulkanApplication {
 
     void free_shader_binding_table(ShaderBindingTable &sbt);
 
-    MeshData create_mesh_data(std::vector<float> &vertices, std::vector<uint32_t> &indices);
+    MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices);
     void free_mesh_data(MeshData &mesh_data);
 
     BLAS build_blas(MeshData &mesh_data);
