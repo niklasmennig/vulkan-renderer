@@ -18,7 +18,12 @@ vec3 compute_ray_direction(vec2 ndc) {
     vec3 up = raygen_data.camera.up.xyz;
     vec3 forward = raygen_data.camera.forward.xyz;
 
-    vec3 dir = forward + ndc.x * right + ndc.y * up;
+    float fov_x_half = radians(raygen_data.camera.fov_x) / 2.0;
+
+    float aspect_ratio = float(gl_LaunchSizeEXT.y) / float(gl_LaunchSizeEXT.x);
+    float fov_y_half = fov_x_half * aspect_ratio;
+
+    vec3 dir = normalize(forward) + ndc.x * abs(tan(fov_x_half)) * normalize(right) + ndc.y * abs(tan(fov_y_half)) * normalize(up);
     return normalize(dir);
 }
 

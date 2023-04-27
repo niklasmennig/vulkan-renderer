@@ -460,6 +460,7 @@ void VulkanApplication::create_descriptor_sets() {
 
     camera_buffer = create_buffer(&cam_buffer_info);
 
+    camera_data.fov_x = 90.0f;
     camera_data.origin = vec4(0.0f, 1.0f, -3.0f, 0.0f);
     camera_data.forward = vec4(0.0f, 0.0f, 1.0f, 0.0f);
     camera_data.right = vec4(1.0f, 0.0f, 0.0f, 0.0f);
@@ -1602,6 +1603,9 @@ void VulkanApplication::run() {
         camera_data.forward = glm::vec4(new_fwd.x, new_fwd.y, new_fwd.z, 1.0f);
         camera_data.right = glm::vec4(new_right.x, new_right.y, new_right.z, 1.0f);
         camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
+
+        // FoV
+        camera_data.fov_x = 70.0f;
 
         set_buffer_data(camera_buffer, &camera_data);
 

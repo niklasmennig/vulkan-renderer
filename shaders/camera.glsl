@@ -4,5 +4,5 @@ struct CameraData
     vec4 forward;
     vec4 right;
     vec4 up;
-    float fov_y;
+    float fov_x;
 };
