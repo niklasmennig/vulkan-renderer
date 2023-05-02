@@ -1,5 +1,7 @@
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "vulkan.h"
+#include "device.h"
+#include "buffer.h"
+#include "pipeline_builder.h"
 
 #include <vector>
 #include <optional>
@@ -18,20 +20,8 @@ struct QueueFamilyIndices
     std::optional<uint32_t> present;
 };
 
-struct Buffer {
-    size_t buffer_size;
-    VkBuffer buffer_handle;
-    VkDeviceMemory device_memory;
-    VkDeviceAddress device_address;
-};
-
-struct ShaderBindingTable {
-    Buffer raygen;
-    Buffer hit;
-    Buffer miss;
-};
-
 struct MeshData {
+    VkDevice device_handle;
     uint32_t vertex_count;
     uint32_t normal_count;
     uint32_t vertex_index_count;
@@ -40,6 +30,8 @@ struct MeshData {
     Buffer vertex_indices;
     Buffer normals;
     Buffer normal_indices;
+
+    void free();
 };
 
 struct AccelerationStructure {
@@ -66,10 +58,7 @@ struct VulkanApplication {
     QueueFamilyIndices queue_family_indices;
     VkDevice logical_device;
 
-    VkPhysicalDeviceMemoryProperties memory_properties;
-    VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties;
-
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+    Device device;
 
     VkQueue graphics_queue;
     VkQueue present_queue;
@@ -82,15 +71,7 @@ struct VulkanApplication {
     std::vector<VkFramebuffer> framebuffers;
 
     VkRenderPass render_pass;
-    VkPipelineCache pipeline_cache;
-    VkPipelineLayout pipeline_layout;
-    VkPipeline pipeline;
-
-    ShaderBindingTable shader_binding_table;
-
-    VkDescriptorSetLayout descriptor_set_layout;
-    VkDescriptorPool descriptor_pool;
-    std::vector<VkDescriptorSet> descriptor_sets;
+    Pipeline pipeline;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
@@ -114,14 +95,7 @@ struct VulkanApplication {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
-    Buffer create_buffer(VkBufferCreateInfo* create_info);
-    void set_buffer_data(Buffer &buffer, void* data);
-    void free_buffer(Buffer &buffer);
-
-    void free_shader_binding_table(ShaderBindingTable &sbt);
-
     MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices);
-    void free_mesh_data(MeshData &mesh_data);
 
     BLAS build_blas(MeshData &mesh_data);
     void free_blas(BLAS &blas);
@@ -129,13 +103,8 @@ struct VulkanApplication {
     TLAS build_tlas(BLAS &acceleration_structure);
     void free_tlas(TLAS &tlas);
 
-    VkShaderModule create_shader_module(const std::vector<char> &shader_code);
-    void create_descriptor_set_layout();
-    void create_descriptor_pool();
-    void create_descriptor_sets();
-    void create_graphics_pipeline();
-    void create_raytracing_pipeline();
-    ShaderBindingTable create_shader_binding_table();
+    void setup_device();
+    void create_descriptor_writes();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);
     void create_synchronization();
     void draw_frame();

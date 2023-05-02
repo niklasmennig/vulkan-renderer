@@ -43,113 +43,48 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 }
 #pragma endregion
 
-
-Buffer VulkanApplication::create_buffer(VkBufferCreateInfo* create_info) {
-    Buffer result{};
-
-    create_info->usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-
-    if (vkCreateBuffer(logical_device, create_info, nullptr, &result.buffer_handle) != VK_SUCCESS) {
-        throw std::runtime_error("error creating buffer");
-    }
-
-    VkMemoryRequirements mem_requirements;
-    vkGetBufferMemoryRequirements(logical_device, result.buffer_handle, &mem_requirements);
-
-    // find correct memory type
-    uint32_t type_filter = mem_requirements.memoryTypeBits;
-    VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    uint32_t memtype_index = 0;
-    for (; memtype_index < memory_properties.memoryTypeCount; memtype_index++) {
-        if ((type_filter & (1 << memtype_index)) && (memory_properties.memoryTypes[memtype_index].propertyFlags & properties) == properties) {
-            break;
-        }
-    }
-
-    VkMemoryAllocateInfo alloc_info{};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = mem_requirements.size;
-    alloc_info.memoryTypeIndex = memtype_index;
-
-    VkMemoryAllocateFlagsInfo alloc_flags{};
-    alloc_flags.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
-    alloc_flags.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
-
-    alloc_info.pNext = &alloc_flags;
-
-    if (vkAllocateMemory(logical_device, &alloc_info, nullptr, &result.device_memory) != VK_SUCCESS) {
-        throw std::runtime_error("error allocating buffer memory");
-    }
-
-    vkBindBufferMemory(logical_device, result.buffer_handle, result.device_memory, 0);
-
-    result.buffer_size = create_info->size;
-
-    VkBufferDeviceAddressInfo addr_info;
-    addr_info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-    addr_info.buffer = result.buffer_handle;
-    addr_info.pNext = 0;
-
-    result.device_address = vkGetBufferDeviceAddress(logical_device, &addr_info);
-
-    return result;
-}
-
-void VulkanApplication::set_buffer_data(Buffer &buffer, void* data) {
-    void* buffer_data;
-    if (vkMapMemory(logical_device, buffer.device_memory, 0, VK_WHOLE_SIZE, 0, &buffer_data) != VK_SUCCESS) {
-        throw std::runtime_error("error mapping buffer memory");
-    }
-    memcpy(buffer_data, data, (size_t) buffer.buffer_size);
-    vkUnmapMemory(logical_device, buffer.device_memory);
-}
-
-void VulkanApplication::free_buffer(Buffer &buffer) {
-    vkDestroyBuffer(logical_device, buffer.buffer_handle, nullptr);
-    vkFreeMemory(logical_device, buffer.device_memory, nullptr);
-}
-
-void VulkanApplication::free_shader_binding_table(ShaderBindingTable &sbt) {
-    free_buffer(sbt.raygen);
-    free_buffer(sbt.hit);
-    free_buffer(sbt.miss);
+void MeshData::free() {
+    vertices.free();
+    vertex_indices.free();
+    normals.free();
+    normal_indices.free();
 }
 
 MeshData VulkanApplication::create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices) {
     MeshData res{};
+    res.device_handle = logical_device;
 
     VkBufferCreateInfo vertex_buffer_info{};
     vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vertex_buffer_info.size = sizeof(vec4) * vertices.size();
     vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.vertices = create_buffer(&vertex_buffer_info);
+    res.vertices = device.create_buffer(&vertex_buffer_info);
 
-    set_buffer_data(res.vertices, vertices.data());
+    res.vertices.set_data(vertices.data());
 
     VkBufferCreateInfo vertex_index_buffer_info{};
     vertex_index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vertex_index_buffer_info.size = sizeof(uint32_t) * vertex_indices.size();
     vertex_index_buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.vertex_indices = create_buffer(&vertex_index_buffer_info);
+    res.vertex_indices = device.create_buffer(&vertex_index_buffer_info);
 
-    set_buffer_data(res.vertex_indices, vertex_indices.data());
+    res.vertex_indices.set_data(vertex_indices.data());
 
     VkBufferCreateInfo normal_buffer_info{};
     normal_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     normal_buffer_info.size = sizeof(vec4) * normals.size();
     normal_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.normals = create_buffer(&normal_buffer_info);
+    res.normals = device.create_buffer(&normal_buffer_info);
 
-    set_buffer_data(res.normals, normals.data());
+    res.normals.set_data(normals.data());
 
     VkBufferCreateInfo normal_index_buffer_info{};
     normal_index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     normal_index_buffer_info.size = sizeof(uint32_t) * normal_indices.size();
     normal_index_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.normal_indices = create_buffer(&normal_index_buffer_info);
+    res.normal_indices = device.create_buffer(&normal_index_buffer_info);
 
-    set_buffer_data(res.normal_indices, normal_indices.data());
+    res.normal_indices.set_data(normal_indices.data());
 
     res.vertex_count = vertices.size();
     res.normal_count = normals.size();
@@ -157,13 +92,6 @@ MeshData VulkanApplication::create_mesh_data(std::vector<vec4> &vertices, std::v
     res.normal_index_count = normal_indices.size();
 
     return res;
-}
-
-void VulkanApplication::free_mesh_data(MeshData &mesh_data) {
-    free_buffer(mesh_data.vertices);
-    free_buffer(mesh_data.vertex_indices);
-    free_buffer(mesh_data.normals);
-    free_buffer(mesh_data.normal_indices);
 }
 
 BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
@@ -197,8 +125,7 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
 
     uint32_t prim_count = build_range_info.primitiveCount;
 
-    PFN_vkGetAccelerationStructureBuildSizesKHR loaded_vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureBuildSizesKHR");
-    loaded_vkGetAccelerationStructureBuildSizesKHR(logical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &as_info, &prim_count, &acceleration_structure_size_info);
+    device.vkGetAccelerationStructureBuildSizesKHR(logical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &as_info, &prim_count, &acceleration_structure_size_info);
 
     BLAS result{};
 
@@ -206,13 +133,13 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = create_buffer(&as_buffer_info);
+    result.as_buffer = device.create_buffer(&as_buffer_info);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = create_buffer(&scratch_buffer_info);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -221,8 +148,7 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     as_create_info.size = acceleration_structure_size_info.accelerationStructureSize;
     as_create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-    PFN_vkCreateAccelerationStructureKHR loaded_vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR) glfwGetInstanceProcAddress(vulkan_instance, "vkCreateAccelerationStructureKHR");
-    if (loaded_vkCreateAccelerationStructureKHR(logical_device, &as_create_info, nullptr, &result.acceleration_structure) != VK_SUCCESS) {
+    if (device.vkCreateAccelerationStructureKHR(logical_device, &as_create_info, nullptr, &result.acceleration_structure) != VK_SUCCESS) {
         throw std::runtime_error("error creating BLAS");
     }
 
@@ -233,17 +159,15 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
         &build_range_info
     };
 
-    PFN_vkCmdBuildAccelerationStructuresKHR loaded_vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdBuildAccelerationStructuresKHR");
-    loaded_vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &as_info, blas_range);
+    device.vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &as_info, blas_range);
 
     return result;
 }
 
 void VulkanApplication::free_blas(BLAS &blas) {
-    PFN_vkDestroyAccelerationStructureKHR loaded_vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR) glfwGetInstanceProcAddress(vulkan_instance, "vkDestroyAccelerationStructureKHR");
-    loaded_vkDestroyAccelerationStructureKHR(logical_device, blas.acceleration_structure, nullptr);
-    free_buffer(blas.as_buffer);
-    free_buffer(blas.scratch_buffer);
+    device.vkDestroyAccelerationStructureKHR(logical_device, blas.acceleration_structure, nullptr);
+    blas.as_buffer.free();
+    blas.scratch_buffer.free();
 }
 
 TLAS VulkanApplication::build_tlas(BLAS &as) {
@@ -251,8 +175,7 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
     blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
     blas_address_info.accelerationStructure = as.acceleration_structure;
 
-    PFN_vkGetAccelerationStructureDeviceAddressKHR loaded_vkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureDeviceAddressKHR");
-    VkDeviceAddress blas_address = loaded_vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
+    VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
 
     VkAccelerationStructureInstanceKHR structure{};
     structure.transform.matrix[0][0] = 1.0f;
@@ -268,8 +191,8 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
     instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR);
 
     TLAS result{};
-    result.instance_buffer = create_buffer(&instance_buffer_info);
-    set_buffer_data(result.instance_buffer, &structure);
+    result.instance_buffer = device.create_buffer(&instance_buffer_info);
+    result.instance_buffer.set_data(&structure);
 
     VkAccelerationStructureGeometryKHR geometry{};
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
@@ -291,13 +214,13 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = create_buffer(&as_buffer_info);
+    result.as_buffer = device.create_buffer(&as_buffer_info);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = create_buffer(&scratch_buffer_info);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -306,8 +229,7 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
     as_create_info.size = acceleration_structure_size_info.accelerationStructureSize;
     as_create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 
-    PFN_vkCreateAccelerationStructureKHR loaded_vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateAccelerationStructureKHR");
-    if (loaded_vkCreateAccelerationStructureKHR(logical_device, &as_create_info, nullptr, &result.acceleration_structure) != VK_SUCCESS)
+    if (device.vkCreateAccelerationStructureKHR(logical_device, &as_create_info, nullptr, &result.acceleration_structure) != VK_SUCCESS)
     {
         throw std::runtime_error("error creating TLAS");
     }
@@ -322,143 +244,25 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
         &range_info
     };
 
-    PFN_vkCmdBuildAccelerationStructuresKHR loaded_vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdBuildAccelerationStructuresKHR");
-    loaded_vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &as_info, &tlas_range);
+    device.vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &as_info, &tlas_range);
 
     return result;
 }
 
 void VulkanApplication::free_tlas(TLAS &tlas) {
-    PFN_vkDestroyAccelerationStructureKHR loaded_vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkDestroyAccelerationStructureKHR");
-    loaded_vkDestroyAccelerationStructureKHR(logical_device, tlas.acceleration_structure, nullptr);
-    free_buffer(tlas.instance_buffer);
-    free_buffer(tlas.as_buffer);
-    free_buffer(tlas.scratch_buffer);
+    device.vkDestroyAccelerationStructureKHR(logical_device, tlas.acceleration_structure, nullptr);
+    tlas.instance_buffer.free();
+    tlas.as_buffer.free();
+    tlas.scratch_buffer.free();
 }
 
-VkShaderModule VulkanApplication::create_shader_module(const std::vector<char>& code) {
-    VkShaderModuleCreateInfo create_info{};
-    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-    VkShaderModule shader_module;
-    if (vkCreateShaderModule(logical_device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
-        throw std::runtime_error("error creating shader module");
-    }
-
-    return shader_module;
-}
-
-void VulkanApplication::create_descriptor_set_layout() {
-    VkDescriptorSetLayoutBinding image_layout_binding{};
-    image_layout_binding.binding = 0;
-    image_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    image_layout_binding.descriptorCount = 1;
-    image_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding as_layout_binding{};
-    as_layout_binding.binding = 1;
-    as_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    as_layout_binding.descriptorCount = 1;
-    as_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding cam_layout_binding{};
-    cam_layout_binding.binding = 2;
-    cam_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cam_layout_binding.descriptorCount = 1;
-    cam_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding normal_index_layout_binding{};
-    normal_index_layout_binding.binding = 3;
-    normal_index_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_index_layout_binding.descriptorCount = 1;
-    normal_index_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding normal_layout_binding{};
-    normal_layout_binding.binding = 4;
-    normal_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_layout_binding.descriptorCount = 1;
-    normal_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding bindings[] = {
-        image_layout_binding,
-        as_layout_binding,
-        cam_layout_binding,
-        normal_index_layout_binding,
-        normal_layout_binding
-    };
-
-    VkDescriptorSetLayoutCreateInfo layout_info{};
-    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layout_info.bindingCount = sizeof(bindings) / sizeof(VkDescriptorSetLayoutBinding);
-    layout_info.pBindings = bindings;
-
-    if (vkCreateDescriptorSetLayout(logical_device, &layout_info, nullptr, &descriptor_set_layout) != VK_SUCCESS) {
-        throw std::runtime_error("error creating descriptor set layout");
-    }
-}
-
-void VulkanApplication::create_descriptor_pool() {
-    VkDescriptorPoolSize image_pool_size{};
-    image_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    image_pool_size.descriptorCount = swap_chain_images.size();
-
-    VkDescriptorPoolSize as_pool_size{};
-    as_pool_size.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    as_pool_size.descriptorCount = swap_chain_images.size();
-
-    VkDescriptorPoolSize cam_pool_size{};
-    cam_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cam_pool_size.descriptorCount = swap_chain_images.size();
-
-    VkDescriptorPoolSize normal_index_pool_size{};
-    normal_index_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_index_pool_size.descriptorCount = swap_chain_images.size();
-
-    VkDescriptorPoolSize normal_pool_size{};
-    normal_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_pool_size.descriptorCount = swap_chain_images.size();
-
-    VkDescriptorPoolSize pool_sizes[] = {
-        image_pool_size,
-        as_pool_size,
-        cam_pool_size,
-        normal_index_pool_size,
-        normal_pool_size
-    };
-
-    VkDescriptorPoolCreateInfo pool_info{};
-    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize);
-    pool_info.pPoolSizes = pool_sizes;
-    pool_info.maxSets = swap_chain_images.size();
-
-    if (vkCreateDescriptorPool(logical_device, &pool_info, nullptr, &descriptor_pool) != VK_SUCCESS) {
-        throw std::runtime_error("error creating descriptor pool");
-    }
-}
-
-void VulkanApplication::create_descriptor_sets() {
-    std::vector<VkDescriptorSetLayout> layouts(swap_chain_images.size(), descriptor_set_layout);
-    VkDescriptorSetAllocateInfo alloc_info{};
-    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool = descriptor_pool;
-    alloc_info.descriptorSetCount = swap_chain_images.size();
-    alloc_info.pSetLayouts = layouts.data();
-
-    descriptor_sets.resize(swap_chain_images.size());
-    if (vkAllocateDescriptorSets(logical_device, &alloc_info, descriptor_sets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("error allocating descriptor sets");
-    }
-
-
+void VulkanApplication::create_descriptor_writes() {
     VkBufferCreateInfo cam_buffer_info{};
     cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     cam_buffer_info.size = sizeof(Shaders::CameraData);
     cam_buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    camera_buffer = create_buffer(&cam_buffer_info);
+    camera_buffer = device.create_buffer(&cam_buffer_info);
 
     camera_data.fov_x = 90.0f;
     camera_data.origin = vec4(0.0f, 1.0f, -3.0f, 0.0f);
@@ -466,16 +270,16 @@ void VulkanApplication::create_descriptor_sets() {
     camera_data.right = vec4(1.0f, 0.0f, 0.0f, 0.0f);
     camera_data.up = vec4(0.0f, 1.0f, 0.0f, 0.0f);
 
-    set_buffer_data(camera_buffer, &camera_data);
+    camera_buffer.set_data(&camera_data);
 
-    for (int i = 0; i < swap_chain_images.size(); i++) {
+    for (int i = 0; i < device.image_count; i++) {
         VkDescriptorImageInfo image_info{};
         image_info.imageView = swap_chain_image_views[i];
         image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         VkWriteDescriptorSet descriptor_write_image{};
         descriptor_write_image.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_image.dstSet = descriptor_sets[i];
+        descriptor_write_image.dstSet = pipeline.descriptor_sets[i];
         descriptor_write_image.dstBinding = 0;
         descriptor_write_image.dstArrayElement = 0;
         descriptor_write_image.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -484,7 +288,7 @@ void VulkanApplication::create_descriptor_sets() {
 
         VkWriteDescriptorSet descriptor_write_as{};
         descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_as.dstSet = descriptor_sets[i];
+        descriptor_write_as.dstSet = pipeline.descriptor_sets[i];
         descriptor_write_as.dstBinding = 1;
         descriptor_write_as.dstArrayElement = 0;
         descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -504,7 +308,7 @@ void VulkanApplication::create_descriptor_sets() {
 
         VkWriteDescriptorSet descriptor_write_cam{};
         descriptor_write_cam.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_cam.dstSet = descriptor_sets[i];
+        descriptor_write_cam.dstSet = pipeline.descriptor_sets[i];
         descriptor_write_cam.dstBinding = 2;
         descriptor_write_cam.dstArrayElement = 0;
         descriptor_write_cam.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -523,7 +327,7 @@ void VulkanApplication::create_descriptor_sets() {
 
         VkWriteDescriptorSet descriptor_write_normal_index{};
         descriptor_write_normal_index.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_normal_index.dstSet = descriptor_sets[i];
+        descriptor_write_normal_index.dstSet = pipeline.descriptor_sets[i];
         descriptor_write_normal_index.dstBinding = 3;
         descriptor_write_normal_index.dstArrayElement = 0;
         descriptor_write_normal_index.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -532,7 +336,7 @@ void VulkanApplication::create_descriptor_sets() {
 
         VkWriteDescriptorSet descriptor_write_normals{};
         descriptor_write_normals.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_normals.dstSet = descriptor_sets[i];
+        descriptor_write_normals.dstSet = pipeline.descriptor_sets[i];
         descriptor_write_normals.dstBinding = 4;
         descriptor_write_normals.dstArrayElement = 0;
         descriptor_write_normals.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -551,256 +355,6 @@ void VulkanApplication::create_descriptor_sets() {
     }
 }
 
-/* Deprecated: Graphics Pipeline
-// void VulkanApplication::create_graphics_pipeline() {
-//     auto vert_shader_code = loaders::read_spirv("shaders/test_vert.spv");
-//     auto frag_shader_code = loaders::read_spirv("shaders/test_frag.spv");
-
-//     VkShaderModule vert_shader_module = create_shader_module(vert_shader_code);
-//     VkShaderModule frag_shader_module = create_shader_module(frag_shader_code);
-
-//     VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
-//     vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-//     vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-//     vert_shader_stage_info.module = vert_shader_module;
-//     vert_shader_stage_info.pName = "main";
-
-//     VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
-//     frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-//     frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-//     frag_shader_stage_info.module = frag_shader_module;
-//     frag_shader_stage_info.pName = "main";
-
-//     VkPipelineShaderStageCreateInfo shader_stages[] = {
-//         vert_shader_stage_info,
-//         frag_shader_stage_info
-//     };
-
-//     VkPipelineVertexInputStateCreateInfo vertex_input_info{};
-//     vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-//     vertex_input_info.vertexBindingDescriptionCount = 0;
-//     vertex_input_info.pVertexBindingDescriptions = nullptr;
-//     vertex_input_info.vertexAttributeDescriptionCount = 0;
-//     vertex_input_info.pVertexAttributeDescriptions = nullptr;
-
-//     VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-//     input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-//     input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-//     input_assembly.primitiveRestartEnable = false;
-
-//     VkPipelineViewportStateCreateInfo viewport_state{};
-//     viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-//     viewport_state.viewportCount = 1;
-//     viewport_state.scissorCount = 1;
-
-//     VkPipelineRasterizationStateCreateInfo rasterizer{};
-//     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-//     rasterizer.depthClampEnable = VK_FALSE;
-//     rasterizer.rasterizerDiscardEnable = VK_FALSE;
-//     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-//     rasterizer.lineWidth = 1.0f;
-//     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-//     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-//     rasterizer.depthBiasEnable = VK_FALSE;
-
-//     VkPipelineMultisampleStateCreateInfo multisampling{};
-//     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-//     multisampling.sampleShadingEnable = VK_FALSE;
-//     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-//     VkPipelineColorBlendAttachmentState color_blend_attachment{};
-//     color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-//     color_blend_attachment.blendEnable = VK_FALSE;
-
-//     VkPipelineColorBlendStateCreateInfo color_blending{};
-//     color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-//     color_blending.logicOpEnable = VK_FALSE;
-//     color_blending.logicOp = VK_LOGIC_OP_COPY;
-//     color_blending.attachmentCount = 1;
-//     color_blending.pAttachments = &color_blend_attachment;
-//     color_blending.blendConstants[0] = 0.0f;
-//     color_blending.blendConstants[1] = 0.0f;
-//     color_blending.blendConstants[2] = 0.0f;
-//     color_blending.blendConstants[3] = 0.0f;
-
-//     std::vector<VkDynamicState> dynamic_states = {
-//         VK_DYNAMIC_STATE_VIEWPORT,
-//         VK_DYNAMIC_STATE_SCISSOR
-//     };
-
-//     VkPipelineDynamicStateCreateInfo dynamic_state{};
-//     dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-//     dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
-//     dynamic_state.pDynamicStates = dynamic_states.data();
-
-//     VkPipelineLayoutCreateInfo pipeline_layout_info{};
-//     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-//     pipeline_layout_info.setLayoutCount = 0;
-//     pipeline_layout_info.pushConstantRangeCount = 0;
-
-//     if (vkCreatePipelineLayout(logical_device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
-//         throw std::runtime_error("error creating pipeline layout");
-//     }
-
-//     VkGraphicsPipelineCreateInfo pipeline_info{};
-//     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-//     pipeline_info.stageCount = 2;
-//     pipeline_info.pStages = shader_stages;
-//     pipeline_info.pVertexInputState = &vertex_input_info;
-//     pipeline_info.pInputAssemblyState = &input_assembly;
-//     pipeline_info.pViewportState = &viewport_state;
-//     pipeline_info.pRasterizationState = &rasterizer;
-//     pipeline_info.pMultisampleState = &multisampling;
-//     pipeline_info.pColorBlendState = &color_blending;
-//     pipeline_info.pDynamicState = &dynamic_state;
-//     pipeline_info.layout = pipeline_layout;
-//     pipeline_info.renderPass = render_pass;
-//     pipeline_info.subpass = 0;
-//     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-
-//     if (vkCreateGraphicsPipelines(logical_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
-//         throw std::runtime_error("error creating graphics pipeline");
-//     }
-
-//     vkDestroyShaderModule(logical_device, vert_shader_module, nullptr);
-//     vkDestroyShaderModule(logical_device, frag_shader_module, nullptr);
-// }
-*/
-
-void VulkanApplication::create_raytracing_pipeline()
-{
-    auto ray_gen_shader_code = loaders::read_spirv("shaders/spirv/ray_gen.spv");
-    auto closest_hit_shader_code = loaders::read_spirv("shaders/spirv/closest_hit.spv");
-    auto miss_shader_code = loaders::read_spirv("shaders/spirv/miss.spv");
-
-    VkShaderModule ray_gen_shader_module = create_shader_module(ray_gen_shader_code);
-    VkShaderModule closest_hit_shader_module = create_shader_module(closest_hit_shader_code);
-    VkShaderModule miss_shader_module = create_shader_module(miss_shader_code);
-
-    VkPipelineShaderStageCreateInfo ray_gen_shader_stage_info{};
-    ray_gen_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    ray_gen_shader_stage_info.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-    ray_gen_shader_stage_info.module = ray_gen_shader_module;
-    ray_gen_shader_stage_info.pName = "main";
-
-    VkPipelineShaderStageCreateInfo closest_hit_shader_stage_info{};
-    closest_hit_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    closest_hit_shader_stage_info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-    closest_hit_shader_stage_info.module = closest_hit_shader_module;
-    closest_hit_shader_stage_info.pName = "main";
-
-    VkPipelineShaderStageCreateInfo miss_shader_stage_info{};
-    miss_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    miss_shader_stage_info.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-    miss_shader_stage_info.module = miss_shader_module;
-    miss_shader_stage_info.pName = "main";
-
-    shader_stages.push_back(ray_gen_shader_stage_info);
-    shader_stages.push_back(closest_hit_shader_stage_info);
-    shader_stages.push_back(miss_shader_stage_info);
-
-    VkRayTracingShaderGroupCreateInfoKHR raygen_shader_group_info{};
-    raygen_shader_group_info.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-    raygen_shader_group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-    raygen_shader_group_info.generalShader = 0;
-    raygen_shader_group_info.closestHitShader = VK_SHADER_UNUSED_KHR;
-    raygen_shader_group_info.anyHitShader = VK_SHADER_UNUSED_KHR;
-    raygen_shader_group_info.intersectionShader = VK_SHADER_UNUSED_KHR;
-
-    VkRayTracingShaderGroupCreateInfoKHR closest_hit_shader_group_info{};
-    closest_hit_shader_group_info.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-    closest_hit_shader_group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-    closest_hit_shader_group_info.closestHitShader = 1;
-    closest_hit_shader_group_info.intersectionShader = VK_SHADER_UNUSED_KHR;
-    closest_hit_shader_group_info.anyHitShader = VK_SHADER_UNUSED_KHR;
-    closest_hit_shader_group_info.generalShader = VK_SHADER_UNUSED_KHR;
-
-    VkRayTracingShaderGroupCreateInfoKHR miss_shader_group_info{};
-    miss_shader_group_info.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-    miss_shader_group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-    miss_shader_group_info.generalShader = 2;
-    miss_shader_group_info.closestHitShader = VK_SHADER_UNUSED_KHR;
-    miss_shader_group_info.anyHitShader = VK_SHADER_UNUSED_KHR;
-    miss_shader_group_info.intersectionShader = VK_SHADER_UNUSED_KHR;
-
-    VkRayTracingShaderGroupCreateInfoKHR shader_groups[] = {
-        raygen_shader_group_info,
-        closest_hit_shader_group_info,
-        miss_shader_group_info
-    };
-
-    VkPipelineLayoutCreateInfo pipeline_layout_info{};
-    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = 1;
-    pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
-    pipeline_layout_info.pushConstantRangeCount = 0;
-
-    if (vkCreatePipelineLayout(logical_device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error creating pipeline layout");
-    }
-
-    VkRayTracingPipelineCreateInfoKHR pipeline_info{};
-    pipeline_info.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    pipeline_info.stageCount = shader_stages.size();
-    pipeline_info.pStages = shader_stages.data();
-    pipeline_info.groupCount = 3;
-    pipeline_info.pGroups = shader_groups;
-    pipeline_info.layout = pipeline_layout;
-    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-    pipeline_info.maxPipelineRayRecursionDepth = 1;
-
-    VkPipelineCacheCreateInfo cache_create_info{};
-    cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-
-    if (vkCreatePipelineCache(logical_device, &cache_create_info, nullptr, &pipeline_cache) != VK_SUCCESS) {
-        throw std::runtime_error("error creating pipeline cache");
-    }
-
-    PFN_vkCreateRayTracingPipelinesKHR loaded_vkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateRayTracingPipelinesKHR");
-
-    if (loaded_vkCreateRayTracingPipelinesKHR(logical_device, VK_NULL_HANDLE, pipeline_cache, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error creating graphics pipeline");
-    }
-
-    shader_binding_table = create_shader_binding_table();
-
-    vkDestroyShaderModule(logical_device, ray_gen_shader_module, nullptr);
-    vkDestroyShaderModule(logical_device, closest_hit_shader_module, nullptr);
-    vkDestroyShaderModule(logical_device, miss_shader_module, nullptr);
-}
-
-ShaderBindingTable VulkanApplication::create_shader_binding_table() {
-    int group_handle_size = ray_tracing_pipeline_properties.shaderGroupHandleSize;
-    size_t shader_binding_table_size = group_handle_size * shader_stages.size();
-
-    uint8_t* shader_binding_table_data = new uint8_t[shader_binding_table_size];
-
-    PFN_vkGetRayTracingShaderGroupHandlesKHR loaded_vkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR) glfwGetInstanceProcAddress(vulkan_instance, "vkGetRayTracingShaderGroupHandlesKHR");
-    loaded_vkGetRayTracingShaderGroupHandlesKHR(logical_device, pipeline, 0, shader_stages.size(), shader_binding_table_size, shader_binding_table_data);
-
-    VkBufferCreateInfo sbt_buffer_info{};
-    sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
-    sbt_buffer_info.size = group_handle_size;
-
-    Buffer raygen_buffer = create_buffer(&sbt_buffer_info);
-    set_buffer_data(raygen_buffer, shader_binding_table_data);
-
-    Buffer hit_buffer = create_buffer(&sbt_buffer_info);
-    set_buffer_data(hit_buffer, shader_binding_table_data + group_handle_size);
-
-    Buffer miss_buffer = create_buffer(&sbt_buffer_info);
-    set_buffer_data(miss_buffer, shader_binding_table_data + group_handle_size * 2);
-
-    return ShaderBindingTable{
-        raygen_buffer,
-        hit_buffer,
-        miss_buffer
-    };
-}
-
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
     // command buffer begin
     VkCommandBufferBeginInfo begin_info{};
@@ -812,37 +366,6 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     {
         throw std::runtime_error("error beginning command buffer");
     }
-
-    /*
-    // VkRenderPassBeginInfo render_pass_info{};
-    // render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    // render_pass_info.renderPass = render_pass;
-    // render_pass_info.framebuffer = framebuffers[image_index];
-    // render_pass_info.renderArea.offset = {0, 0};
-    // render_pass_info.renderArea.extent = swap_chain_extent;
-
-    // VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    // render_pass_info.clearValueCount = 1;
-    // render_pass_info.pClearValues = &clear_color;
-
-    // vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-    // VkViewport viewport{};
-    // viewport.x = 0.0f;
-    // viewport.y = 0.0f;
-    // viewport.width = static_cast<float>(swap_chain_extent.width);
-    // viewport.height = static_cast<float>(swap_chain_extent.width);
-    // viewport.minDepth = 0.0f;
-    // viewport.maxDepth = 1.0f;
-    // vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
-    // VkRect2D scissor{};
-    // scissor.offset = {0,0};
-    // scissor.extent = swap_chain_extent;
-    // vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-    // vkCmdEndRenderPass(command_buffer);
-    */
 
     // transition image to writeable format
     VkImageMemoryBarrier image_barrier = {};
@@ -862,27 +385,26 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
 
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline_layout, 0, 1, &descriptor_sets[image_index], 0, nullptr);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, 1, &pipeline.descriptor_sets[image_index], 0, nullptr);
 
-    uint32_t shader_group_handle_size = ray_tracing_pipeline_properties.shaderGroupHandleSize;
+    uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
 
     VkStridedDeviceAddressRegionKHR ar_raygen{};
-    ar_raygen.deviceAddress = shader_binding_table.raygen.device_address;
+    ar_raygen.deviceAddress = pipeline.sbt.raygen.device_address;
     ar_raygen.stride = shader_group_handle_size;
     ar_raygen.size = shader_group_handle_size;
 
     VkStridedDeviceAddressRegionKHR ar_hit{};
-    ar_hit.deviceAddress = shader_binding_table.hit.device_address;
+    ar_hit.deviceAddress = pipeline.sbt.hit.device_address;
 
     VkStridedDeviceAddressRegionKHR ar_miss{};
-    ar_miss.deviceAddress = shader_binding_table.miss.device_address;
+    ar_miss.deviceAddress = pipeline.sbt.miss.device_address;
 
     VkStridedDeviceAddressRegionKHR ar_callable{};
 
-    auto loaded_vkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdTraceRaysKHR");
-    loaded_vkCmdTraceRaysKHR(command_buffer, &ar_raygen, &ar_miss, &ar_hit, &ar_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
+    device.vkCmdTraceRaysKHR(command_buffer, &ar_raygen, &ar_miss, &ar_hit, &ar_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
 
     // retransition image layout
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -957,6 +479,21 @@ void VulkanApplication::draw_frame() {
     vkQueuePresentKHR(present_queue, &present_info);
 }
 
+void VulkanApplication::setup_device() {
+    device.vulkan_instance = vulkan_instance;
+    device.vulkan_device = logical_device;
+
+    // load function pointers
+    device.vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureBuildSizesKHR");
+    device.vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateAccelerationStructureKHR");
+    device.vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdBuildAccelerationStructuresKHR");
+    device.vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkDestroyAccelerationStructureKHR");
+    device.vkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureDeviceAddressKHR");
+    device.vkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateRayTracingPipelinesKHR");
+    device.vkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetRayTracingShaderGroupHandlesKHR");
+    device.vkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdTraceRaysKHR");
+}
+
 void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
@@ -1009,7 +546,6 @@ void VulkanApplication::setup() {
         create_info.ppEnabledExtensionNames = required_extensions.data();
         create_info.flags = 0;
 
-
         // Debug validation layers
         VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
         create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
@@ -1059,9 +595,9 @@ void VulkanApplication::setup() {
             // check device suitability
             VkPhysicalDeviceProperties2 dev_properties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
             
-            ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
-            ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-            dev_properties.pNext = &ray_tracing_pipeline_properties;
+            device.ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
+            device.ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+            dev_properties.pNext = &device.ray_tracing_pipeline_properties;
 
             vkGetPhysicalDeviceProperties2(dev, &dev_properties);
 
@@ -1075,9 +611,9 @@ void VulkanApplication::setup() {
             }
         }
 
-        std::cout << "SBT STRIDE: " << ray_tracing_pipeline_properties.shaderGroupHandleSize << std::endl;
+        std::cout << "SBT STRIDE: " << device.ray_tracing_pipeline_properties.shaderGroupHandleSize << std::endl;
 
-        vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+        vkGetPhysicalDeviceMemoryProperties(physical_device, &device.memory_properties);
 
         // find queue families
         uint32_t queue_family_count = 0;
@@ -1216,6 +752,8 @@ void VulkanApplication::setup() {
     vkGetDeviceQueue(logical_device, queue_family_indices.graphics.value(), 0, &graphics_queue);
 
     vkGetDeviceQueue(logical_device, queue_family_indices.present.value(), 0, &present_queue);
+
+    setup_device();
 
     // create command pool
     {
@@ -1358,6 +896,7 @@ void VulkanApplication::setup() {
     vkGetSwapchainImagesKHR(logical_device, swap_chain, &image_count, nullptr);
     swap_chain_images.resize(image_count);
     vkGetSwapchainImagesKHR(logical_device, swap_chain, &image_count, swap_chain_images.data());
+    device.image_count = image_count;
 
     // create image views
     swap_chain_image_views.resize(image_count);
@@ -1433,6 +972,7 @@ void VulkanApplication::setup() {
 
     scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.vertex_indices, loaded_scene.normals, loaded_scene.normal_indices);
 
+
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
 
@@ -1483,15 +1023,18 @@ void VulkanApplication::setup() {
 
     std::cout << "TLAS CREATED" << std::endl;
 
-    // create descriptor sets
-    create_descriptor_set_layout();
-    create_descriptor_pool();
-    create_descriptor_sets();
-    std::cout << "DESCRIPTORS CREATED" << std::endl;
+    PipelineBuilder builder = device.create_pipeline_builder();
 
-    // create graphics pipeline
-    //create_graphics_pipeline();
-    create_raytracing_pipeline();
+    // create pipeline
+    pipeline = device.create_pipeline_builder()
+    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
+    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
+    .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "shaders/spirv/miss.spv")
+    .build();
+    create_descriptor_writes();
+
+    std::cout << "pipeline created" << std::endl;
+    
 
     // create framebuffers
     framebuffers.resize(swap_chain_image_views.size());
@@ -1514,7 +1057,6 @@ void VulkanApplication::setup() {
             throw std::runtime_error("failure creating framebuffer");
         }
     }
-
 }
 
 void VulkanApplication::run() {
@@ -1607,7 +1149,7 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = 70.0f;
 
-        set_buffer_data(camera_buffer, &camera_data);
+        camera_buffer.set_data(&camera_data);
 
         draw_frame();
     }
@@ -1617,16 +1159,10 @@ void VulkanApplication::run() {
 
 void VulkanApplication::cleanup() {
     // deinitialization
-    free_buffer(camera_buffer);
+    camera_buffer.free();
     free_tlas(scene_tlas);
     free_blas(scene_blas);
-    free_mesh_data(scene_mesh_data);
-    free_shader_binding_table(shader_binding_table);
-    vkDestroyDescriptorSetLayout(logical_device, descriptor_set_layout, nullptr);
-    vkDestroyDescriptorPool(logical_device, descriptor_pool, nullptr);
-    vkDestroyPipelineCache(logical_device, pipeline_cache, nullptr);
-    vkDestroyPipeline(logical_device, pipeline, nullptr);
-    vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
+    pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);
