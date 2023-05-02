@@ -32,19 +32,36 @@ void main() {
     float ndc_y = (float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
     vec2 ndc = vec2(ndc_x, -ndc_y);
 
-    traceRayEXT(
-        as,
-        gl_RayFlagsOpaqueEXT,
-        0xff,
-        0,
-        0,
-        0,
-        raygen_data.camera.origin.xyz,
-        0.0,
-        compute_ray_direction(ndc),
-        100.0,
-        0
-    );
+    int max_iterations = 10;
+    int iteration = 0;
 
-    imageStore(img, ivec2(gl_LaunchIDEXT.xy), payload.contribution);
+    // initialize path
+    vec3 color = vec3(0.0, 0.0, 0.0);
+    float contribution = 1.0;
+
+    // initialize payload
+    payload.next_origin = raygen_data.camera.origin.xyz;
+    payload.next_direction = compute_ray_direction(ndc);
+
+    while (iteration < max_iterations && length(payload.next_direction) > 0.1 && contribution > 0.001) {
+        traceRayEXT(
+            as,
+            gl_RayFlagsOpaqueEXT,
+            0xff,
+            0,
+            0,
+            0,
+            payload.next_origin,
+            0.001,
+            payload.next_direction,
+            10000.0,
+            0
+        );
+
+        color += payload.direct_light * contribution;
+        contribution *= payload.next_reflection_factor;
+        iteration++;
+    }
+
+    imageStore(img, ivec2(gl_LaunchIDEXT.xy), vec4(color, 1.0));
 }

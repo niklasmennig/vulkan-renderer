@@ -9,18 +9,15 @@ layout(set = 0, binding = 3) readonly buffer IndexData {uint normal_indices[];} 
 layout(set = 0, binding = 4) readonly buffer MeshData {vec4 normals[];} mesh_data;
 
 void main() {
-    payload.distance = gl_HitTEXT;
-
     uint normal_index = index_data.normal_indices[gl_PrimitiveID * 3];
-    vec3 normal = mesh_data.normals[normal_index].xyz;
+    vec3 normal = normalize(mesh_data.normals[normal_index].xyz);
     
-    vec3 ray_dir = gl_ObjectRayDirectionEXT;
-    float cos_term = clamp(dot(normalize(-ray_dir), normalize(normal)), 0.0, 1.0);
+    vec3 color = vec3(1,1,1);
+    
+    vec3 light_dir = normalize(vec3(1, -1, 0));
+    vec3 hit_position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    payload.shadow_miss = false;
 
-    vec3 color = vec3(1,0,0);
-    
-    vec3 light_dir = vec3(1, -1, 0);
-    vec3 shadow_ray_origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT + normal * 0.01;
     traceRayEXT(
         as,
         gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,
@@ -28,18 +25,30 @@ void main() {
         0,
         0,
         0,
-        shadow_ray_origin,
+        hit_position + normal * 0.001,
         0.0,
         -light_dir,
         100.0,
         0
     );
 
-    vec4 light_contrib = vec4(1,1,1,1) * dot(-light_dir, normal);
-    if (payload.distance < 9000) {
-        light_contrib = vec4 (0,0,0,1);
+    // direct lighting
+    vec3 radiance = vec3(0,0,0);
+    if (payload.shadow_miss) {
+        float irradiance = max(dot(-light_dir, normal), 0.0);
+        radiance += color * irradiance;
+    }
+    payload.direct_light = radiance;
+
+    // indirect bounce
+    float reflection = 0.3;
+    if (reflection > 0.0) {
+        payload.next_origin = hit_position;
+        payload.next_direction = reflect(gl_WorldRayDirectionEXT, normal);
+        payload.next_reflection_factor = reflection;
+    } else {
+        payload.next_origin = vec3(0,0,0);
+        payload.next_direction = vec3(0,0,0);
     }
 
-    payload.contribution = vec4(color,1.0);
-    payload.contribution *= light_contrib;
 }
