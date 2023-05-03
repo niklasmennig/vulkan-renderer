@@ -256,7 +256,7 @@ void VulkanApplication::free_tlas(TLAS &tlas) {
     tlas.scratch_buffer.free();
 }
 
-void VulkanApplication::create_descriptor_writes() {
+void VulkanApplication::create_default_descriptor_writes() {
     VkBufferCreateInfo cam_buffer_info{};
     cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     cam_buffer_info.size = sizeof(Shaders::CameraData);
@@ -1031,7 +1031,7 @@ void VulkanApplication::setup() {
     .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
     .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "shaders/spirv/miss.spv")
     .build();
-    create_descriptor_writes();
+    create_default_descriptor_writes();
 
     std::cout << "pipeline created" << std::endl;
     
@@ -1162,6 +1162,7 @@ void VulkanApplication::cleanup() {
     camera_buffer.free();
     free_tlas(scene_tlas);
     free_blas(scene_blas);
+    scene_mesh_data.free();
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

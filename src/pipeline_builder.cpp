@@ -239,14 +239,10 @@ Pipeline PipelineBuilder::build() {
         throw std::runtime_error("error creating pipeline cache");
     }
 
-    std::cout << "created pipeline cache" << std::endl;
-
     if (device->vkCreateRayTracingPipelinesKHR(device->vulkan_device, VK_NULL_HANDLE, result.pipeline_cache_handle, 1, &pipeline_info, nullptr, &result.pipeline_handle) != VK_SUCCESS)
     {
         throw std::runtime_error("error creating raytracing pipeline");
     }
-
-    std::cout << "created pipeline" << std::endl;
 
     for (auto module : generated_shader_modules)
     {

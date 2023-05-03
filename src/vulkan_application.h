@@ -104,7 +104,7 @@ struct VulkanApplication {
     void free_tlas(TLAS &tlas);
 
     void setup_device();
-    void create_descriptor_writes();
+    void create_default_descriptor_writes();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);
     void create_synchronization();
     void draw_frame();
