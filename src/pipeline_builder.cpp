@@ -5,6 +5,8 @@
 #include "loaders/shader_spirv.h"
 
 #include <iostream>
+#include <unordered_map>
+#include <unordered_set>
 
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
 {
@@ -34,6 +36,18 @@ PipelineBuilder PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::str
     return *this;
 }
 
+PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage) {
+    descriptors.push_back(PipelineBuilderDescriptor {
+        name,
+        set,
+        binding,
+        type,
+        stage
+    });
+
+    return *this;
+}
+
 void Pipeline::free() {
     // free sbt
     sbt.raygen.free();
@@ -52,54 +66,45 @@ Pipeline PipelineBuilder::build() {
     Pipeline result;
     result.device_handle = device->vulkan_device;
 
-    #pragma region DESCRIPTOR SET LAYOUT
-
-    VkDescriptorSetLayoutBinding image_layout_binding{};
-    image_layout_binding.binding = 0;
-    image_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    image_layout_binding.descriptorCount = 1;
-    image_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding as_layout_binding{};
-    as_layout_binding.binding = 1;
-    as_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    as_layout_binding.descriptorCount = 1;
-    as_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding cam_layout_binding{};
-    cam_layout_binding.binding = 2;
-    cam_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cam_layout_binding.descriptorCount = 1;
-    cam_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding normal_index_layout_binding{};
-    normal_index_layout_binding.binding = 3;
-    normal_index_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_index_layout_binding.descriptorCount = 1;
-    normal_index_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding normal_layout_binding{};
-    normal_layout_binding.binding = 4;
-    normal_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_layout_binding.descriptorCount = 1;
-    normal_layout_binding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutBinding bindings[] = {
-        image_layout_binding,
-        as_layout_binding,
-        cam_layout_binding,
-        normal_index_layout_binding,
-        normal_layout_binding};
-
-    VkDescriptorSetLayoutCreateInfo layout_info{};
-    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layout_info.bindingCount = sizeof(bindings) / sizeof(VkDescriptorSetLayoutBinding);
-    layout_info.pBindings = bindings;
-
-    if (vkCreateDescriptorSetLayout(device->vulkan_device, &layout_info, nullptr, &result.descriptor_set_layout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error creating descriptor set layout");
+    // scan for highest descriptor set number
+    uint32_t max_set = 0;
+    for (auto desc : descriptors) {
+        if (desc.set > max_set) max_set = desc.set;
     }
+    result.max_set = max_set;
+
+    #pragma region DESCRIPTOR SET LAYOUT
+    for (uint32_t current_set = 0; current_set <= max_set; current_set++) {
+        std::unordered_set<uint32_t> bound_bindings;
+        std::vector<VkDescriptorSetLayoutBinding> set_bindings;
+
+        for (auto descriptor : descriptors) {
+            if (descriptor.set == current_set) {
+                VkDescriptorSetLayoutBinding descriptor_binding{};
+                descriptor_binding.binding = descriptor.binding;
+                descriptor_binding.descriptorCount = 1;
+                descriptor_binding.descriptorType = descriptor.descriptor_type;
+                descriptor_binding.stageFlags = descriptor.stage_flags;
+
+                if (bound_bindings.find(descriptor.binding) == bound_bindings.end()) {
+                    set_bindings.push_back(descriptor_binding);
+                } else {
+                    throw std::runtime_error("descriptor in set " + std::to_string(current_set) + ", binding " + std::to_string(descriptor.binding) + " is already bound.");
+                }
+            }
+        }
+
+        VkDescriptorSetLayoutCreateInfo layout_info{};
+        layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layout_info.bindingCount = set_bindings.size();
+        layout_info.pBindings = set_bindings.data();
+
+        if (vkCreateDescriptorSetLayout(device->vulkan_device, &layout_info, nullptr, &result.descriptor_set_layout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("error creating descriptor set layout");
+        }
+    }
+
 #pragma endregion
 
     #pragma region DESCRIPTOR POOL
@@ -145,17 +150,21 @@ Pipeline PipelineBuilder::build() {
 
     #pragma region DESCRIPTOR SETS
     result.descriptor_sets.resize(device->image_count);
+    for (int i = 0; i < device->image_count; i++) {
+        result.descriptor_sets[i] = std::vector<VkDescriptorSet>();
+        result.descriptor_sets[i].resize(max_set + 1);
 
-    std::vector<VkDescriptorSetLayout> layouts(device->image_count, result.descriptor_set_layout);
-    VkDescriptorSetAllocateInfo alloc_info{};
-    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool = result.descriptor_pool;
-    alloc_info.descriptorSetCount = device->image_count;
-    alloc_info.pSetLayouts = layouts.data();
+        std::vector<VkDescriptorSetLayout> layouts(device->image_count, result.descriptor_set_layout);
+        VkDescriptorSetAllocateInfo alloc_info{};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.descriptorPool = result.descriptor_pool;
+        alloc_info.descriptorSetCount = max_set + 1;
+        alloc_info.pSetLayouts = layouts.data();
 
-    if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets.data()) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error allocating descriptor sets");
+        if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets[i].data()) != VK_SUCCESS)
+        {
+            throw std::runtime_error("error allocating descriptor sets");
+        }
     }
     #pragma endregion
 

@@ -1,7 +1,11 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
 
+~include "shaders/common.glsl"
+
 ~include "shaders/payload.glsl"
+
+hitAttributeEXT vec3 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
@@ -9,8 +13,15 @@ layout(set = 0, binding = 3) readonly buffer IndexData {uint normal_indices[];} 
 layout(set = 0, binding = 4) readonly buffer MeshData {vec4 normals[];} mesh_data;
 
 void main() {
-    uint normal_index = index_data.normal_indices[gl_PrimitiveID * 3];
-    vec3 normal = normalize(mesh_data.normals[normal_index].xyz);
+    // indices into mesh data
+    uint idx0 = gl_PrimitiveID * 3 + 0;
+    uint idx1 = gl_PrimitiveID * 3 + 1;
+    uint idx2 = gl_PrimitiveID * 3 + 2;
+
+    vec3 normal0 = mesh_data.normals[index_data.normal_indices[idx0]].xyz;
+    vec3 normal1 = mesh_data.normals[index_data.normal_indices[idx1]].xyz;
+    vec3 normal2 = mesh_data.normals[index_data.normal_indices[idx2]].xyz;
+    vec3 normal = normalize(normal0 * barycentrics.x + normal1 * barycentrics.y + normal2 * barycentrics.z);
     
     vec3 color = vec3(1,1,1);
     
@@ -25,10 +36,10 @@ void main() {
         0,
         0,
         0,
-        hit_position + normal * 0.001,
+        hit_position + normal * epsilon,
         0.0,
         -light_dir,
-        100.0,
+        ray_max,
         0
     );
 

@@ -1,5 +1,6 @@
 import os;
 import subprocess;
+import glob;
 
 shaders_path = "./shaders"
 shaders_meta_path = "./shaders/meta"
@@ -7,6 +8,11 @@ shaders_spirv_path = "./shaders/spirv"
 
 shader_compiler_path = "../glslang/build/install/bin/glslangValidator.exe"
 shader_compiler_args = ["--target-env", "vulkan1.3"]
+
+# remove old compiled shaders
+old_files = glob.glob(shaders_spirv_path + "/*")
+for f in old_files:
+    os.remove(f)
 
 shader_files = [f for f in os.listdir(shaders_path) if os.path.isfile(os.path.join(shaders_path, f)) and (f.endswith("rchit") or f.endswith("rgen") or f.endswith("rmiss"))]
 shader_paths = ['/'.join([shaders_path, f]) for f in shader_files]

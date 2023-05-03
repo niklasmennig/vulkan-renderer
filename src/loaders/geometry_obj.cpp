@@ -28,6 +28,11 @@ LoadedMeshData loaders::load_obj(const std::string path) {
         result.normals.push_back(norm);
     }
 
+    for (int vt = 0; vt < attrib.texcoords.size(); vt+= 2) {
+        glm::vec2 tex = glm::vec2(attrib.texcoords[vt + 0], attrib.texcoords[vt + 1]);
+        result.texcoords.push_back(tex);
+    }
+
     for (size_t shape_index = 0; shape_index < shapes.size(); shape_index++) {
         size_t index_offset = 0;
         for (size_t face_index = 0; face_index < shapes[shape_index].mesh.num_face_vertices.size(); face_index++) {
@@ -37,6 +42,7 @@ LoadedMeshData loaders::load_obj(const std::string path) {
 
                 result.vertex_indices.push_back((uint32_t)idx.vertex_index);
                 result.normal_indices.push_back((uint32_t)idx.normal_index);
+                result.texcoord_indices.push_back((uint32_t)idx.texcoord_index);
             }
             index_offset += face_vertices;
         }

@@ -13,6 +13,7 @@ struct ShaderBindingTable
 
 struct Pipeline {
     VkDevice device_handle;
+    uint32_t max_set;
 
     VkPipeline pipeline_handle;
     VkPipelineLayout pipeline_layout_handle;
@@ -20,7 +21,7 @@ struct Pipeline {
 
     VkDescriptorSetLayout descriptor_set_layout;
     VkDescriptorPool descriptor_pool;
-    std::vector<VkDescriptorSet> descriptor_sets;
+    std::vector<std::vector<VkDescriptorSet>> descriptor_sets;
 
     ShaderBindingTable sbt;
 
@@ -29,6 +30,11 @@ struct Pipeline {
 
 struct PipelineBuilderDescriptor
 {
+    std::string name;
+    uint32_t set;
+    uint32_t binding;
+    VkDescriptorType descriptor_type;
+    VkShaderStageFlags stage_flags;
 };
 
 struct PipelineBuilderShaderStage
@@ -42,11 +48,12 @@ struct PipelineBuilder
 {
     Device* device;
     std::vector<PipelineBuilderShaderStage> shader_stages;
+    std::vector<PipelineBuilderDescriptor> descriptors;
 
     VkShaderModule create_shader_module(const std::vector<char>& code);
 
     public:
-    PipelineBuilder add_descriptor();
+    PipelineBuilder add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage);
     PipelineBuilder add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
     Pipeline build();
 };
