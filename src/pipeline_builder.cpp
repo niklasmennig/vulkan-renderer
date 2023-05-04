@@ -51,12 +51,41 @@ Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];
 }
 
-void Pipeline::queue_descriptor_write_buffer(std::string descriptor_name, Buffer &buffer) {
-    SetBinding set_binding = get_descriptor_set_binding(descriptor_name);
+void Pipeline::set_descriptor_image_binding(std::string name, VkImageView image_view) {
+    SetBinding set_binding = get_descriptor_set_binding(name);
 
-    VkWriteDescriptorSet buffer_write{};
-    // TODO
+    VkDescriptorImageInfo image_info{};
+    image_info.imageView = image_view;
+    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
+    VkWriteDescriptorSet descriptor_write_image{};
+    descriptor_write_image.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_image.dstSet = descriptor_sets[set_binding.set];
+    descriptor_write_image.dstBinding = set_binding.binding;
+    descriptor_write_image.dstArrayElement = 0;
+    descriptor_write_image.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptor_write_image.descriptorCount = 1;
+    descriptor_write_image.pImageInfo = &image_info;
+
+    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_image, 0, nullptr);
+}
+
+void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer buffer, BufferType buffer_type) {
+    SetBinding set_binding = get_descriptor_set_binding(name);
+
+    VkDescriptorBufferInfo buffer_write_info{};
+    buffer_write_info.buffer = buffer.buffer_handle;
+    buffer_write_info.range = VK_WHOLE_SIZE;
+    buffer_write_info.offset = 0;
+
+    VkWriteDescriptorSet descriptor_write_buffer{};
+    descriptor_write_buffer.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_buffer.dstSet = descriptor_sets[set_binding.set];
+    descriptor_write_buffer.dstBinding = set_binding.binding;
+    descriptor_write_buffer.dstArrayElement = 0;
+    descriptor_write_buffer.descriptorType = (VkDescriptorType)buffer_type;
+    descriptor_write_buffer.descriptorCount = 1;
+    descriptor_write_buffer.pBufferInfo = &buffer_write_info;
 }
 
 void Pipeline::free() {
@@ -161,11 +190,8 @@ Pipeline PipelineBuilder::build() {
 #pragma endregion
 
     #pragma region DESCRIPTOR SETS
-    result.descriptor_sets.resize(device->image_count);
+    result.descriptor_sets.resize(max_set + 1);
     for (int i = 0; i < device->image_count; i++) {
-        result.descriptor_sets[i] = std::vector<VkDescriptorSet>();
-        result.descriptor_sets[i].resize(max_set + 1);
-
         std::vector<VkDescriptorSetLayout> layouts(device->image_count, result.descriptor_set_layout);
         VkDescriptorSetAllocateInfo alloc_info{};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -173,7 +199,7 @@ Pipeline PipelineBuilder::build() {
         alloc_info.descriptorSetCount = max_set + 1;
         alloc_info.pSetLayouts = layouts.data();
 
-        if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets[i].data()) != VK_SUCCESS)
+        if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets.data()) != VK_SUCCESS)
         {
             throw std::runtime_error("error allocating descriptor sets");
         }

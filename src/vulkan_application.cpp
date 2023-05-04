@@ -272,87 +272,85 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     camera_buffer.set_data(&camera_data);
 
-    for (int i = 0; i < device.image_count; i++) {
-        VkDescriptorImageInfo image_info{};
-        image_info.imageView = swap_chain_image_views[i];
-        image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    VkDescriptorImageInfo image_info{};
+    image_info.imageView = swap_chain_image_views[0];
+    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-        VkWriteDescriptorSet descriptor_write_image{};
-        descriptor_write_image.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_image.dstSet = pipeline.descriptor_sets[i][0];
-        descriptor_write_image.dstBinding = 0;
-        descriptor_write_image.dstArrayElement = 0;
-        descriptor_write_image.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptor_write_image.descriptorCount = 1;
-        descriptor_write_image.pImageInfo = &image_info;
+    VkWriteDescriptorSet descriptor_write_image{};
+    descriptor_write_image.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_image.dstSet = pipeline.descriptor_sets[0];
+    descriptor_write_image.dstBinding = 0;
+    descriptor_write_image.dstArrayElement = 0;
+    descriptor_write_image.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptor_write_image.descriptorCount = 1;
+    descriptor_write_image.pImageInfo = &image_info;
 
-        VkWriteDescriptorSet descriptor_write_as{};
-        descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_as.dstSet = pipeline.descriptor_sets[i][0];
-        descriptor_write_as.dstBinding = 1;
-        descriptor_write_as.dstArrayElement = 0;
-        descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        descriptor_write_as.descriptorCount = 1;
+    VkWriteDescriptorSet descriptor_write_as{};
+    descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_as.dstSet = pipeline.descriptor_sets[0];
+    descriptor_write_as.dstBinding = 1;
+    descriptor_write_as.dstArrayElement = 0;
+    descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    descriptor_write_as.descriptorCount = 1;
 
-        VkWriteDescriptorSetAccelerationStructureKHR descriptor_write_as_data{};
-        descriptor_write_as_data.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-        descriptor_write_as_data.accelerationStructureCount = 1;
-        descriptor_write_as_data.pAccelerationStructures = &scene_tlas.acceleration_structure;
+    VkWriteDescriptorSetAccelerationStructureKHR descriptor_write_as_data{};
+    descriptor_write_as_data.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    descriptor_write_as_data.accelerationStructureCount = 1;
+    descriptor_write_as_data.pAccelerationStructures = &scene_tlas.acceleration_structure;
 
-        descriptor_write_as.pNext = &descriptor_write_as_data;
+    descriptor_write_as.pNext = &descriptor_write_as_data;
 
-        VkDescriptorBufferInfo cam_buffer_info{};
-        cam_buffer_info.buffer = camera_buffer.buffer_handle;
-        cam_buffer_info.range = VK_WHOLE_SIZE;
-        cam_buffer_info.offset = 0;
+    VkDescriptorBufferInfo cam_buffer_write_info{};
+    cam_buffer_write_info.buffer = camera_buffer.buffer_handle;
+    cam_buffer_write_info.range = VK_WHOLE_SIZE;
+    cam_buffer_write_info.offset = 0;
 
-        VkWriteDescriptorSet descriptor_write_cam{};
-        descriptor_write_cam.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_cam.dstSet = pipeline.descriptor_sets[i][0];
-        descriptor_write_cam.dstBinding = 2;
-        descriptor_write_cam.dstArrayElement = 0;
-        descriptor_write_cam.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptor_write_cam.descriptorCount = 1;
-        descriptor_write_cam.pBufferInfo = &cam_buffer_info;
+    VkWriteDescriptorSet descriptor_write_cam{};
+    descriptor_write_cam.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_cam.dstSet = pipeline.descriptor_sets[0];
+    descriptor_write_cam.dstBinding = 2;
+    descriptor_write_cam.dstArrayElement = 0;
+    descriptor_write_cam.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptor_write_cam.descriptorCount = 1;
+    descriptor_write_cam.pBufferInfo = &cam_buffer_write_info;
 
-        VkDescriptorBufferInfo normal_index_buffer_info{};
-        normal_index_buffer_info.buffer = scene_mesh_data.normal_indices.buffer_handle;
-        normal_index_buffer_info.range = VK_WHOLE_SIZE;
-        normal_index_buffer_info.offset = 0;
+    VkDescriptorBufferInfo normal_index_buffer_info{};
+    normal_index_buffer_info.buffer = scene_mesh_data.normal_indices.buffer_handle;
+    normal_index_buffer_info.range = VK_WHOLE_SIZE;
+    normal_index_buffer_info.offset = 0;
 
-        VkDescriptorBufferInfo normal_buffer_info{};
-        normal_buffer_info.buffer = scene_mesh_data.normals.buffer_handle;
-        normal_buffer_info.range = VK_WHOLE_SIZE;
-        normal_buffer_info.offset = 0;
+    VkDescriptorBufferInfo normal_buffer_info{};
+    normal_buffer_info.buffer = scene_mesh_data.normals.buffer_handle;
+    normal_buffer_info.range = VK_WHOLE_SIZE;
+    normal_buffer_info.offset = 0;
 
-        VkWriteDescriptorSet descriptor_write_normal_index{};
-        descriptor_write_normal_index.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_normal_index.dstSet = pipeline.descriptor_sets[i][0];
-        descriptor_write_normal_index.dstBinding = 3;
-        descriptor_write_normal_index.dstArrayElement = 0;
-        descriptor_write_normal_index.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptor_write_normal_index.descriptorCount = 1;
-        descriptor_write_normal_index.pBufferInfo = &normal_index_buffer_info;
+    VkWriteDescriptorSet descriptor_write_normal_index{};
+    descriptor_write_normal_index.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_normal_index.dstSet = pipeline.descriptor_sets[0];
+    descriptor_write_normal_index.dstBinding = 3;
+    descriptor_write_normal_index.dstArrayElement = 0;
+    descriptor_write_normal_index.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptor_write_normal_index.descriptorCount = 1;
+    descriptor_write_normal_index.pBufferInfo = &normal_index_buffer_info;
 
-        VkWriteDescriptorSet descriptor_write_normals{};
-        descriptor_write_normals.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_write_normals.dstSet = pipeline.descriptor_sets[i][0];
-        descriptor_write_normals.dstBinding = 4;
-        descriptor_write_normals.dstArrayElement = 0;
-        descriptor_write_normals.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptor_write_normals.descriptorCount = 1;
-        descriptor_write_normals.pBufferInfo = &normal_buffer_info;
+    VkWriteDescriptorSet descriptor_write_normals{};
+    descriptor_write_normals.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_normals.dstSet = pipeline.descriptor_sets[0];
+    descriptor_write_normals.dstBinding = 4;
+    descriptor_write_normals.dstArrayElement = 0;
+    descriptor_write_normals.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptor_write_normals.descriptorCount = 1;
+    descriptor_write_normals.pBufferInfo = &normal_buffer_info;
 
-        VkWriteDescriptorSet descriptor_writes[] = {
-            descriptor_write_image,
-            descriptor_write_as,
-            descriptor_write_cam,
-            descriptor_write_normal_index,
-            descriptor_write_normals
-        };
+    VkWriteDescriptorSet descriptor_writes[] = {
+        descriptor_write_image,
+        descriptor_write_as,
+        descriptor_write_cam,
+        descriptor_write_normal_index,
+        descriptor_write_normals
+    };
 
-        vkUpdateDescriptorSets(logical_device, sizeof(descriptor_writes) / sizeof(VkWriteDescriptorSet), descriptor_writes, 0, nullptr);
-    }
+    vkUpdateDescriptorSets(logical_device, sizeof(descriptor_writes) / sizeof(VkWriteDescriptorSet), descriptor_writes, 0, nullptr);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -383,11 +381,14 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     image_barrier.srcAccessMask = 0;
     image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+    // set current image as output image for raytracing pipeline
+    pipeline.set_descriptor_image_binding("out_image", swap_chain_image_views[image_index]);
+
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
 
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets[image_index].data(), 0, nullptr);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
 
     uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
 

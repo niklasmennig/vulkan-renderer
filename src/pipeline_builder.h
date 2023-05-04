@@ -22,7 +22,7 @@ struct Pipeline {
 
     VkDescriptorSetLayout descriptor_set_layout;
     VkDescriptorPool descriptor_pool;
-    std::vector<std::vector<VkDescriptorSet>> descriptor_sets;
+    std::vector<VkDescriptorSet> descriptor_sets;
 
     ShaderBindingTable sbt;
 
@@ -34,13 +34,10 @@ struct Pipeline {
 
 
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
-    void queue_descriptor_write_buffer(std::string descriptor_name, Buffer& buffer);
-    void submit_descriptor_writes();
+    void set_descriptor_image_binding(std::string name, VkImageView image_view);
+    void set_descriptor_buffer_binding(std::string name, Buffer buffer, BufferType buffer_type);
 
     void free();
-
-    private:
-    std::vector<VkWriteDescriptorSet> queued_descriptor_writes;
 };
 
 struct PipelineBuilderDescriptor

@@ -1,6 +1,11 @@
 #pragma once
 #include "vulkan.h"
 
+enum BufferType {
+    Uniform = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    Storage = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+};
+
 struct Buffer
 {
     size_t buffer_size;
