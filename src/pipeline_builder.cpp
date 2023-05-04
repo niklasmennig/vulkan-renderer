@@ -5,7 +5,6 @@
 #include "loaders/shader_spirv.h"
 
 #include <iostream>
-#include <unordered_map>
 #include <unordered_set>
 
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
@@ -48,6 +47,18 @@ PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, 
     return *this;
 }
 
+Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
+    return named_descriptors[name];
+}
+
+void Pipeline::queue_descriptor_write_buffer(std::string descriptor_name, Buffer &buffer) {
+    SetBinding set_binding = get_descriptor_set_binding(descriptor_name);
+
+    VkWriteDescriptorSet buffer_write{};
+    // TODO
+
+}
+
 void Pipeline::free() {
     // free sbt
     sbt.raygen.free();
@@ -88,6 +99,7 @@ Pipeline PipelineBuilder::build() {
 
                 if (bound_bindings.find(descriptor.binding) == bound_bindings.end()) {
                     set_bindings.push_back(descriptor_binding);
+                    result.named_descriptors[descriptor.name] = Pipeline::SetBinding{current_set, descriptor.binding};
                 } else {
                     throw std::runtime_error("descriptor in set " + std::to_string(current_set) + ", binding " + std::to_string(descriptor.binding) + " is already bound.");
                 }

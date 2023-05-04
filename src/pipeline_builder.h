@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 struct ShaderBindingTable
 {
@@ -25,7 +26,21 @@ struct Pipeline {
 
     ShaderBindingTable sbt;
 
+    struct SetBinding {
+        uint32_t set;
+        uint32_t binding;
+    };
+    std::unordered_map<std::string, SetBinding> named_descriptors;
+
+
+    Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
+    void queue_descriptor_write_buffer(std::string descriptor_name, Buffer& buffer);
+    void submit_descriptor_writes();
+
     void free();
+
+    private:
+    std::vector<VkWriteDescriptorSet> queued_descriptor_writes;
 };
 
 struct PipelineBuilderDescriptor
