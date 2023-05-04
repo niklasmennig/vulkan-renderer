@@ -478,6 +478,12 @@ void VulkanApplication::draw_frame() {
     present_info.pResults = nullptr;
 
     vkQueuePresentKHR(present_queue, &present_info);
+
+    auto time = std::chrono::high_resolution_clock::now();
+    frame_delta = time - last_frame_time;
+    last_frame_time = time;
+
+    glfwSetWindowTitle(window, ("Vulkan Renderer | FPS: " + std::to_string(1.0 / frame_delta.count())).c_str());
 }
 
 void VulkanApplication::setup_device() {

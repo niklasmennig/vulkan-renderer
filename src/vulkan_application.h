@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <optional>
+#include <chrono>
 
 #include <glm/glm.hpp>
 using vec3 = glm::vec3;
@@ -50,6 +51,8 @@ struct TLAS : AccelerationStructure {
 struct VulkanApplication {
     private:
     GLFWwindow* window;
+    std::chrono::time_point<std::chrono::high_resolution_clock> last_frame_time;
+    std::chrono::duration<double> frame_delta;
 
     VkInstance vulkan_instance;
     VkSurfaceKHR surface;
