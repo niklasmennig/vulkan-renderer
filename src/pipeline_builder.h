@@ -20,7 +20,7 @@ struct Pipeline {
     VkPipelineLayout pipeline_layout_handle;
     VkPipelineCache pipeline_cache_handle;
 
-    VkDescriptorSetLayout descriptor_set_layout;
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
     VkDescriptorPool descriptor_pool;
     std::vector<VkDescriptorSet> descriptor_sets;
 

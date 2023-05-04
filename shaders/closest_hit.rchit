@@ -9,8 +9,8 @@ hitAttributeEXT vec3 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
-layout(set = 0, binding = 3) readonly buffer IndexData {uint normal_indices[];} index_data;
-layout(set = 0, binding = 4) readonly buffer MeshData {vec4 normals[];} mesh_data;
+layout(set = 1, binding = 3) readonly buffer IndexData {uint normal_indices[];} index_data;
+layout(set = 1, binding = 4) readonly buffer MeshData {vec4 normals[];} mesh_data;
 
 void main() {
     // indices into mesh data

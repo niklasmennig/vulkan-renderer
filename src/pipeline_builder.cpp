@@ -86,6 +86,8 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer buffer, Bu
     descriptor_write_buffer.descriptorType = (VkDescriptorType)buffer_type;
     descriptor_write_buffer.descriptorCount = 1;
     descriptor_write_buffer.pBufferInfo = &buffer_write_info;
+
+    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_buffer, 0, nullptr);
 }
 
 void Pipeline::free() {
@@ -95,7 +97,9 @@ void Pipeline::free() {
     sbt.miss.free();
 
     vkDestroyDescriptorPool(device_handle, descriptor_pool, nullptr);
-    vkDestroyDescriptorSetLayout(device_handle, descriptor_set_layout, nullptr);
+    for (auto layout : descriptor_set_layouts) {
+        vkDestroyDescriptorSetLayout(device_handle, layout, nullptr);
+    }
 
     vkDestroyPipeline(device_handle, pipeline_handle, nullptr);
     vkDestroyPipelineLayout(device_handle, pipeline_layout_handle, nullptr);
@@ -114,6 +118,7 @@ Pipeline PipelineBuilder::build() {
     result.max_set = max_set;
 
     #pragma region DESCRIPTOR SET LAYOUT
+    result.descriptor_set_layouts.resize(max_set + 1);
     for (uint32_t current_set = 0; current_set <= max_set; current_set++) {
         std::unordered_set<uint32_t> bound_bindings;
         std::vector<VkDescriptorSetLayoutBinding> set_bindings;
@@ -140,7 +145,7 @@ Pipeline PipelineBuilder::build() {
         layout_info.bindingCount = set_bindings.size();
         layout_info.pBindings = set_bindings.data();
 
-        if (vkCreateDescriptorSetLayout(device->vulkan_device, &layout_info, nullptr, &result.descriptor_set_layout) != VK_SUCCESS)
+        if (vkCreateDescriptorSetLayout(device->vulkan_device, &layout_info, nullptr, &result.descriptor_set_layouts[current_set]) != VK_SUCCESS)
         {
             throw std::runtime_error("error creating descriptor set layout");
         }
@@ -191,18 +196,15 @@ Pipeline PipelineBuilder::build() {
 
     #pragma region DESCRIPTOR SETS
     result.descriptor_sets.resize(max_set + 1);
-    for (int i = 0; i < device->image_count; i++) {
-        std::vector<VkDescriptorSetLayout> layouts(device->image_count, result.descriptor_set_layout);
-        VkDescriptorSetAllocateInfo alloc_info{};
-        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool = result.descriptor_pool;
-        alloc_info.descriptorSetCount = max_set + 1;
-        alloc_info.pSetLayouts = layouts.data();
+    VkDescriptorSetAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = result.descriptor_pool;
+    alloc_info.descriptorSetCount = max_set + 1;
+    alloc_info.pSetLayouts = result.descriptor_set_layouts.data();
 
-        if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets.data()) != VK_SUCCESS)
-        {
-            throw std::runtime_error("error allocating descriptor sets");
-        }
+    if (vkAllocateDescriptorSets(device->vulkan_device, &alloc_info, result.descriptor_sets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error allocating descriptor sets");
     }
     #pragma endregion
 
@@ -259,8 +261,8 @@ Pipeline PipelineBuilder::build() {
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{};
     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeline_layout_info.setLayoutCount = 1;
-    pipeline_layout_info.pSetLayouts = &result.descriptor_set_layout;
+    pipeline_layout_info.setLayoutCount = result.descriptor_set_layouts.size();
+    pipeline_layout_info.pSetLayouts = result.descriptor_set_layouts.data();
     pipeline_layout_info.pushConstantRangeCount = 0;
     pipeline_layout_info.pNext = 0;
     pipeline_layout_info.flags = 0;
