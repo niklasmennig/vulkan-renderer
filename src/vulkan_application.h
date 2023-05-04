@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include <glm/glm.hpp>
+using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 namespace Shaders
@@ -25,12 +26,16 @@ struct MeshData {
     VkDevice device_handle;
     uint32_t vertex_count;
     uint32_t normal_count;
+    uint32_t texcoord_count;
     uint32_t vertex_index_count;
     uint32_t normal_index_count;
+    uint32_t texcoord_index_count;
     Buffer vertices;
     Buffer vertex_indices;
     Buffer normals;
     Buffer normal_indices;
+    Buffer texcoords;
+    Buffer texcoord_indices;
 
     void free();
 };
@@ -98,7 +103,7 @@ struct VulkanApplication {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
-    MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices);
+    MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices, std::vector<vec2> &texcoords, std::vector<uint32_t> &texcoord_indices);
 
     BLAS build_blas(MeshData &mesh_data);
     void free_blas(BLAS &blas);
