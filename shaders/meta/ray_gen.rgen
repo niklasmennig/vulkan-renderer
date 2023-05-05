@@ -26,6 +26,7 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
+layout(set = 1, binding = 6) uniform sampler2D tex;
 
 
 vec3 compute_ray_direction(vec2 ndc) {

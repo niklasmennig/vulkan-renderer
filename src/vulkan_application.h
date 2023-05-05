@@ -1,6 +1,7 @@
 #include "vulkan.h"
 #include "device.h"
 #include "buffer.h"
+#include "loaders/image.h"
 #include "pipeline_builder.h"
 
 #include <vector>
@@ -96,6 +97,8 @@ struct VulkanApplication {
     Buffer camera_buffer;
 
     MeshData scene_mesh_data;
+    Image texture;
+
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
     BLAS scene_blas;
     TLAS scene_tlas;

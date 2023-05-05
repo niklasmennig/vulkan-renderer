@@ -51,7 +51,7 @@ Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];
 }
 
-void Pipeline::set_descriptor_image_binding(std::string name, VkImageView image_view) {
+void Pipeline::set_descriptor_image_binding(std::string name, VkImageView image_view, ImageType image_type) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorImageInfo image_info{};
@@ -63,14 +63,14 @@ void Pipeline::set_descriptor_image_binding(std::string name, VkImageView image_
     descriptor_write_image.dstSet = descriptor_sets[set_binding.set];
     descriptor_write_image.dstBinding = set_binding.binding;
     descriptor_write_image.dstArrayElement = 0;
-    descriptor_write_image.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptor_write_image.descriptorType = (VkDescriptorType)image_type;
     descriptor_write_image.descriptorCount = 1;
     descriptor_write_image.pImageInfo = &image_info;
 
     vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_image, 0, nullptr);
 }
 
-void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer buffer, BufferType buffer_type) {
+void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorBufferInfo buffer_write_info{};
@@ -88,6 +88,26 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer buffer, Bu
     descriptor_write_buffer.pBufferInfo = &buffer_write_info;
 
     vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_buffer, 0, nullptr);
+}
+
+void Pipeline::set_descriptor_sampler_binding(std::string name, Image& image) {
+    SetBinding set_binding = get_descriptor_set_binding(name);
+
+    VkDescriptorImageInfo image_info{};
+    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    image_info.imageView = image.view_handle;
+    image_info.sampler = image.sampler_handle;
+
+    VkWriteDescriptorSet descriptor_write_sampler{};
+    descriptor_write_sampler.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_sampler.dstSet = descriptor_sets[set_binding.set];
+    descriptor_write_sampler.dstBinding = set_binding.binding;
+    descriptor_write_sampler.dstArrayElement = 0;
+    descriptor_write_sampler.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptor_write_sampler.descriptorCount = 1;
+    descriptor_write_sampler.pImageInfo = &image_info;
+
+    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_sampler, 0, nullptr);
 }
 
 void Pipeline::free() {
@@ -130,6 +150,7 @@ Pipeline PipelineBuilder::build() {
                 descriptor_binding.descriptorCount = 1;
                 descriptor_binding.descriptorType = descriptor.descriptor_type;
                 descriptor_binding.stageFlags = descriptor.stage_flags;
+                descriptor_binding.pImmutableSamplers = nullptr;
 
                 if (bound_bindings.find(descriptor.binding) == bound_bindings.end()) {
                     set_bindings.push_back(descriptor_binding);
@@ -154,39 +175,21 @@ Pipeline PipelineBuilder::build() {
 #pragma endregion
 
     #pragma region DESCRIPTOR POOL
-    VkDescriptorPoolSize image_pool_size{};
-    image_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    image_pool_size.descriptorCount = device->image_count;
+    std::vector<VkDescriptorPoolSize> pool_sizes;
 
-    VkDescriptorPoolSize as_pool_size{};
-    as_pool_size.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    as_pool_size.descriptorCount = device->image_count;
+    for (auto descriptor : descriptors) {
+        VkDescriptorPoolSize descriptor_pool_size{};
+        descriptor_pool_size.type = descriptor.descriptor_type;
+        descriptor_pool_size.descriptorCount = 1;
 
-    VkDescriptorPoolSize cam_pool_size{};
-    cam_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cam_pool_size.descriptorCount = device->image_count;
-
-    VkDescriptorPoolSize normal_index_pool_size{};
-    normal_index_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_index_pool_size.descriptorCount = device->image_count;
-
-    VkDescriptorPoolSize normal_pool_size{};
-    normal_pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    normal_pool_size.descriptorCount = device->image_count;
-
-    VkDescriptorPoolSize pool_sizes[] = {
-        image_pool_size,
-        as_pool_size,
-        cam_pool_size,
-        normal_index_pool_size,
-        normal_pool_size
-    };
+        pool_sizes.push_back(descriptor_pool_size);
+    }
 
     VkDescriptorPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = sizeof(pool_sizes) / sizeof(VkDescriptorPoolSize);
-    pool_info.pPoolSizes = pool_sizes;
-    pool_info.maxSets = device->image_count;
+    pool_info.poolSizeCount = pool_sizes.size();
+    pool_info.pPoolSizes = pool_sizes.data();
+    pool_info.maxSets = max_set + 1;
 
     if (vkCreateDescriptorPool(device->vulkan_device, &pool_info, nullptr, &result.descriptor_pool) != VK_SUCCESS)
     {

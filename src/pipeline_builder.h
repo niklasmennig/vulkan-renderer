@@ -1,9 +1,21 @@
 #pragma once
 #include "device.h"
+#include "loaders/image.h"
 
 #include <vector>
 #include <string>
 #include <unordered_map>
+
+enum class BufferType
+{
+    Uniform = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    Storage = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+};
+
+enum class ImageType {
+    Storage = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+    Sampled = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+};
 
 struct ShaderBindingTable
 {
@@ -34,8 +46,9 @@ struct Pipeline {
 
 
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
-    void set_descriptor_image_binding(std::string name, VkImageView image_view);
-    void set_descriptor_buffer_binding(std::string name, Buffer buffer, BufferType buffer_type);
+    void set_descriptor_image_binding(std::string name, VkImageView image_view, ImageType image_type);
+    void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
+    void set_descriptor_sampler_binding(std::string name, Image& image);
 
     void free();
 };

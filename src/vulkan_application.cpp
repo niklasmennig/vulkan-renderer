@@ -316,6 +316,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_normals", scene_mesh_data.normals, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", scene_mesh_data.texcoord_indices, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoords", scene_mesh_data.texcoords, BufferType::Storage);
+    pipeline.set_descriptor_sampler_binding("textures", texture);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -330,7 +331,7 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
         throw std::runtime_error("error beginning command buffer");
     }
 
-    // transition image to writeable format
+    // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
     image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -347,8 +348,7 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     // set current image as output image for raytracing pipeline
-    pipeline.set_descriptor_image_binding("out_image", swap_chain_image_views[image_index]);
-
+    pipeline.set_descriptor_image_binding("out_image", swap_chain_image_views[image_index], ImageType::Storage);
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
@@ -944,6 +944,8 @@ void VulkanApplication::setup() {
 
     scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.vertex_indices, loaded_scene.normals, loaded_scene.normal_indices, loaded_scene.texcoords, loaded_scene.texcoord_indices);
 
+    texture = loaders::load_image(&device, "test.png");
+
 
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
@@ -960,10 +962,45 @@ void VulkanApplication::setup() {
 
     scene_blas = build_blas(scene_mesh_data);
 
+
+    VkBufferImageCopy texture_copy{};
+    texture_copy.bufferOffset = 0;
+    texture_copy.bufferRowLength = 0;
+    texture_copy.bufferImageHeight = 0;
+    texture_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture_copy.imageSubresource.mipLevel = 0;
+    texture_copy.imageSubresource.baseArrayLayer = 0;
+    texture_copy.imageSubresource.layerCount = 1;
+    texture_copy.imageOffset = {0, 0, 0};
+    texture_copy.imageExtent = {
+        texture.width,
+        texture.height,
+        1};
+
+    vkCmdCopyBufferToImage(command_buffer, texture.buffer.buffer_handle, texture.image_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texture_copy);
+
+    // transition texture to readable format
+    VkImageMemoryBarrier texture_barrier = {};
+    texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    texture_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    texture_barrier.image = texture.image_handle;
+    texture_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture_barrier.subresourceRange.baseMipLevel = 0;
+    texture_barrier.subresourceRange.levelCount = 1;
+    texture_barrier.subresourceRange.baseArrayLayer = 0;
+    texture_barrier.subresourceRange.layerCount = 1;
+    texture_barrier.srcAccessMask = 0;
+    texture_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
+
     vkEndCommandBuffer(command_buffer);
 
     vkResetFences(logical_device, 1, &immediate_fence);
-
+    
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.waitSemaphoreCount = 0;
@@ -1010,6 +1047,7 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_normals", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_texcoord_indices", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_texcoords", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("textures", 1, 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
@@ -1144,6 +1182,7 @@ void VulkanApplication::run() {
 void VulkanApplication::cleanup() {
     // deinitialization
     camera_buffer.free();
+    texture.free();
     free_tlas(scene_tlas);
     free_blas(scene_blas);
     scene_mesh_data.free();

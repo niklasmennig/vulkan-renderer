@@ -27,4 +27,6 @@ struct Device
     PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
     PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
     PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
+
+    uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 };

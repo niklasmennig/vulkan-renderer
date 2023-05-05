@@ -4,6 +4,19 @@
 
 #include <stdexcept>
 
+uint32_t Device::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) {
+    uint32_t memtype_index = 0;
+    for (; memtype_index < memory_properties.memoryTypeCount; memtype_index++)
+    {
+        if ((type_filter & (1 << memtype_index)) && (memory_properties.memoryTypes[memtype_index].propertyFlags & properties) == properties)
+        {
+            break;
+        }
+    }
+
+    return memtype_index;
+}
+
 Buffer Device::create_buffer(VkBufferCreateInfo *create_info)
 {
     Buffer result{};
@@ -23,14 +36,7 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info)
     uint32_t type_filter = mem_requirements.memoryTypeBits;
     VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    uint32_t memtype_index = 0;
-    for (; memtype_index < memory_properties.memoryTypeCount; memtype_index++)
-    {
-        if ((type_filter & (1 << memtype_index)) && (memory_properties.memoryTypes[memtype_index].propertyFlags & properties) == properties)
-        {
-            break;
-        }
-    }
+    uint32_t memtype_index = find_memory_type(type_filter, properties);
 
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

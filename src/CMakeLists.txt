@@ -1,5 +1,6 @@
 set(SRC_RENDERER
     src/loaders/geometry_obj.cpp
+    src/loaders/image.cpp
     src/buffer.cpp
     src/device.cpp
     src/pipeline_builder.cpp

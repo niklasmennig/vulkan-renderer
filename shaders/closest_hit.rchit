@@ -7,24 +7,19 @@
 
 ~include "shaders/mesh_data.glsl"
 
-hitAttributeEXT vec3 barycentrics;
+hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
+layout(set = 1, binding = 6) uniform sampler2D tex;
 
 
 void main() {
     // indices into mesh data
-    uint idx0 = gl_PrimitiveID * 3 + 0;
-    uint idx1 = gl_PrimitiveID * 3 + 1;
-    uint idx2 = gl_PrimitiveID * 3 + 2;
-
-    vec3 normal0 = mesh_data.normals[index_data.normal_indices[idx0]].xyz;
-    vec3 normal1 = mesh_data.normals[index_data.normal_indices[idx1]].xyz;
-    vec3 normal2 = mesh_data.normals[index_data.normal_indices[idx2]].xyz;
-    vec3 normal = normalize(normal0 * barycentrics.x + normal1 * barycentrics.y + normal2 * barycentrics.z);
+    vec3 normal = get_vertex_normal(barycentrics);
+    vec2 uv = get_vertex_uv(barycentrics);
     
-    vec3 color = vec3(1,1,1);
+    vec3 color = texture(tex, uv).rgb;
     
     vec3 light_dir = normalize(vec3(1, -1, 0));
     vec3 hit_position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
@@ -53,7 +48,7 @@ void main() {
     payload.direct_light = radiance;
 
     // indirect bounce
-    float reflection = 0.3;
+    float reflection = 0.6;
     if (reflection > 0.0) {
         payload.next_origin = hit_position;
         payload.next_direction = reflect(gl_WorldRayDirectionEXT, normal);
