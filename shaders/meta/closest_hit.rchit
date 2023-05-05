@@ -26,7 +26,7 @@ vec3 get_vertex_position(vec2 barycentric_coordinates) {
     vec3 vert0 = vertices.data[vertex_indices.data[idx0]].xyz;
     vec3 vert1 = vertices.data[vertex_indices.data[idx1]].xyz;
     vec3 vert2 = vertices.data[vertex_indices.data[idx2]].xyz;
-    vec3 vert = (vert0 * barycentric_coordinates.x + vert1 * barycentric_coordinates.y + vert2 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec3 vert = (vert1 * barycentric_coordinates.x + vert2 * barycentric_coordinates.y + vert0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
 
     return vert;
 }
@@ -39,7 +39,7 @@ vec3 get_vertex_normal(vec2 barycentric_coordinates) {
     vec3 norm0 = normals.data[normal_indices.data[idx0]].xyz;
     vec3 norm1 = normals.data[normal_indices.data[idx1]].xyz;
     vec3 norm2 = normals.data[normal_indices.data[idx2]].xyz;
-    vec3 norm = (norm0 * barycentric_coordinates.x + norm1 * barycentric_coordinates.y + norm2 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec3 norm = (norm1 * barycentric_coordinates.x + norm2 * barycentric_coordinates.y + norm0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
 
     return norm;
 }
@@ -52,7 +52,7 @@ vec2 get_vertex_uv(vec2 barycentric_coordinates) {
     vec2 uv0 = texcoords.data[texcoord_indices.data[idx0]];
     vec2 uv1 = texcoords.data[texcoord_indices.data[idx1]];
     vec2 uv2 = texcoords.data[texcoord_indices.data[idx2]];
-    vec2 uv = (uv0 * barycentric_coordinates.x + uv1 * barycentric_coordinates.y + uv2 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec2 uv = (uv1 * barycentric_coordinates.x + uv2 * barycentric_coordinates.y + uv0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
 
     return uv;
 }
