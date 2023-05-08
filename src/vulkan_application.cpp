@@ -468,7 +468,7 @@ void VulkanApplication::setup_device() {
 
 void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window = glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
+    window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
 
     // initialize vulkan
     // create vulkan instance

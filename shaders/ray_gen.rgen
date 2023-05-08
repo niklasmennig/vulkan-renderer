@@ -35,7 +35,7 @@ void main() {
     float ndc_y = (float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
     vec2 ndc = vec2(ndc_x, -ndc_y);
 
-    int max_iterations = 10;
+    int max_iterations = 5;
     int iteration = 0;
 
     // initialize path
@@ -43,10 +43,11 @@ void main() {
     float contribution = 1.0;
 
     // initialize payload
-    payload.next_origin = raygen_data.camera.origin.xyz;
-    payload.next_direction = compute_ray_direction(ndc);
+    vec3 ray_origin = raygen_data.camera.origin.xyz;
+    vec3 ray_direction = compute_ray_direction(ndc);
+    payload.hit_t = 0;
 
-    while (iteration < max_iterations && length(payload.next_direction) > 0.1 && contribution > 0.001) {
+    while (iteration < max_iterations && payload.hit_t >= 0) {
         traceRayEXT(
             as,
             gl_RayFlagsOpaqueEXT,
@@ -54,15 +55,22 @@ void main() {
             0,
             0,
             0,
-            payload.next_origin,
+            ray_origin,
             epsilon,
-            payload.next_direction,
+            ray_direction,
             ray_max,
             0
         );
 
-        color += payload.direct_light * contribution;
-        contribution *= payload.next_reflection_factor;
+        if (payload.hit_t > epsilon) {
+            vec3 surface_color = texture(tex, payload.hit_uv).rgb;
+            float cosine_term = dot(-ray_direction, payload.hit_normal);
+            color += surface_color * cosine_term * contribution;
+            contribution *= 0.5;
+
+            ray_origin = payload.hit_position;
+            ray_direction = reflect(ray_direction, payload.hit_normal);
+        }
         iteration++;
     }
 

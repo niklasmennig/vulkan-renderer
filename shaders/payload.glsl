@@ -1,8 +1,9 @@
 struct RayPayload
 {
-    vec3 next_origin;
-    vec3 next_direction;
-    vec3 direct_light;
-    bool shadow_miss;
-    float next_reflection_factor;
+    float hit_t;
+    vec3 hit_position;
+    vec3 hit_normal;
+    vec2 hit_uv;
+    uint hit_instance;
+    uint hit_primitive;
 };
