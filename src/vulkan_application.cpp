@@ -2,6 +2,7 @@
 
 #include <set>
 #include <iostream>
+#include <stdexcept>
 
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_obj.h"
@@ -114,6 +115,17 @@ MeshData VulkanApplication::create_mesh_data(std::vector<vec4> &vertices, std::v
     return res;
 }
 
+MeshData VulkanApplication::create_mesh_data(LoadedMeshData loaded_mesh_data) {
+    return create_mesh_data(
+        loaded_mesh_data.vertices,
+        loaded_mesh_data.vertex_indices,
+        loaded_mesh_data.normals,
+        loaded_mesh_data.normal_indices,
+        loaded_mesh_data.texcoords,
+        loaded_mesh_data.texcoord_indices
+        );
+}
+
 BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     VkAccelerationStructureGeometryKHR geometry{};
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
@@ -190,29 +202,51 @@ void VulkanApplication::free_blas(BLAS &blas) {
     blas.scratch_buffer.free();
 }
 
-TLAS VulkanApplication::build_tlas(BLAS &as) {
-    VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
-    blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-    blas_address_info.accelerationStructure = as.acceleration_structure;
+TLAS VulkanApplication::build_tlas() {
+    std::vector<VkAccelerationStructureInstanceKHR> instances;
 
-    VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
+    int count = 0;
+    for (InstanceData instance : loaded_scene_data.instances) {
+        BLAS& as = loaded_blas[instance.mesh_name];
 
-    VkAccelerationStructureInstanceKHR structure{};
-    structure.transform.matrix[0][0] = 1.0f;
-    structure.transform.matrix[1][1] = 1.0f;
-    structure.transform.matrix[2][2] = 1.0f;
-    structure.mask = 0xff;
-    structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    structure.accelerationStructureReference = blas_address;
+        VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
+        blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+        blas_address_info.accelerationStructure = as.acceleration_structure;
+
+        VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
+
+        VkAccelerationStructureInstanceKHR structure{};
+        structure.transform.matrix[0][0] = instance.transformation[0][0];
+        structure.transform.matrix[0][1] = instance.transformation[1][0];
+        structure.transform.matrix[0][2] = instance.transformation[2][0];
+        structure.transform.matrix[0][3] = instance.transformation[3][0];
+        structure.transform.matrix[1][0] = instance.transformation[0][1];
+        structure.transform.matrix[1][1] = instance.transformation[1][1];
+        structure.transform.matrix[1][2] = instance.transformation[2][1];
+        structure.transform.matrix[1][3] = instance.transformation[3][1];
+        structure.transform.matrix[2][0] = instance.transformation[0][2];
+        structure.transform.matrix[2][1] = instance.transformation[1][2];
+        structure.transform.matrix[2][2] = instance.transformation[2][2];
+        structure.transform.matrix[2][3] = instance.transformation[3][2];
+
+        structure.mask = 0xff;
+        structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        structure.accelerationStructureReference = blas_address;
+
+        instances.push_back(structure);
+        count++;
+    }
+
+    std::cout << "TLAS instances: " << instances.size() << std::endl;
 
     VkBufferCreateInfo instance_buffer_info{};
     instance_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     instance_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-    instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR);
+    instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size();
 
     TLAS result{};
     result.instance_buffer = device.create_buffer(&instance_buffer_info);
-    result.instance_buffer.set_data(&structure);
+    result.instance_buffer.set_data(instances.data());
 
     VkAccelerationStructureGeometryKHR geometry{};
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
@@ -258,7 +292,7 @@ TLAS VulkanApplication::build_tlas(BLAS &as) {
     as_info.scratchData.deviceAddress = result.scratch_buffer.device_address;
 
     VkAccelerationStructureBuildRangeInfoKHR range_info{};
-    range_info.primitiveCount = 1;
+    range_info.primitiveCount = instances.size();
 
     VkAccelerationStructureBuildRangeInfoKHR* tlas_range = {
         &range_info
@@ -310,12 +344,14 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
-    pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", scene_mesh_data.vertex_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_vertices", scene_mesh_data.vertices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normal_indices", scene_mesh_data.normal_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normals", scene_mesh_data.normals, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", scene_mesh_data.texcoord_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoords", scene_mesh_data.texcoords, BufferType::Storage);
+
+    // TODO: MESH DATA FOR DIFFERENT LOADED MESHES
+    pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", loaded_mesh_data[0].vertex_indices, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_vertices", loaded_mesh_data[0].vertices, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_normal_indices", loaded_mesh_data[0].normal_indices, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_normals", loaded_mesh_data[0].normals, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", loaded_mesh_data[0].texcoord_indices, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_texcoords", loaded_mesh_data[0].texcoords, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", texture);
 }
 
@@ -940,11 +976,9 @@ void VulkanApplication::setup() {
         throw std::runtime_error("failure to create render pass");
     }
 
-    LoadedMeshData loaded_scene = loaders::load_obj("scenes/obj/test.obj");
+    loaded_scene_data = loaders::load_scene_description("scenes/test.toml");
 
-    scene_mesh_data = create_mesh_data(loaded_scene.vertices, loaded_scene.vertex_indices, loaded_scene.normals, loaded_scene.normal_indices, loaded_scene.texcoords, loaded_scene.texcoord_indices);
-
-    texture = loaders::load_image(&device, "test.png");
+    texture = loaders::load_image(&device, "scenes/textures/test.png");
 
 
     // BUILD BLAS
@@ -960,8 +994,13 @@ void VulkanApplication::setup() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    scene_blas = build_blas(scene_mesh_data);
-
+    // build blas of loaded meshes
+    for (auto tup : loaded_scene_data.mesh_paths) {
+        LoadedMeshData loaded_mesh = loaders::load_obj(std::get<1>(tup));
+        MeshData mesh_data = create_mesh_data(loaded_mesh);
+        loaded_mesh_data.push_back(mesh_data);
+        loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
+    }
 
     VkBufferImageCopy texture_copy{};
     texture_copy.bufferOffset = 0;
@@ -1020,7 +1059,7 @@ void VulkanApplication::setup() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    scene_tlas = build_tlas(scene_blas);
+    scene_tlas = build_tlas();
 
     vkEndCommandBuffer(command_buffer);
 
@@ -1184,8 +1223,12 @@ void VulkanApplication::cleanup() {
     camera_buffer.free();
     texture.free();
     free_tlas(scene_tlas);
-    free_blas(scene_blas);
-    scene_mesh_data.free();
+    for (auto blas = loaded_blas.begin(); blas != loaded_blas.end(); blas++) {
+        free_blas(blas->second);
+    };
+    for (MeshData data : loaded_mesh_data) {
+        data.free();
+    }
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

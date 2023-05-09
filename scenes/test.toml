@@ -1,0 +1,18 @@
+[meshes]
+    [meshes.plane]
+    path = "scenes/obj/plane.obj"
+
+    [meshes.sphere]
+    path = "scenes/obj/sphere.obj"
+
+[textures]
+    [textures.schosch]
+    path = "scenes/textures/test.png"
+
+[instances]
+    [instances.floor]
+    mesh = "plane"
+
+    [instances.sphere]
+    mesh = "sphere"
+    position = [1.0, 0.0, 0.0]

@@ -2,6 +2,7 @@
 #include "device.h"
 #include "buffer.h"
 #include "loaders/image.h"
+#include "loaders/scene.h"
 #include "pipeline_builder.h"
 
 #include <vector>
@@ -12,6 +13,9 @@
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
+
+struct LoadedMeshData;
+
 namespace Shaders
 {
     #include "../shaders/camera.glsl"
@@ -96,22 +100,25 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
-    MeshData scene_mesh_data;
     Image texture;
 
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
-    BLAS scene_blas;
+
+    SceneData loaded_scene_data;
+    std::vector<MeshData> loaded_mesh_data;
+    std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
     MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices, std::vector<vec2> &texcoords, std::vector<uint32_t> &texcoord_indices);
+    MeshData create_mesh_data(LoadedMeshData loaded_mesh_data);
 
     BLAS build_blas(MeshData &mesh_data);
     void free_blas(BLAS &blas);
 
-    TLAS build_tlas(BLAS &acceleration_structure);
+    TLAS build_tlas();
     void free_tlas(TLAS &tlas);
 
     void setup_device();
