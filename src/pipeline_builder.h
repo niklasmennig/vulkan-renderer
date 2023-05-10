@@ -48,7 +48,7 @@ struct Pipeline {
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
     void set_descriptor_image_binding(std::string name, VkImageView image_view, ImageType image_type);
     void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
-    void set_descriptor_sampler_binding(std::string name, Image& image);
+    void set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count = 1);
 
     void free();
 };

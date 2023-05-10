@@ -13,7 +13,7 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
-layout(set = 1, binding = 6) uniform sampler2D tex;
+layout(set = 1, binding = 6) uniform sampler2D tex[16];
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -63,7 +63,7 @@ void main() {
         );
 
         if (payload.hit_t > epsilon) {
-            vec3 surface_color = texture(tex, payload.hit_uv).rgb;
+            vec3 surface_color = texture(tex[payload.hit_instance], payload.hit_uv).rgb;
             float cosine_term = dot(-ray_direction, payload.hit_normal);
             color += surface_color * cosine_term * contribution;
             contribution *= 0.5;

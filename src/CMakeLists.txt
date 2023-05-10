@@ -1,4 +1,5 @@
 set(SRC_RENDERER
+    src/image.cpp
     src/loaders/geometry_obj.cpp
     src/loaders/image.cpp
     src/loaders/scene.cpp

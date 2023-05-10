@@ -9,10 +9,13 @@
     [textures.schosch]
     path = "scenes/textures/test.png"
 
+    [textures.sus]
+    path = "scenes/textures/amogus.png"
+
 [instances]
     [instances.floor]
     mesh = "plane"
 
-    [instances.sphere]
-    mesh = "sphere"
-    position = [1.0, 0.0, 0.0]
+    [instances.other]
+    mesh = "plane"
+    position = [1.0, 1.0, 0.0]

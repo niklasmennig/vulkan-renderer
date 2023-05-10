@@ -352,7 +352,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_normals", loaded_mesh_data[0].normals, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", loaded_mesh_data[0].texcoord_indices, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoords", loaded_mesh_data[0].texcoords, BufferType::Storage);
-    pipeline.set_descriptor_sampler_binding("textures", texture);
+    pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -746,6 +746,11 @@ void VulkanApplication::setup() {
         as_features.accelerationStructure = VK_TRUE;
         buffer_device_address_features.pNext = &as_features;
 
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
+        descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        descriptor_indexing_features.runtimeDescriptorArray = VK_TRUE;
+        as_features.pNext = &descriptor_indexing_features;
+
         device_create_info.pNext = &physical_features2;
 
         if (vkCreateDevice(physical_device, &device_create_info, nullptr, &logical_device) != VK_SUCCESS)
@@ -978,8 +983,9 @@ void VulkanApplication::setup() {
 
     loaded_scene_data = loaders::load_scene_description("scenes/test.toml");
 
-    texture = loaders::load_image(&device, "scenes/textures/test.png");
-
+    for (auto tex_path : loaded_scene_data.texture_paths) {
+        loaded_textures.push_back(loaders::load_image(&device, std::get<1>(tex_path)));
+    }
 
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
@@ -1002,39 +1008,9 @@ void VulkanApplication::setup() {
         loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
     }
 
-    VkBufferImageCopy texture_copy{};
-    texture_copy.bufferOffset = 0;
-    texture_copy.bufferRowLength = 0;
-    texture_copy.bufferImageHeight = 0;
-    texture_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture_copy.imageSubresource.mipLevel = 0;
-    texture_copy.imageSubresource.baseArrayLayer = 0;
-    texture_copy.imageSubresource.layerCount = 1;
-    texture_copy.imageOffset = {0, 0, 0};
-    texture_copy.imageExtent = {
-        texture.width,
-        texture.height,
-        1};
-
-    vkCmdCopyBufferToImage(command_buffer, texture.buffer.buffer_handle, texture.image_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texture_copy);
-
-    // transition texture to readable format
-    VkImageMemoryBarrier texture_barrier = {};
-    texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    texture_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    texture_barrier.image = texture.image_handle;
-    texture_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture_barrier.subresourceRange.baseMipLevel = 0;
-    texture_barrier.subresourceRange.levelCount = 1;
-    texture_barrier.subresourceRange.baseArrayLayer = 0;
-    texture_barrier.subresourceRange.layerCount = 1;
-    texture_barrier.srcAccessMask = 0;
-    texture_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
+    for (Image i : loaded_textures) {
+        i.cmd_setup_texture(command_buffer);
+    }
 
     vkEndCommandBuffer(command_buffer);
 
@@ -1221,7 +1197,9 @@ void VulkanApplication::run() {
 void VulkanApplication::cleanup() {
     // deinitialization
     camera_buffer.free();
-    texture.free();
+    for (Image i : loaded_textures) {
+        i.free();
+    }
     free_tlas(scene_tlas);
     for (auto blas = loaded_blas.begin(); blas != loaded_blas.end(); blas++) {
         free_blas(blas->second);

@@ -86,11 +86,3 @@ Image loaders::load_image(Device* device, std::string path) {
 
     return result;
 }
-
-void Image::free() {
-    vkDestroySampler(device_handle, sampler_handle, nullptr);
-    vkFreeMemory(device_handle, texture_memory, nullptr);
-    vkDestroyImageView(device_handle, view_handle, nullptr);
-    vkDestroyImage(device_handle, image_handle, nullptr);
-    buffer.free();
-}

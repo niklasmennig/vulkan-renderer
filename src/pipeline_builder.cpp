@@ -90,24 +90,34 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, B
     vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_buffer, 0, nullptr);
 }
 
-void Pipeline::set_descriptor_sampler_binding(std::string name, Image& image) {
+void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
-    VkDescriptorImageInfo image_info{};
-    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    image_info.imageView = image.view_handle;
-    image_info.sampler = image.sampler_handle;
+    for (int i = 0; i < 16; i++) {
+        VkWriteDescriptorSet descriptor_write_sampler{};
+        descriptor_write_sampler.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_write_sampler.dstSet = descriptor_sets[set_binding.set];
+        descriptor_write_sampler.dstBinding = set_binding.binding;
+        descriptor_write_sampler.dstArrayElement = i;
+        descriptor_write_sampler.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_write_sampler.descriptorCount = 1;
 
-    VkWriteDescriptorSet descriptor_write_sampler{};
-    descriptor_write_sampler.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptor_write_sampler.dstSet = descriptor_sets[set_binding.set];
-    descriptor_write_sampler.dstBinding = set_binding.binding;
-    descriptor_write_sampler.dstArrayElement = 0;
-    descriptor_write_sampler.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptor_write_sampler.descriptorCount = 1;
-    descriptor_write_sampler.pImageInfo = &image_info;
+        VkDescriptorImageInfo image_info{};
+        if (i < image_count) {
+            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_info.imageView = images[i].view_handle;
+            image_info.sampler = images[i].sampler_handle;
+            descriptor_write_sampler.pImageInfo = &image_info;
+        } else {
+            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_info.imageView = images[0].view_handle;
+            image_info.sampler = images[0].sampler_handle;
+            descriptor_write_sampler.pImageInfo = &image_info;
+        }
 
-    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_sampler, 0, nullptr);
+        vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_sampler, 0, nullptr);
+    }
+
 }
 
 void Pipeline::free() {
@@ -148,6 +158,7 @@ Pipeline PipelineBuilder::build() {
                 VkDescriptorSetLayoutBinding descriptor_binding{};
                 descriptor_binding.binding = descriptor.binding;
                 descriptor_binding.descriptorCount = 1;
+                if (descriptor.descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) descriptor_binding.descriptorCount = 16;
                 descriptor_binding.descriptorType = descriptor.descriptor_type;
                 descriptor_binding.stageFlags = descriptor.stage_flags;
                 descriptor_binding.pImmutableSamplers = nullptr;
@@ -181,6 +192,7 @@ Pipeline PipelineBuilder::build() {
         VkDescriptorPoolSize descriptor_pool_size{};
         descriptor_pool_size.type = descriptor.descriptor_type;
         descriptor_pool_size.descriptorCount = 1;
+        if (descriptor.descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) descriptor_pool_size.descriptorCount = 16;
 
         pool_sizes.push_back(descriptor_pool_size);
     }
@@ -199,6 +211,14 @@ Pipeline PipelineBuilder::build() {
 
     #pragma region DESCRIPTOR SETS
     result.descriptor_sets.resize(max_set + 1);
+
+    // // make image bindings unbounded
+    // VkDescriptorSetVariableDescriptorCountAllocateInfo variable_count{};
+    // variable_count.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    // variable_count.descriptorSetCount = 1;
+    // uint32_t counts[] = {16};
+    // variable_count.pDescriptorCounts = counts;
+
     VkDescriptorSetAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.descriptorPool = result.descriptor_pool;
