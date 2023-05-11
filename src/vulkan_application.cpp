@@ -353,15 +353,15 @@ void VulkanApplication::create_default_descriptor_writes() {
     std::vector<uint32_t> texcoord_indices;
     std::vector<uint32_t> mesh_data_offsets;
 
-    for (int i = 0; i < loaded_mesh_data.size(); i++) {
-        // add all 6 offsets contiguously
-        mesh_data_offsets.push_back(vertices.size());
-        mesh_data_offsets.push_back(vertex_indices.size());
-        mesh_data_offsets.push_back(normals.size());
-        mesh_data_offsets.push_back(normal_indices.size());
-        mesh_data_offsets.push_back(texcoords.size());
-        mesh_data_offsets.push_back(texcoord_indices.size());
+    // push 0 offset for first instance to align offset positions with instance ids (eliminate need for 'if' in mesh_data shader functions)
+    mesh_data_offsets.push_back(vertices.size());
+    mesh_data_offsets.push_back(vertex_indices.size());
+    mesh_data_offsets.push_back(normals.size());
+    mesh_data_offsets.push_back(normal_indices.size());
+    mesh_data_offsets.push_back(texcoords.size());
+    mesh_data_offsets.push_back(texcoord_indices.size());
 
+    for (int i = 0; i < loaded_mesh_data.size(); i++) {
         vertices.insert(vertices.end(), loaded_mesh_data[i].vertices.begin(), loaded_mesh_data[i].vertices.end());
         vertex_indices.insert(vertex_indices.end(), loaded_mesh_data[i].vertex_indices.begin(), loaded_mesh_data[i].vertex_indices.end());
         normals.insert(normals.end(), loaded_mesh_data[i].normals.begin(), loaded_mesh_data[i].normals.end());
@@ -369,6 +369,13 @@ void VulkanApplication::create_default_descriptor_writes() {
         texcoords.insert(texcoords.end(), loaded_mesh_data[i].texcoords.begin(), loaded_mesh_data[i].texcoords.end());
         texcoord_indices.insert(texcoord_indices.end(), loaded_mesh_data[i].texcoord_indices.begin(), loaded_mesh_data[i].texcoord_indices.end());
 
+        // add all 6 offsets contiguously
+        mesh_data_offsets.push_back(vertices.size());
+        mesh_data_offsets.push_back(vertex_indices.size());
+        mesh_data_offsets.push_back(normals.size());
+        mesh_data_offsets.push_back(normal_indices.size());
+        mesh_data_offsets.push_back(texcoords.size());
+        mesh_data_offsets.push_back(texcoord_indices.size());
     }
 
     vertex_buffer = device.create_buffer(sizeof(vec4) * vertices.size());
@@ -1046,6 +1053,7 @@ void VulkanApplication::setup() {
         LoadedMeshData loaded_mesh = loaders::load_obj(std::get<1>(tup));
         MeshData mesh_data = create_mesh_data(loaded_mesh);
         loaded_mesh_data.push_back(loaded_mesh);
+        created_meshes.push_back(mesh_data);
         loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
     }
 
@@ -1246,6 +1254,9 @@ void VulkanApplication::cleanup() {
     for (auto blas = loaded_blas.begin(); blas != loaded_blas.end(); blas++) {
         free_blas(blas->second);
     };
+    for (auto mesh = created_meshes.begin(); mesh != created_meshes.end(); mesh++) {
+        mesh->free();
+    }
     vertex_buffer.free();
     vertex_index_buffer.free();
     normal_buffer.free();

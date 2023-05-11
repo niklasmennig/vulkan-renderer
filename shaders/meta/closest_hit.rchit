@@ -2,7 +2,25 @@
 #extension GL_EXT_ray_tracing : enable
 
 float epsilon = 0.00001f;
-float ray_max = 10000.0f;struct RayPayload
+float ray_max = 10000.0f;
+
+// taken from https://www.shadertoy.com/view/tlVczh
+void basis(in vec3 n, out vec3 f, out vec3 r)
+{
+   //looks good but has this ugly branch
+  if(n.z < -0.99995)
+    {
+        f = vec3(0 , -1, 0);
+        r = vec3(-1, 0, 0);
+    }
+    else
+    {
+    	float a = 1./(1. + n.z);
+    	float b = -n.x*n.y*a;
+    	f = vec3(1. - n.x*n.x*a, b, -n.x);
+    	r = vec3(b, 1. - n.y*n.y*a , -n.y);
+    }
+}struct RayPayload
 {
     float hit_t;
     vec3 hit_position;

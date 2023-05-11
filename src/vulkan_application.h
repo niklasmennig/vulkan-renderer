@@ -105,6 +105,7 @@ struct VulkanApplication {
 
     SceneData loaded_scene_data;
     std::vector<LoadedMeshData> loaded_mesh_data;
+    std::vector<MeshData> created_meshes;
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
