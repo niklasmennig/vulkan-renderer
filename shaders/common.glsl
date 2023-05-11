@@ -17,4 +17,7 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
     	f = vec3(1. - n.x*n.x*a, b, -n.x);
     	r = vec3(b, 1. - n.y*n.y*a , -n.y);
     }
+
+    f = normalize(f);
+    r = normalize(r);
 }

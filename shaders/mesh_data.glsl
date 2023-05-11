@@ -35,7 +35,7 @@ vec3 get_vertex_normal(uint instance, vec2 barycentric_coordinates) {
     vec3 norm2 = normals.data[data_offset + normal_indices.data[index_offset + idx2]].xyz;
     vec3 norm = (norm1 * barycentric_coordinates.x + norm2 * barycentric_coordinates.y + norm0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
 
-    return norm;
+    return normalize(norm);
 }
 
 vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {

@@ -9,6 +9,11 @@
 
 ~include "shaders/payload.glsl"
 
+layout(push_constant) uniform PushConstants {
+    float time;
+    uint dirty;
+} push_constants;
+
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(set = 0, binding = 0, rgba32f) uniform image2D img;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
@@ -16,6 +21,8 @@ layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
 layout(set = 1, binding = 7) uniform sampler2D tex[16];
+
+
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -33,13 +40,16 @@ vec3 compute_ray_direction(vec2 ndc) {
 }
 
 void main() {
-    int multisampling = 1;
+    int multisampling = 4;
 
     vec3 final_color = vec3(0.0);
+
+    RandomState rnd_state;
+    rnd_state.seed = 1.2034;
     
     for (int s = 0; s < multisampling; s++) {
-        float ndc_x = (float(gl_LaunchIDEXT.x + rand(0.1 * s)) / float(gl_LaunchSizeEXT.x) - 0.5) * 2.0;
-        float ndc_y = (float(gl_LaunchIDEXT.y + rand(0.2 * s)) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
+        float ndc_x = (float(gl_LaunchIDEXT.x + rand(rnd_state)) / float(gl_LaunchSizeEXT.x) - 0.5) * 2.0;
+        float ndc_y = (float(gl_LaunchIDEXT.y + rand(rnd_state)) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
         vec2 ndc = vec2(ndc_x, -ndc_y);
 
 
@@ -74,13 +84,15 @@ void main() {
                 vec3 surface_color = texture(tex[payload.hit_instance], payload.hit_uv).rgb;
                 float cosine_term = max(0, dot(-ray_direction, payload.hit_normal));
                 color += surface_color * cosine_term * contribution;
-                contribution *= 0.2;
+                contribution *= 0.87;
 
                 ray_origin = payload.hit_position;
-                vec3 t1, t2;
-                basis(payload.hit_normal, t1, t2);
-                vec3 reflection = normalize(rand(payload.hit_position.z) * payload.hit_normal + rand(payload.hit_position.x) * t1 + rand(payload.hit_position.y) * t2);
-                ray_direction = reflection;
+                
+                if (payload.hit_instance == 0) {
+                    ray_direction = reflect(ray_direction, payload.hit_normal);
+                } else {
+                    break;
+                }
 
             }
             iteration++;
@@ -89,5 +101,11 @@ void main() {
         final_color += color;
     }
 
-    imageStore(img, ivec2(gl_LaunchIDEXT.xy), vec4(final_color / multisampling, 1.0));
+    ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
+
+    vec4 old_pixel = imageLoad(img, img_coord);
+
+    if (push_constants.dirty > 0) old_pixel = vec4(0.0);
+
+    imageStore(img, img_coord, vec4(max(old_pixel.xyz, (final_color / multisampling)), 1.0));
 }

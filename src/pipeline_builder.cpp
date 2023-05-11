@@ -274,11 +274,17 @@ Pipeline PipelineBuilder::build() {
         group_create_infos.push_back(group_create_info);
     }
 
+    VkPushConstantRange push_constant_range{};
+    push_constant_range.offset = 0;
+    push_constant_range.size = 8;
+    push_constant_range.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
     VkPipelineLayoutCreateInfo pipeline_layout_info{};
     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipeline_layout_info.setLayoutCount = result.descriptor_set_layouts.size();
     pipeline_layout_info.pSetLayouts = result.descriptor_set_layouts.data();
-    pipeline_layout_info.pushConstantRangeCount = 0;
+    pipeline_layout_info.pushConstantRangeCount = 1;
+    pipeline_layout_info.pPushConstantRanges = &push_constant_range;
     pipeline_layout_info.pNext = 0;
     pipeline_layout_info.flags = 0;
 

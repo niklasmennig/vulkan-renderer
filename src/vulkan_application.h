@@ -99,6 +99,8 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
+    bool render_dirty;
+
     std::vector<Image> loaded_textures;
 
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
