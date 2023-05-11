@@ -35,11 +35,12 @@ PipelineBuilder PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::str
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage) {
+PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
     descriptors.push_back(PipelineBuilderDescriptor {
         name,
         set,
         binding,
+        descriptor_count,
         type,
         stage
     });
@@ -157,8 +158,7 @@ Pipeline PipelineBuilder::build() {
             if (descriptor.set == current_set) {
                 VkDescriptorSetLayoutBinding descriptor_binding{};
                 descriptor_binding.binding = descriptor.binding;
-                descriptor_binding.descriptorCount = 1;
-                if (descriptor.descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) descriptor_binding.descriptorCount = 16;
+                descriptor_binding.descriptorCount = descriptor.descriptor_count;
                 descriptor_binding.descriptorType = descriptor.descriptor_type;
                 descriptor_binding.stageFlags = descriptor.stage_flags;
                 descriptor_binding.pImmutableSamplers = nullptr;
@@ -191,8 +191,7 @@ Pipeline PipelineBuilder::build() {
     for (auto descriptor : descriptors) {
         VkDescriptorPoolSize descriptor_pool_size{};
         descriptor_pool_size.type = descriptor.descriptor_type;
-        descriptor_pool_size.descriptorCount = 1;
-        if (descriptor.descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) descriptor_pool_size.descriptorCount = 16;
+        descriptor_pool_size.descriptorCount = descriptor.descriptor_count;
 
         pool_sizes.push_back(descriptor_pool_size);
     }
@@ -211,13 +210,6 @@ Pipeline PipelineBuilder::build() {
 
     #pragma region DESCRIPTOR SETS
     result.descriptor_sets.resize(max_set + 1);
-
-    // // make image bindings unbounded
-    // VkDescriptorSetVariableDescriptorCountAllocateInfo variable_count{};
-    // variable_count.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
-    // variable_count.descriptorSetCount = 1;
-    // uint32_t counts[] = {16};
-    // variable_count.pDescriptorCounts = counts;
 
     VkDescriptorSetAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

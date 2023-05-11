@@ -13,7 +13,7 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
-layout(set = 1, binding = 6) uniform sampler2D tex[16];
+layout(set = 1, binding = 7) uniform sampler2D tex[16];
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -35,7 +35,7 @@ void main() {
     float ndc_y = (float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
     vec2 ndc = vec2(ndc_x, -ndc_y);
 
-    int max_iterations = 5;
+    int max_iterations = 1;
     int iteration = 0;
 
     // initialize path
@@ -70,6 +70,8 @@ void main() {
 
             ray_origin = payload.hit_position;
             ray_direction = reflect(ray_direction, payload.hit_normal);
+
+            //color = vec3(1.0);
         }
         iteration++;
     }

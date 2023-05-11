@@ -344,14 +344,55 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
+    // prepare mesh data for buffers
+    std::vector<vec4> vertices;
+    std::vector<uint32_t> vertex_indices;
+    std::vector<vec4> normals;
+    std::vector<uint32_t> normal_indices;
+    std::vector<vec2> texcoords;
+    std::vector<uint32_t> texcoord_indices;
+    std::vector<uint32_t> mesh_data_offsets;
 
-    // TODO: MESH DATA FOR DIFFERENT LOADED MESHES
-    pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", loaded_mesh_data[0].vertex_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_vertices", loaded_mesh_data[0].vertices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normal_indices", loaded_mesh_data[0].normal_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normals", loaded_mesh_data[0].normals, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", loaded_mesh_data[0].texcoord_indices, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoords", loaded_mesh_data[0].texcoords, BufferType::Storage);
+    for (int i = 0; i < loaded_mesh_data.size(); i++) {
+        // add all 6 offsets contiguously
+        mesh_data_offsets.push_back(vertices.size());
+        mesh_data_offsets.push_back(vertex_indices.size());
+        mesh_data_offsets.push_back(normals.size());
+        mesh_data_offsets.push_back(normal_indices.size());
+        mesh_data_offsets.push_back(texcoords.size());
+        mesh_data_offsets.push_back(texcoord_indices.size());
+
+        vertices.insert(vertices.end(), loaded_mesh_data[i].vertices.begin(), loaded_mesh_data[i].vertices.end());
+        vertex_indices.insert(vertex_indices.end(), loaded_mesh_data[i].vertex_indices.begin(), loaded_mesh_data[i].vertex_indices.end());
+        normals.insert(normals.end(), loaded_mesh_data[i].normals.begin(), loaded_mesh_data[i].normals.end());
+        normal_indices.insert(normal_indices.end(), loaded_mesh_data[i].normal_indices.begin(), loaded_mesh_data[i].normal_indices.end());
+        texcoords.insert(texcoords.end(), loaded_mesh_data[i].texcoords.begin(), loaded_mesh_data[i].texcoords.end());
+        texcoord_indices.insert(texcoord_indices.end(), loaded_mesh_data[i].texcoord_indices.begin(), loaded_mesh_data[i].texcoord_indices.end());
+
+    }
+
+    vertex_buffer = device.create_buffer(sizeof(vec4) * vertices.size());
+    vertex_buffer.set_data(vertices.data());
+    vertex_index_buffer = device.create_buffer(sizeof(uint32_t) * vertex_indices.size());
+    vertex_index_buffer.set_data(vertex_indices.data());
+    normal_buffer = device.create_buffer(sizeof(vec4) * normals.size());
+    normal_buffer.set_data(normals.data());
+    normal_index_buffer = device.create_buffer(sizeof(uint32_t) * normal_indices.size());
+    normal_index_buffer.set_data(normal_indices.data());
+    texcoord_buffer = device.create_buffer(sizeof(vec2) * texcoords.size());
+    texcoord_buffer.set_data(texcoords.data());
+    texcoord_index_buffer = device.create_buffer(sizeof(uint32_t) * texcoord_indices.size());
+    texcoord_index_buffer.set_data(texcoord_indices.data());
+    mesh_data_offset_buffer = device.create_buffer(sizeof(uint32_t) * mesh_data_offsets.size());
+    mesh_data_offset_buffer.set_data(mesh_data_offsets.data());
+
+    pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", vertex_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_normal_indices", normal_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", texcoord_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
 }
 
@@ -1004,7 +1045,7 @@ void VulkanApplication::setup() {
     for (auto tup : loaded_scene_data.mesh_paths) {
         LoadedMeshData loaded_mesh = loaders::load_obj(std::get<1>(tup));
         MeshData mesh_data = create_mesh_data(loaded_mesh);
-        loaded_mesh_data.push_back(mesh_data);
+        loaded_mesh_data.push_back(loaded_mesh);
         loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
     }
 
@@ -1056,13 +1097,14 @@ void VulkanApplication::setup() {
                    .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("camera_parameters", 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    // mesh data descriptors (set 1)
-                   .add_descriptor("mesh_vertex_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_normal_indices", 1, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_normals", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_texcoord_indices", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_texcoords", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_vertices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_vertex_indices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_normals", 1, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_normal_indices", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_texcoords", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_texcoord_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_data_offsets", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("textures", 1, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
@@ -1204,9 +1246,13 @@ void VulkanApplication::cleanup() {
     for (auto blas = loaded_blas.begin(); blas != loaded_blas.end(); blas++) {
         free_blas(blas->second);
     };
-    for (MeshData data : loaded_mesh_data) {
-        data.free();
-    }
+    vertex_buffer.free();
+    vertex_index_buffer.free();
+    normal_buffer.free();
+    normal_index_buffer.free();
+    texcoord_buffer.free();
+    texcoord_index_buffer.free();
+    mesh_data_offset_buffer.free();
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

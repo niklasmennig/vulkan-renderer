@@ -68,6 +68,15 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info)
     return result;
 }
 
+Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
+    VkBufferCreateInfo create_info {};
+    create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    create_info.size = size;
+    create_info.usage = usage;
+
+    return create_buffer(&create_info);
+}
+
 PipelineBuilder Device::create_pipeline_builder() {
     PipelineBuilder res;
     res.device = this;

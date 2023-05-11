@@ -16,6 +16,7 @@ struct Device
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties{};
 
     Buffer create_buffer(VkBufferCreateInfo *create_info);
+    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     PipelineBuilder create_pipeline_builder();
 
     // function pointers

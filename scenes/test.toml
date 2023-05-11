@@ -17,5 +17,5 @@
     mesh = "plane"
 
     [instances.other]
-    mesh = "plane"
+    mesh = "sphere"
     position = [1.0, 1.0, 0.0]

@@ -40,6 +40,9 @@ Image loaders::load_image(Device* device, std::string path) {
         throw std::runtime_error("error creating image");
     }
 
+    result.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    result.access = 0;
+
     VkMemoryRequirements memory_requirements;
     vkGetImageMemoryRequirements(device->vulkan_device, result.image_handle, &memory_requirements);
 

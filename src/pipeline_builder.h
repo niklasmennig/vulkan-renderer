@@ -58,6 +58,7 @@ struct PipelineBuilderDescriptor
     std::string name;
     uint32_t set;
     uint32_t binding;
+    size_t descriptor_count;
     VkDescriptorType descriptor_type;
     VkShaderStageFlags stage_flags;
 };
@@ -78,7 +79,7 @@ struct PipelineBuilder
     VkShaderModule create_shader_module(const std::vector<char>& code);
 
     public:
-    PipelineBuilder add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage);
+    PipelineBuilder add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     PipelineBuilder add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
     Pipeline build();
 };
