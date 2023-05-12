@@ -3,8 +3,8 @@
 
 #define PI 3.1415926535897932384626433832795
 
-float epsilon = 0.00001f;
-float ray_max = 10000.0f;
+float epsilon = 0.001f;
+float ray_max = 1000.0f;
 
 
 // taken from https://www.shadertoy.com/view/tlVczh

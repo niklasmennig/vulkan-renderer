@@ -1,13 +1,12 @@
 // taken from https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+#define PI 3.1415926535897932384626433832795
 
 struct RandomState {
     float seed;
 };
 
-float rand(out RandomState state){
-    float val = fract(sin(state.seed) * 43758.5453123);
-    state.seed = val;
-    return val;
+float rand(float seed){
+    return fract(sin(seed) * 43758.5453123);
 }
 
 // float noise(float p){

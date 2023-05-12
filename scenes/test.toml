@@ -19,7 +19,7 @@
     [instances.sphere]
     mesh = "sphere"
     position = [-1.5, 2.0, 0.0]
-    texture = "sus"
+    texture = "schosch"
 
     [instances.other]
     mesh = "sphere"

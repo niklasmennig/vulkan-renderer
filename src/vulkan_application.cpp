@@ -430,7 +430,7 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     }
 
 
-    float time = (float)last_frame_time.time_since_epoch().count();
+    float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
     if (render_clear_accumulated > 0) render_clear_accumulated -= 1;
 
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, 4, &time);
@@ -574,6 +574,8 @@ void VulkanApplication::setup_device() {
 void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
+
+    startup_time = std::chrono::high_resolution_clock::now();
 
     // initialize vulkan
     // create vulkan instance
