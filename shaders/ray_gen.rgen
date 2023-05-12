@@ -11,7 +11,7 @@
 
 layout(push_constant) uniform PushConstants {
     float time;
-    uint dirty;
+    uint clear_accumulated;
 } push_constants;
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
@@ -105,7 +105,7 @@ void main() {
 
     vec4 old_pixel = imageLoad(img, img_coord);
 
-    if (push_constants.dirty > 0) old_pixel = vec4(0.0);
+    if (push_constants.clear_accumulated > 0) old_pixel = vec4(0.0);
 
     imageStore(img, img_coord, vec4(max(old_pixel.xyz, (final_color / multisampling)), 1.0));
 }

@@ -99,7 +99,7 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
-    bool render_dirty;
+    uint32_t render_clear_accumulated;
 
     std::vector<Image> loaded_textures;
 

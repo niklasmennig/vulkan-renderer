@@ -417,11 +417,10 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
 
 
     float time = (float)last_frame_time.time_since_epoch().count();
-    uint32_t dirty = render_dirty ? 0 : 1;
-    render_dirty = false;
+    if (render_clear_accumulated > 0) render_clear_accumulated -= 1;
 
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, 4, &time);
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 4, 4, &dirty);
+    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 4, 4, &render_clear_accumulated);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
@@ -1164,32 +1163,32 @@ void VulkanApplication::run() {
         vec4 camera_movement = vec4(0.0f);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             camera_movement += camera_data.forward;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         {
             camera_movement -= camera_data.right;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         {
             camera_movement -= camera_data.forward;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         {
             camera_movement += camera_data.right;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         {
             camera_movement += camera_data.up;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         {
             camera_movement -= camera_data.up;
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         camera_data.origin += camera_movement * 0.1f;
 
@@ -1204,12 +1203,12 @@ void VulkanApplication::run() {
         if (glfwGetKey(window, GLFW_KEY_RIGHT)) 
         {
             rotation_matrix = glm::rotate(rotation_matrix, angle, cam_up);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT))
         {
             rotation_matrix = glm::rotate(rotation_matrix, -angle, cam_up);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
 
         glm::vec3 new_fwd = camera_data.forward * rotation_matrix;
@@ -1221,12 +1220,12 @@ void VulkanApplication::run() {
         if (glfwGetKey(window, GLFW_KEY_UP))
         {
             rotation_matrix = glm::rotate(rotation_matrix, -angle, new_right);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_DOWN))
         {
             rotation_matrix = glm::rotate(rotation_matrix, angle, new_right);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
 
         glm::vec3 new_up = camera_data.up * rotation_matrix;
@@ -1238,12 +1237,12 @@ void VulkanApplication::run() {
         if (glfwGetKey(window, GLFW_KEY_E))
         {
             rotation_matrix = glm::rotate(rotation_matrix, -angle, new_fwd);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_Q))
         {
             rotation_matrix = glm::rotate(rotation_matrix, angle, new_fwd);
-            render_dirty = true;
+            render_clear_accumulated = 4;
         }
 
         new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
