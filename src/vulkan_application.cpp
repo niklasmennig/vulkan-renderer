@@ -352,6 +352,8 @@ void VulkanApplication::create_default_descriptor_writes() {
     std::vector<vec2> texcoords;
     std::vector<uint32_t> texcoord_indices;
     std::vector<uint32_t> mesh_data_offsets;
+    std::vector<uint32_t> mesh_offset_indices;
+    std::vector<uint32_t> texture_indices;
 
     // push 0 offset for first instance to align offset positions with instance ids (eliminate need for 'if' in mesh_data shader functions)
     mesh_data_offsets.push_back(vertices.size());
@@ -378,6 +380,12 @@ void VulkanApplication::create_default_descriptor_writes() {
         mesh_data_offsets.push_back(texcoord_indices.size());
     }
 
+    // index of mesh and texture used by instance
+    for (auto instance : loaded_scene_data.instances) {
+        mesh_offset_indices.push_back(loaded_mesh_index[instance.mesh_name]);
+        texture_indices.push_back(loaded_texture_index[instance.texture_name]);
+    }
+
     vertex_buffer = device.create_buffer(sizeof(vec4) * vertices.size());
     vertex_buffer.set_data(vertices.data());
     vertex_index_buffer = device.create_buffer(sizeof(uint32_t) * vertex_indices.size());
@@ -392,6 +400,10 @@ void VulkanApplication::create_default_descriptor_writes() {
     texcoord_index_buffer.set_data(texcoord_indices.data());
     mesh_data_offset_buffer = device.create_buffer(sizeof(uint32_t) * mesh_data_offsets.size());
     mesh_data_offset_buffer.set_data(mesh_data_offsets.data());
+    mesh_offset_index_buffer = device.create_buffer(sizeof(uint32_t) * mesh_offset_indices.size());
+    mesh_offset_index_buffer.set_data(mesh_offset_indices.data());
+    texture_index_buffer = device.create_buffer(sizeof(uint32_t) * texture_indices.size());
+    texture_index_buffer.set_data(texture_indices.data());
 
     pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", vertex_index_buffer, BufferType::Storage);
@@ -400,7 +412,9 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", texcoord_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
+    pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -1040,6 +1054,7 @@ void VulkanApplication::setup() {
 
     for (auto tex_path : loaded_scene_data.texture_paths) {
         loaded_textures.push_back(loaders::load_image(&device, std::get<1>(tex_path)));
+        loaded_texture_index[std::get<0>(tex_path)] = loaded_textures.size() - 1;
     }
 
     // BUILD BLAS
@@ -1060,6 +1075,7 @@ void VulkanApplication::setup() {
         LoadedMeshData loaded_mesh = loaders::load_obj(std::get<1>(tup));
         MeshData mesh_data = create_mesh_data(loaded_mesh);
         loaded_mesh_data.push_back(loaded_mesh);
+        loaded_mesh_index[std::get<0>(tup)] = loaded_mesh_data.size() - 1;
         created_meshes.push_back(mesh_data);
         loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
     }
@@ -1119,7 +1135,9 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_texcoords", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_texcoord_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_data_offsets", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
+                   .add_descriptor("mesh_offset_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
+                   .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
@@ -1283,6 +1301,8 @@ void VulkanApplication::cleanup() {
     texcoord_buffer.free();
     texcoord_index_buffer.free();
     mesh_data_offset_buffer.free();
+    mesh_offset_index_buffer.free();
+    texture_index_buffer.free();
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

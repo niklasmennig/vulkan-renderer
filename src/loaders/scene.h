@@ -10,6 +10,7 @@ using mat4 = glm::mat4;
 struct InstanceData
 {
     std::string mesh_name;
+    std::string texture_name;
     mat4 transformation;
 };
 

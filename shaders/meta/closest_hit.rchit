@@ -1,8 +1,11 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
 
+#define PI 3.1415926535897932384626433832795
+
 float epsilon = 0.00001f;
 float ray_max = 10000.0f;
+
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
@@ -38,14 +41,15 @@ layout(set = 1, binding = 3) readonly buffer NormalIndexData {uint data[];} norm
 layout(set = 1, binding = 4) readonly buffer TexcoordData {vec2 data[];} texcoords;
 layout(set = 1, binding = 5) readonly buffer TexcoordIndexData {uint data[];} texcoord_indices;
 layout(set = 1, binding = 6) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
+layout(set = 1, binding = 7) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
 
 vec3 get_vertex_position(uint instance, vec2 barycentric_coordinates) {
     uint idx0 = gl_PrimitiveID * 3 + 0;
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[instance * 6 + 0];
-    uint index_offset = mesh_data_offsets.data[instance * 6 + 1];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 0];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 1];
 
     vec3 vert0 = vertices.data[data_offset + vertex_indices.data[index_offset + idx0]].xyz;
     vec3 vert1 = vertices.data[data_offset + vertex_indices.data[index_offset + idx1]].xyz;
@@ -60,8 +64,8 @@ vec3 get_vertex_normal(uint instance, vec2 barycentric_coordinates) {
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[instance * 6 + 2];
-    uint index_offset = mesh_data_offsets.data[instance * 6 + 3];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 2];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 3];
 
     vec3 norm0 = normals.data[data_offset + normal_indices.data[index_offset + idx0]].xyz;
     vec3 norm1 = normals.data[data_offset + normal_indices.data[index_offset + idx1]].xyz;
@@ -76,8 +80,8 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[instance * 6 + 4];
-    uint index_offset = mesh_data_offsets.data[instance * 6 + 5];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 4];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 5];
 
     vec2 uv0 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx0]];
     vec2 uv1 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx1]];

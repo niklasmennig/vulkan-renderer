@@ -54,6 +54,9 @@ SceneData loaders::load_scene_description(std::string path) {
 
         mat4 transformation = glm::mat4(1.0);
         auto data_table = data.as_table();
+        if(data_table->contains("texture")) {
+            instance_data.texture_name = data["texture"].as_string()->get();
+        }
         if(data_table->contains("position")) {
             auto position_data = data["position"].as_array();
             float x = data["position"][0].as_floating_point()->get();

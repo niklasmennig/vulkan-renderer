@@ -1,5 +1,8 @@
+#define PI 3.1415926535897932384626433832795
+
 float epsilon = 0.00001f;
 float ray_max = 10000.0f;
+
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)

@@ -13,9 +13,15 @@
     path = "scenes/textures/amogus.png"
 
 [instances]
-    [instances.floor]
-    mesh = "plane"
+    # [instances.floor]
+    # mesh = "plane"
+
+    [instances.sphere]
+    mesh = "sphere"
+    position = [-1.5, 2.0, 0.0]
+    texture = "sus"
 
     [instances.other]
     mesh = "sphere"
-    position = [0.5, 2.0, 0.0]
+    position = [1.5, 2.0, 0.0]
+    texture = "sus"

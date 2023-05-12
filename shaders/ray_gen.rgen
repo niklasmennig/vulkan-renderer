@@ -20,9 +20,25 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
-layout(set = 1, binding = 7) uniform sampler2D tex[16];
+layout(set = 1, binding = 8) uniform sampler2D tex[16];
+layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 
+void trace(vec3 origin, vec3 direction) {
+     traceRayEXT(
+                as,
+                gl_RayFlagsOpaqueEXT,
+                0xff,
+                0,
+                0,
+                0,
+                origin,
+                epsilon,
+                direction,
+                ray_max,
+                0
+            );
+}
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -39,8 +55,23 @@ vec3 compute_ray_direction(vec2 ndc) {
     return normalize(dir);
 }
 
+vec3 cosine_weighted_sample_hemisphere(float u1, float u2)
+{
+    // Sample two random values in the range [0,1)
+    float r = sqrt(u1);
+    float phi = 2.0 * PI * u2;
+
+    // Compute the direction vector using polar coordinates
+    float x = r * cos(phi);
+    float y = r * sin(phi);
+    float z = sqrt(max(0.0, 1.0 - x*x - y*y));
+
+    return vec3(x, y, z);
+}
+
+
 void main() {
-    int multisampling = 4;
+    int multisampling = 16;
 
     vec3 final_color = vec3(0.0);
 
@@ -48,12 +79,12 @@ void main() {
     rnd_state.seed = 1.2034;
     
     for (int s = 0; s < multisampling; s++) {
-        float ndc_x = (float(gl_LaunchIDEXT.x + rand(rnd_state)) / float(gl_LaunchSizeEXT.x) - 0.5) * 2.0;
-        float ndc_y = (float(gl_LaunchIDEXT.y + rand(rnd_state)) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
+        float ndc_x = ((float(gl_LaunchIDEXT.x) + rand(rnd_state)) / float(gl_LaunchSizeEXT.x) - 0.5) * 2.0;
+        float ndc_y = ((float(gl_LaunchIDEXT.y) + rand(rnd_state)) / float(gl_LaunchSizeEXT.y) - 0.5) * 2.0;
         vec2 ndc = vec2(ndc_x, -ndc_y);
 
 
-        int max_iterations = 5;
+        int max_iterations = 2;
         int iteration = 0;
 
         // initialize path
@@ -66,34 +97,22 @@ void main() {
         payload.hit_t = 0;
 
         while (iteration < max_iterations && payload.hit_t >= 0) {
-            traceRayEXT(
-                as,
-                gl_RayFlagsOpaqueEXT,
-                0xff,
-                0,
-                0,
-                0,
-                ray_origin,
-                epsilon,
-                ray_direction,
-                ray_max,
-                0
-            );
+            trace(ray_origin, ray_direction);
 
             if (payload.hit_t > epsilon) {
-                vec3 surface_color = texture(tex[payload.hit_instance], payload.hit_uv).rgb;
+                vec3 surface_color = texture(tex[texture_indices.data[payload.hit_instance]], payload.hit_uv).rgb;
                 float cosine_term = max(0, dot(-ray_direction, payload.hit_normal));
-                color += surface_color * cosine_term * contribution;
-                contribution *= 0.87;
 
                 ray_origin = payload.hit_position;
                 
-                if (payload.hit_instance == 0) {
-                    ray_direction = reflect(ray_direction, payload.hit_normal);
-                } else {
-                    break;
-                }
+                vec3 t1, t2;
+                basis(payload.hit_normal, t1, t2);
 
+                vec3 sample_dir = cosine_weighted_sample_hemisphere(rand(rnd_state), rand(rnd_state));
+                ray_direction = t1 * sample_dir.x + t2 * sample_dir.y + payload.hit_normal * sample_dir.z;
+
+                color += surface_color * cosine_term * contribution;
+                contribution *= 0.5;
             }
             iteration++;
         }
