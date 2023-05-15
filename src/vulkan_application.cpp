@@ -131,7 +131,7 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 
     geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    geometry.flags = 0;
 
     geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
     geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
@@ -431,10 +431,10 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
 
 
     float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    if (render_clear_accumulated > 0) render_clear_accumulated -= 1;
+    if (render_clear_accumulated > -6000) render_clear_accumulated -= 1;
 
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0, 4, &time);
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 4, 4, &render_clear_accumulated);
+    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, 4, &time);
+    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 4, 4, &render_clear_accumulated);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};

@@ -12,16 +12,17 @@
     [textures.sus]
     path = "scenes/textures/amogus.png"
 
-[instances]
-    # [instances.floor]
-    # mesh = "plane"
+    [textures.checker]
+    path = "scenes/textures/checker.png"
 
+[instances]
+    
     [instances.sphere]
-    mesh = "sphere"
-    position = [-1.5, 2.0, 0.0]
-    texture = "schosch"
+    mesh = "plane"
+    position = [0.0, 0.0, 0.0]
+    texture = "checker"
 
     [instances.other]
     mesh = "sphere"
-    position = [1.5, 2.0, 0.0]
+    position = [0.0, 2.0, 0.0]
     texture = "sus"

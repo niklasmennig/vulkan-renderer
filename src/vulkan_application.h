@@ -99,7 +99,7 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
-    uint32_t render_clear_accumulated = 4;
+    int32_t render_clear_accumulated = 4;
 
 
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
