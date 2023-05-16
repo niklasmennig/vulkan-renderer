@@ -11,10 +11,6 @@ uint hash( uint x ) {
     return x;
 }
 
-struct RandomState {
-    float seed;
-};
-
 
 // Compound versions of the hashing algorithm I whipped together.
 uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
@@ -43,4 +39,4 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(vec3(push_constants.time * 3543.4522, push_constants.clear_accumulated * 424.23432, rnd * 3311.432)); rnd = val; return val; }
+float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }

@@ -14,7 +14,7 @@ old_files = glob.glob(shaders_spirv_path + "/*")
 for f in old_files:
     os.remove(f)
 
-shader_files = [f for f in os.listdir(shaders_path) if os.path.isfile(os.path.join(shaders_path, f)) and (f.endswith("rchit") or f.endswith("rgen") or f.endswith("rmiss"))]
+shader_files = [f for f in os.listdir(shaders_path) if os.path.isfile(os.path.join(shaders_path, f)) and (f.endswith("rchit") or f.endswith("rgen") or f.endswith("rmiss") or f.endswith("rcall"))]
 shader_paths = ['/'.join([shaders_path, f]) for f in shader_files]
 
 args = ['python', './shader_preprocessor.py']

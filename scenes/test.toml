@@ -17,12 +17,17 @@
 
 [instances]
     
-    [instances.sphere]
+    [instances.floor]
     mesh = "plane"
     position = [0.0, 0.0, 0.0]
     texture = "checker"
 
-    [instances.other]
+    [instances.sphere1]
     mesh = "sphere"
-    position = [0.0, 2.0, 0.0]
+    position = [2.0, 2.0, 0.0]
+    texture = "schosch"
+
+    [instances.sphere2]
+    mesh = "sphere"
+    position = [-2.0, 2.0, 0.0]
     texture = "sus"

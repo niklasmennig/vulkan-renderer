@@ -474,6 +474,9 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     ar_miss.deviceAddress = pipeline.sbt.miss.device_address;
 
     VkStridedDeviceAddressRegionKHR ar_callable{};
+    ar_callable.deviceAddress = pipeline.sbt.callable.device_address;
+    ar_callable.stride = shader_group_handle_size;
+    ar_callable.size = shader_group_handle_size;
 
     device.vkCmdTraceRaysKHR(command_buffer, &ar_raygen, &ar_miss, &ar_hit, &ar_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
 
@@ -1144,6 +1147,7 @@ void VulkanApplication::setup() {
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
                    .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "shaders/spirv/miss.spv")
+                   .add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "shaders/spirv/material.spv")
                    .build();
     create_default_descriptor_writes();
 

@@ -126,6 +126,7 @@ void Pipeline::free() {
     sbt.raygen.free();
     sbt.hit.free();
     sbt.miss.free();
+    sbt.callable.free();
 
     vkDestroyDescriptorPool(device_handle, descriptor_pool, nullptr);
     for (auto layout : descriptor_set_layouts) {
@@ -262,6 +263,7 @@ Pipeline PipelineBuilder::build() {
         {
         case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
         case VK_SHADER_STAGE_MISS_BIT_KHR:
+        case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
             group_create_info.generalShader = stage_index;
             break;
 
@@ -342,8 +344,8 @@ Pipeline PipelineBuilder::build() {
     result.sbt.miss = device->create_buffer(&sbt_buffer_info);
     result.sbt.miss.set_data(shader_binding_table_data + group_handle_size * 2);
 
-    // Buffer callable_buffer = device->create_buffer(&sbt_buffer_info);
-    // callable_buffer.set_data(shader_binding_table_data + group_handle_size * 3);
+    result.sbt.callable = device->create_buffer(&sbt_buffer_info);
+    result.sbt.callable.set_data(shader_binding_table_data + group_handle_size * 3);
 
 #pragma endregion
 

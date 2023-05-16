@@ -22,6 +22,7 @@ struct ShaderBindingTable
     Buffer raygen;
     Buffer hit;
     Buffer miss;
+    Buffer callable;
 };
 
 struct Pipeline {
