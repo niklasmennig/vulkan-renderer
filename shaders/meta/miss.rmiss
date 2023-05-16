@@ -73,5 +73,5 @@ struct MaterialPayload
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload.contribution = vec3(0);
+    payload.contribution = vec3(0, 0, 0.5);
 }

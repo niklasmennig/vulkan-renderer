@@ -187,5 +187,7 @@ void main() {
     int frame_number = (-push_constants.clear_accumulated);
     if (push_constants.clear_accumulated <= 0) frame_color = ((old_pixel * frame_number) + final_color) / (frame_number + 1);
 
+    //frame_color = vec3(1.0, 0.0, 0.0);
+
     imageStore(img, img_coord, vec4(frame_color, 1.0));
 }

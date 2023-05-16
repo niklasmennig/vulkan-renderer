@@ -344,7 +344,9 @@ Pipeline PipelineBuilder::build() {
     result.sbt.region_callable.size = align_up(group_handle_size_aligned /* multiply with number of callable shaders */, base_alignment);
 
     std::vector<uint8_t> shader_binding_table_data(shader_binding_table_size);
-    device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data());
+    if (device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data()) != VK_SUCCESS) {
+        throw std::runtime_error("error geting shader group handles");
+    }
 
     VkBufferCreateInfo sbt_buffer_info{};
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -352,20 +354,21 @@ Pipeline PipelineBuilder::build() {
     sbt_buffer_info.size = result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size + result.sbt.region_callable.size;
     result.sbt.buffer = device->create_buffer(&sbt_buffer_info);
 
-    uint8_t* buffer_data = reinterpret_cast<uint8_t*>(result.sbt.buffer.map());
 
     result.sbt.region_raygen.deviceAddress = result.sbt.buffer.device_address;
-    memcpy(buffer_data, shader_binding_table_data.data(), group_handle_size);
+    result.sbt.buffer.set_data(shader_binding_table_data.data(), 0, group_handle_size);
 
+    size_t buffer_offset = result.sbt.region_raygen.size;
     result.sbt.region_hit.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size;
-    memcpy(buffer_data + result.sbt.region_raygen.size, shader_binding_table_data.data() + 1 * group_handle_size, group_handle_size);
+    result.sbt.buffer.set_data(shader_binding_table_data.data() + 1 * group_handle_size, buffer_offset, group_handle_size);
 
+    buffer_offset += result.sbt.region_hit.size;
     result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size;
-    memcpy(buffer_data + result.sbt.region_raygen.size + result.sbt.region_hit.size, shader_binding_table_data.data() + 2 * group_handle_size, group_handle_size);
+    result.sbt.buffer.set_data(shader_binding_table_data.data() + 2 * group_handle_size, buffer_offset, group_handle_size);
 
+    buffer_offset += result.sbt.region_miss.size;
     result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size;
-    memcpy(buffer_data + result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size, shader_binding_table_data.data() + 3 * group_handle_size, group_handle_size); // repeat for all callable shaders
-    result.sbt.buffer.unmap();
+    result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
 
 #pragma endregion
 

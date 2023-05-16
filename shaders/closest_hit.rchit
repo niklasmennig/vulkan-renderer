@@ -31,9 +31,6 @@ void main() {
 
     payload.depth += 1;
 
-    vec3 emission = vec3(0.0);
-    if (gl_InstanceID == 0) emission = vec3(10.0);
-
     float cosine_term = max(0, dot(gl_WorldRayDirectionEXT, -normal));
 
     material_payload.instance = gl_InstanceID;
@@ -43,6 +40,7 @@ void main() {
     material_payload.seed = payload.seed;
 
     //executeCallableEXT(0, 0);
+
 
     vec3 ray_origin = hit_position;
     vec3 ray_direction = material_payload.reflection_direction;
@@ -63,7 +61,10 @@ void main() {
 
     vec3 irradiance = payload.contribution * max(0, dot(ray_direction, normal));
 
-    vec3 radiance = material_payload.emission + material_payload.surface_color * irradiance * cosine_term;
+    material_payload.emission = vec3(0.2);
+    material_payload.surface_color = vec3(0,1,0);
+
+    vec3 radiance = material_payload.emission + (material_payload.surface_color * irradiance * cosine_term);
 
     payload.contribution = radiance;
 }
