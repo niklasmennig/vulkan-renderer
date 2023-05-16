@@ -2,9 +2,35 @@
 #extension GL_EXT_ray_tracing : enable
 
 ~include "shaders/payload.glsl"
+~include "shaders/common.glsl"
+~include "shaders/random.glsl"
 
-layout(location = 1) callableDataInEXT MaterialPayload payload;
+layout(location = 0) callableDataInEXT MaterialPayload material_payload;
+
+vec3 cosine_weighted_sample_hemisphere(float u1, float u2)
+{
+    float theta = 0.5 * acos(-2.0 * u1 + 1.0);
+    float phi = u2 * 2.0 * PI;
+
+    float x = cos(phi) * sin(theta);
+    float y = sin(phi) * sin(theta);
+    float z = cos(theta);
+
+    return vec3(x, y, z);
+}
 
 void main() {
 
+
+    // vec3 t, bt;
+    // basis(payload.normal, t, bt);
+
+    // vec3 sample_dir = cosine_weighted_sample_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
+    // vec3 ray_direction = normalize(payload.normal * sample_dir.z + t * sample_dir.x + bt * sample_dir.y);
+
+    // payload.emission = vec3(0.0);
+    // if (payload.instance == 0) payload.emission = vec3(1.0);
+    // payload.surface_color = vec3(1.0);
+    // payload.reflection_direction = ray_direction;
+    // return;
 }

@@ -6,6 +6,7 @@ layout(push_constant) uniform PushConstants {
     int clear_accumulated;
 } push_constants;
 
+
 // taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 #define PI 3.1415926535897932384626433832795
 
@@ -47,7 +48,8 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }struct RayPayload
+float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+struct RayPayload
 {
     uint depth;
     vec3 contribution;
@@ -57,12 +59,16 @@ float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd =
 struct MaterialPayload
 {
     // provided when calling
+    uint instance;
     vec2 uv;
     vec3 position;
     vec3 normal;
+    float seed;
     
     // returned from material shader
     vec3 emission;
+    vec3 surface_color;
+    vec3 reflection_direction;
 };
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 

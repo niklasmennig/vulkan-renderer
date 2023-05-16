@@ -19,10 +19,12 @@ enum class ImageType {
 
 struct ShaderBindingTable
 {
-    Buffer raygen;
-    Buffer hit;
-    Buffer miss;
-    Buffer callable;
+    Buffer buffer;
+
+    VkStridedDeviceAddressRegionKHR region_raygen;
+    VkStridedDeviceAddressRegionKHR region_hit;
+    VkStridedDeviceAddressRegionKHR region_miss;
+    VkStridedDeviceAddressRegionKHR region_callable;
 };
 
 struct Pipeline {

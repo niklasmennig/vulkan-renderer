@@ -6,33 +6,16 @@ precision highp float;
 ~include "shaders/common.glsl"
 ~include "shaders/mesh_data.glsl"
 ~include "shaders/texture_data.glsl"
+~include "shaders/random.glsl"
+~include "shaders/payload.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
-layout(push_constant) uniform PushConstants {
-    float time;
-    int clear_accumulated;
-} push_constants;
-
-~include "shaders/random.glsl"
-~include "shaders/payload.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(location = 1) callableDataEXT MaterialPayload material_payload;
-
-vec3 cosine_weighted_sample_hemisphere(float u1, float u2)
-{
-    float theta = 0.5 * acos(-2.0 * u1 + 1.0);
-    float phi = u2 * 2.0 * PI;
-
-    float x = cos(phi) * sin(theta);
-    float y = sin(phi) * sin(theta);
-    float z = cos(theta);
-
-    return vec3(x, y, z);
-}
+layout(location = 0) callableDataEXT MaterialPayload material_payload;
 
 void main() {
 
@@ -53,13 +36,16 @@ void main() {
 
     float cosine_term = max(0, dot(gl_WorldRayDirectionEXT, -normal));
 
-    vec3 ray_origin = hit_position;
-    //vec3 ray_direction = reflect(gl_WorldRayDirectionEXT, -normal);
-    vec3 t, bt;
-    basis(normal, t, bt);
+    material_payload.instance = gl_InstanceID;
+    material_payload.position = hit_position;
+    material_payload.normal = normal;
+    material_payload.uv = uv;
+    material_payload.seed = payload.seed;
 
-    vec3 sample_dir = cosine_weighted_sample_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
-    vec3 ray_direction = normalize(normal * sample_dir.z + t * sample_dir.x + bt * sample_dir.y);
+    //executeCallableEXT(0, 0);
+
+    vec3 ray_origin = hit_position;
+    vec3 ray_direction = material_payload.reflection_direction;
 
     traceRayEXT(
                 as,
@@ -76,9 +62,8 @@ void main() {
             );
 
     vec3 irradiance = payload.contribution * max(0, dot(ray_direction, normal));
-    vec3 color = sample_texture(gl_InstanceID, uv);
 
-    vec3 radiance = emission + color * irradiance * cosine_term;
+    vec3 radiance = material_payload.emission + material_payload.surface_color * irradiance * cosine_term;
 
     payload.contribution = radiance;
 }

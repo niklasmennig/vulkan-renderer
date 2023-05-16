@@ -10,5 +10,7 @@ struct Buffer
     VkDeviceAddress device_address;
 
     void set_data(void *data);
+    void* map();
+    void unmap();
     void free();
 };

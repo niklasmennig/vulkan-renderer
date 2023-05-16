@@ -462,23 +462,7 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
 
     uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
 
-    VkStridedDeviceAddressRegionKHR ar_raygen{};
-    ar_raygen.deviceAddress = pipeline.sbt.raygen.device_address;
-    ar_raygen.stride = shader_group_handle_size;
-    ar_raygen.size = shader_group_handle_size;
-
-    VkStridedDeviceAddressRegionKHR ar_hit{};
-    ar_hit.deviceAddress = pipeline.sbt.hit.device_address;
-
-    VkStridedDeviceAddressRegionKHR ar_miss{};
-    ar_miss.deviceAddress = pipeline.sbt.miss.device_address;
-
-    VkStridedDeviceAddressRegionKHR ar_callable{};
-    ar_callable.deviceAddress = pipeline.sbt.callable.device_address;
-    ar_callable.stride = shader_group_handle_size;
-    ar_callable.size = shader_group_handle_size;
-
-    device.vkCmdTraceRaysKHR(command_buffer, &ar_raygen, &ar_miss, &ar_hit, &ar_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
+    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
 
     // retransition image layout
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -524,7 +508,7 @@ void VulkanApplication::draw_frame() {
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     VkSemaphore wait_semaphores[] = {image_available_semaphore};
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR};
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = wait_semaphores;
     submit_info.pWaitDstStageMask = wait_stages;
@@ -532,7 +516,7 @@ void VulkanApplication::draw_frame() {
     submit_info.pCommandBuffers = &command_buffer;
 
     VkSemaphore signal_semaphores[] = {render_finished_semaphore};
-    submit_info.signalSemaphoreCount = 1;
+    submit_info.signalSemaphoreCount = sizeof(signal_semaphores) / sizeof(VkSemaphore);
     submit_info.pSignalSemaphores = signal_semaphores;
 
     if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fence) != VK_SUCCESS) {

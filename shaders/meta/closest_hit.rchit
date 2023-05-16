@@ -3,6 +3,7 @@
 
 precision highp float;
 
+
 #define PI 3.1415926535897932384626433832795
 
 float epsilon = 0.001f;
@@ -30,7 +31,8 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
 
     f = normalize(f);
     r = normalize(r);
-}layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
+}
+layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = 1, binding = 1) readonly buffer VertexIndexData {uint data[];} vertex_indices;
 layout(set = 1, binding = 2) readonly buffer NormalData {vec4 data[];} normals;
 layout(set = 1, binding = 3) readonly buffer NormalIndexData {uint data[];} normal_indices;
@@ -85,21 +87,13 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
     vec2 uv = (uv1 * barycentric_coordinates.x + uv2 * barycentric_coordinates.y + uv0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
 
     return uv;
-}layout(set = 1, binding = 8) uniform sampler2D tex[16];
+}
+layout(set = 1, binding = 8) uniform sampler2D tex[16];
 layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 vec3 sample_texture(uint instance, vec2 uv) {
     return texture(tex[texture_indices.data[instance]], uv).rgb;
 }
-hitAttributeEXT vec2 barycentrics;
-
-layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
-
-layout(push_constant) uniform PushConstants {
-    float time;
-    int clear_accumulated;
-} push_constants;
-
 // taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 #define PI 3.1415926535897932384626433832795
 
@@ -141,7 +135,8 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }struct RayPayload
+float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+struct RayPayload
 {
     uint depth;
     vec3 contribution;
@@ -151,27 +146,24 @@ float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd =
 struct MaterialPayload
 {
     // provided when calling
+    uint instance;
     vec2 uv;
     vec3 position;
     vec3 normal;
+    float seed;
     
     // returned from material shader
     vec3 emission;
+    vec3 surface_color;
+    vec3 reflection_direction;
 };
+hitAttributeEXT vec2 barycentrics;
+
+layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
+
+
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(location = 1) callableDataEXT MaterialPayload material_payload;
-
-vec3 cosine_weighted_sample_hemisphere(float u1, float u2)
-{
-    float theta = 0.5 * acos(-2.0 * u1 + 1.0);
-    float phi = u2 * 2.0 * PI;
-
-    float x = cos(phi) * sin(theta);
-    float y = sin(phi) * sin(theta);
-    float z = cos(theta);
-
-    return vec3(x, y, z);
-}
+layout(location = 0) callableDataEXT MaterialPayload material_payload;
 
 void main() {
 
@@ -192,13 +184,16 @@ void main() {
 
     float cosine_term = max(0, dot(gl_WorldRayDirectionEXT, -normal));
 
-    vec3 ray_origin = hit_position;
-    //vec3 ray_direction = reflect(gl_WorldRayDirectionEXT, -normal);
-    vec3 t, bt;
-    basis(normal, t, bt);
+    material_payload.instance = gl_InstanceID;
+    material_payload.position = hit_position;
+    material_payload.normal = normal;
+    material_payload.uv = uv;
+    material_payload.seed = payload.seed;
 
-    vec3 sample_dir = cosine_weighted_sample_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
-    vec3 ray_direction = normalize(normal * sample_dir.z + t * sample_dir.x + bt * sample_dir.y);
+    //executeCallableEXT(0, 0);
+
+    vec3 ray_origin = hit_position;
+    vec3 ray_direction = material_payload.reflection_direction;
 
     traceRayEXT(
                 as,
@@ -215,9 +210,8 @@ void main() {
             );
 
     vec3 irradiance = payload.contribution * max(0, dot(ray_direction, normal));
-    vec3 color = sample_texture(gl_InstanceID, uv);
 
-    vec3 radiance = emission + color * irradiance * cosine_term;
+    vec3 radiance = material_payload.emission + material_payload.surface_color * irradiance * cosine_term;
 
     payload.contribution = radiance;
 }

@@ -3,6 +3,7 @@ import sys
 def handle_include(path):
     global processed_lines
     with open(path) as include_file:
+        processed_lines.append("\n")
         for line in include_file:
             processed_lines.append(line)
 
