@@ -15,7 +15,7 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(location = 0) callableDataEXT MaterialPayload material_payload;
+layout(location = 0) callableDataEXT float material_payload;
 
 void main() {
 
@@ -33,17 +33,18 @@ void main() {
 
     float cosine_term = max(0, dot(gl_WorldRayDirectionEXT, -normal));
 
-    material_payload.instance = gl_InstanceID;
-    material_payload.position = hit_position;
-    material_payload.normal = normal;
-    material_payload.uv = uv;
-    material_payload.seed = payload.seed;
+    // material_payload.instance = gl_InstanceID;
+    // material_payload.position = hit_position;
+    // material_payload.normal = normal;
+    // material_payload.uv = uv;
+    // material_payload.seed = payload.seed;
 
-    //executeCallableEXT(0, 0);
+    executeCallableEXT(0, 0);
 
 
     vec3 ray_origin = hit_position;
-    vec3 ray_direction = material_payload.reflection_direction;
+    // vec3 ray_direction = material_payload.reflection_direction;
+    vec3 ray_direction = reflect(gl_WorldRayDirectionEXT, normal);
 
     traceRayEXT(
                 as,
@@ -61,10 +62,11 @@ void main() {
 
     vec3 irradiance = payload.contribution * max(0, dot(ray_direction, normal));
 
-    material_payload.emission = vec3(0.2);
-    material_payload.surface_color = vec3(0,1,0);
+    // material_payload.emission = vec3(0.2);
+    // material_payload.surface_color = vec3(0,1,0);
 
-    vec3 radiance = material_payload.emission + (material_payload.surface_color * irradiance * cosine_term);
+    // vec3 radiance = material_payload.emission + (material_payload.surface_color * irradiance * cosine_term);
+    vec3 radiance = vec3(1.0);
 
     payload.contribution = radiance;
 }

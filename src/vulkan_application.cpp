@@ -1039,7 +1039,7 @@ void VulkanApplication::setup() {
         throw std::runtime_error("failure to create render pass");
     }
 
-    loaded_scene_data = loaders::load_scene_description("scenes/test.toml");
+    loaded_scene_data = loaders::load_scene_description("../../../scenes/test.toml");
 
     for (auto tex_path : loaded_scene_data.texture_paths) {
         loaded_textures.push_back(loaders::load_image(&device, std::get<1>(tex_path)));
@@ -1128,10 +1128,10 @@ void VulkanApplication::setup() {
                    .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
                    .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
-                   .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "shaders/spirv/ray_gen.spv")
-                   .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "shaders/spirv/closest_hit.spv")
-                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "shaders/spirv/miss.spv")
-                   .add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "shaders/spirv/material.spv")
+                   .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "../../../shaders/spirv/ray_gen.spv")
+                   .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "../../../shaders/spirv/closest_hit.spv")
+                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "../../../shaders/spirv/miss.spv")
+                   .add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "../../../shaders/spirv/material.spv")
                    .build();
     create_default_descriptor_writes();
 

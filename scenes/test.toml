@@ -1,19 +1,19 @@
 [meshes]
     [meshes.plane]
-    path = "scenes/obj/plane.obj"
+    path = "../../../scenes/obj/plane.obj"
 
     [meshes.sphere]
-    path = "scenes/obj/sphere.obj"
+    path = "../../../scenes/obj/sphere.obj"
 
 [textures]
     [textures.schosch]
-    path = "scenes/textures/test.png"
+    path = "../../../scenes/textures/test.png"
 
     [textures.sus]
-    path = "scenes/textures/amogus.png"
+    path = "../../../scenes/textures/amogus.png"
 
     [textures.checker]
-    path = "scenes/textures/checker.png"
+    path = "../../../scenes/textures/checker.png"
 
 [instances]
     

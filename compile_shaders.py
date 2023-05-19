@@ -6,7 +6,7 @@ shaders_path = "./shaders"
 shaders_meta_path = "./shaders/meta"
 shaders_spirv_path = "./shaders/spirv"
 
-shader_compiler_path = "../glslang/build/install/bin/glslangValidator.exe"
+shader_compiler_path = "../glslang/build/StandAlone/Debug/glslangValidator.exe"
 shader_compiler_args = ["--target-env", "vulkan1.3"]
 
 # remove old compiled shaders
