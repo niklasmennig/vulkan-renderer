@@ -2,9 +2,9 @@
 
 #include <vector>
 #include <string>
-#include <glm/vec3.hpp>
+#include "glm/vec3.hpp"
 using vec3 = glm::vec3;
-#include <glm/mat4x4.hpp>
+#include "glm/mat4x4.hpp"
 using mat4 = glm::mat4;
 
 struct InstanceData

@@ -187,7 +187,7 @@ void main() {
     // material_payload.uv = uv;
     // material_payload.seed = payload.seed;
 
-    executeCallableEXT(0, 0);
+    //executeCallableEXT(0, 0);
 
 
     vec3 ray_origin = hit_position;

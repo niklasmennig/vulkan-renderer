@@ -3,11 +3,12 @@
 #include <set>
 #include <iostream>
 #include <stdexcept>
+#include <filesystem>
 
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_obj.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "glm/gtc/matrix_transform.hpp"
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -1039,10 +1040,12 @@ void VulkanApplication::setup() {
         throw std::runtime_error("failure to create render pass");
     }
 
-    loaded_scene_data = loaders::load_scene_description("../../../scenes/test.toml");
+    std::filesystem::path scene_path("../../../scenes/test.toml");
+    loaded_scene_data = loaders::load_scene_description(scene_path.string());
 
     for (auto tex_path : loaded_scene_data.texture_paths) {
-        loaded_textures.push_back(loaders::load_image(&device, std::get<1>(tex_path)));
+        auto full_texture_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tex_path));
+        loaded_textures.push_back(loaders::load_image(&device, full_texture_path.string()));
         loaded_texture_index[std::get<0>(tex_path)] = loaded_textures.size() - 1;
     }
 
@@ -1061,7 +1064,8 @@ void VulkanApplication::setup() {
 
     // build blas of loaded meshes
     for (auto tup : loaded_scene_data.mesh_paths) {
-        LoadedMeshData loaded_mesh = loaders::load_obj(std::get<1>(tup));
+        auto full_mesh_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tup));
+        LoadedMeshData loaded_mesh = loaders::load_obj(full_mesh_path.string());
         MeshData mesh_data = create_mesh_data(loaded_mesh);
         loaded_mesh_data.push_back(loaded_mesh);
         loaded_mesh_index[std::get<0>(tup)] = loaded_mesh_data.size() - 1;

@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 
-#include <glm/vec4.hpp>
-#include <glm/vec2.hpp>
+#include "glm/vec4.hpp"
+#include "glm/vec2.hpp"
 
 struct LoadedMeshData
 {
