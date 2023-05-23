@@ -19,6 +19,9 @@ struct RayPayload
 
 struct MaterialPayload
 {
+    // ray data
+    float seed;
+
     // hit data
     uint instance;
     vec3 position;
