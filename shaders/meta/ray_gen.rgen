@@ -95,25 +95,34 @@ float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
 struct RayPayload
 {
+    // ray data
     uint depth;
-    vec3 contribution;
     float seed;
+    bool hit;
+    
+    // hit data
+    uint instance;
+    vec3 position;
+    vec3 normal;
+    vec2 uv;
 };
+
 
 struct MaterialPayload
 {
-    // provided when calling
+    // hit data
     uint instance;
-    vec2 uv;
     vec3 position;
     vec3 normal;
-    float seed;
-    
-    // returned from material shader
+    vec2 uv;
+
+    // output data
     vec3 emission;
     vec3 surface_color;
-    vec3 reflection_direction;
+    vec3 direction;
 };layout(location = 0) rayPayloadEXT RayPayload payload;
+layout(location = 0) callableDataEXT MaterialPayload material_payload;
+
 layout(set = 0, binding = 0, rgba32f) uniform image2D img;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
@@ -160,8 +169,7 @@ void main() {
     ndc.y *= -1;
 
 
-    int max_iterations = 1;
-    int iteration = 0;
+    int max_iterations = 6;
 
     // initialize path
     vec3 color = vec3(0.0, 0.0, 0.0);
@@ -171,23 +179,39 @@ void main() {
     vec3 ray_origin = raygen_data.camera.origin.xyz;
     vec3 ray_direction = compute_ray_direction(ndc);
     
-    payload.depth = 0;
-    payload.contribution = vec3(0.0);
-
     payload.seed = random(vec4(gl_LaunchIDEXT.x * 135.2131, gl_LaunchIDEXT.y * 465.354, push_constants.time * 1.251431, push_constants.clear_accumulated * 0.24644545));
 
-    trace(ray_origin, ray_direction);
+    for (int iteration = 0; iteration < max_iterations; iteration++) {
+        trace(ray_origin, ray_direction);
 
-    vec3 final_color = payload.contribution;
+        if (payload.hit) {
+            // prepare material call
+            material_payload.instance = payload.instance;
+            material_payload.position = payload.position;
+            material_payload.direction = ray_direction;
+            material_payload.normal = payload.normal;
+            material_payload.uv = payload.uv;
+
+            executeCallableEXT(0,0);
+
+            ray_origin = material_payload.position;
+            ray_direction = material_payload.direction;
+        } else {
+            iteration = max_iterations;
+
+            material_payload.surface_color = vec3(0);
+        }
+
+        color += material_payload.surface_color * contribution;
+        contribution *= 0.5;
+    }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
     vec3 old_pixel = imageLoad(img, img_coord).rgb;
 
-    vec3 frame_color = final_color;
+    vec3 frame_color = color;
     int frame_number = (-push_constants.clear_accumulated);
-    if (push_constants.clear_accumulated <= 0) frame_color = ((old_pixel * frame_number) + final_color) / (frame_number + 1);
-
-    //frame_color = vec3(1.0, 0.0, 0.0);
+    if (push_constants.clear_accumulated <= 0) frame_color = ((old_pixel * frame_number) + color) / (frame_number + 1);
 
     imageStore(img, img_coord, vec4(frame_color, 1.0));
 }

@@ -1,21 +1,28 @@
 struct RayPayload
 {
+    // ray data
     uint depth;
-    vec3 contribution;
     float seed;
+    bool hit;
+    
+    // hit data
+    uint instance;
+    vec3 position;
+    vec3 normal;
+    vec2 uv;
 };
+
 
 struct MaterialPayload
 {
-    // provided when calling
+    // hit data
     uint instance;
-    vec2 uv;
     vec3 position;
     vec3 normal;
-    float seed;
-    
-    // returned from material shader
+    vec2 uv;
+
+    // output data
     vec3 emission;
     vec3 surface_color;
-    vec3 reflection_direction;
+    vec3 direction;
 };

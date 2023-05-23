@@ -11,7 +11,6 @@
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
 {
     VkShaderModuleCreateInfo create_info{};
-    memset(&create_info, 0, sizeof(VkShaderModuleCreateInfo));
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();
     create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
@@ -300,6 +299,7 @@ Pipeline PipelineBuilder::build() {
     pipeline_info.pStages = stage_create_infos.data();
     pipeline_info.groupCount = (uint32_t)group_create_infos.size();
     pipeline_info.pGroups = group_create_infos.data();
+    pipeline_info.maxPipelineRayRecursionDepth = 1;
 
     VkPipelineCacheCreateInfo cache_create_info{};
     cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;

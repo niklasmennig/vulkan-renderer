@@ -12,5 +12,5 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload.contribution = vec3(0, 0, 0.5);
+    payload.hit = false;
 }
