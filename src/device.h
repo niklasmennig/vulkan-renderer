@@ -11,6 +11,7 @@ struct Device
     VkDevice vulkan_device{};
 
     uint32_t image_count;
+    VkSurfaceFormatKHR surface_format;
 
     VkPhysicalDeviceMemoryProperties memory_properties{};
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties{};

@@ -166,9 +166,12 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
+    float seed = random(vec4(gl_LaunchIDEXT.x * 135.2131, gl_LaunchIDEXT.y * 465.354, push_constants.time * 1.251431, push_constants.clear_accumulated * 0.24644545));
 
     vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 ndc = (pixel_center / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
+    vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+
+    vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
     ndc.y *= -1;
 
 
@@ -182,7 +185,7 @@ void main() {
     vec3 ray_origin = raygen_data.camera.origin.xyz;
     vec3 ray_direction = compute_ray_direction(ndc);
     
-    payload.seed = random(vec4(gl_LaunchIDEXT.x * 135.2131, gl_LaunchIDEXT.y * 465.354, push_constants.time * 1.251431, push_constants.clear_accumulated * 0.24644545));
+    payload.seed = seed;
 
     for (int iteration = 0; iteration < max_iterations; iteration++) {
         trace(ray_origin, ray_direction);
@@ -207,11 +210,11 @@ void main() {
             material_payload.surface_color = vec3(0);
         }
 
-        float cosine_term = max(0, dot(ray_direction, -payload.normal));
+        float cosine_term = max(0, dot(ray_direction, payload.normal));
         vec3 radiance = material_payload.surface_color;
 
+        color += contribution * material_payload.emission * cosine_term;
         contribution *= radiance;
-        color += contribution * material_payload.emission;
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);

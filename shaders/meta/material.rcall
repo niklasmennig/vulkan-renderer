@@ -127,7 +127,7 @@ vec3 cosine_weighted_sample_hemisphere(float u1, float u2)
 void main() {
     material_payload.surface_color = sample_texture(material_payload.instance, material_payload.uv);
     material_payload.emission = vec3(0);
-    if (material_payload.instance == 0) material_payload.emission = vec3(25);
+    if (material_payload.instance == 0) material_payload.emission = vec3(10);
 
     vec3 t, bt;
     basis(material_payload.normal, t, bt);
