@@ -16,7 +16,6 @@
     path = "./textures/checker.png"
 
 [instances]
-    
     [instances.floor]
     mesh = "plane"
     position = [0.0, 0.0, 0.0]

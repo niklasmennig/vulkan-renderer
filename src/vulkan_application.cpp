@@ -754,76 +754,75 @@ void VulkanApplication::setup() {
 
     // initialize vulkan
     // create vulkan instance
+    VkApplicationInfo app_info{};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "Vulkan Renderer";
+    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.pEngineName = "No Engine";
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.apiVersion = VK_API_VERSION_1_3;
+
+    VkInstanceCreateInfo create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_info.pApplicationInfo = &app_info;
+
+    uint32_t glfw_extension_count = 0;
+    const char **glfw_extensions;
+    glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+
+    std::vector<const char*> required_extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
+    // extension needed for vulkan debugging
+    required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+    uint32_t available_extension_count = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr);
+    std::vector<VkExtensionProperties> available_extensions(available_extension_count);
+    vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, available_extensions.data());
+
+    std::cout << "vulkan extensions needed by glfw" << std::endl;
+    for (uint32_t i = 0; i < glfw_extension_count; i++)
     {
-        VkApplicationInfo app_info{};
-        app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        app_info.pApplicationName = "Vulkan Renderer";
-        app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        app_info.pEngineName = "No Engine";
-        app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        app_info.apiVersion = VK_API_VERSION_1_3;
-
-        VkInstanceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        create_info.pApplicationInfo = &app_info;
-
-        uint32_t glfw_extension_count = 0;
-        const char **glfw_extensions;
-        glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-        std::vector<const char*> required_extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
-        // extension needed for vulkan debugging
-        required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-        uint32_t available_extension_count = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, nullptr);
-        std::vector<VkExtensionProperties> available_extensions(available_extension_count);
-        vkEnumerateInstanceExtensionProperties(nullptr, &available_extension_count, available_extensions.data());
-
-        std::cout << "vulkan extensions needed by glfw" << std::endl;
-        for (uint32_t i = 0; i < glfw_extension_count; i++)
+        bool found = false;
+        for (uint32_t j = 0; j < available_extension_count; j++)
         {
-            bool found = false;
-            for (uint32_t j = 0; j < available_extension_count; j++)
+            if (strcmp(available_extensions[i].extensionName, glfw_extensions[i]))
             {
-                if (strcmp(available_extensions[i].extensionName, glfw_extensions[i]))
-                {
-                    found = true;
-                    break;
-                }
+                found = true;
+                break;
             }
-            std::cout << "\t" << (found ? "\033[1;32m" : "\033[1;31m") << glfw_extensions[i] << "\n";
         }
-        std::cout << "\033[0m";
-
-        create_info.enabledExtensionCount = (uint32_t)required_extensions.size();
-        create_info.ppEnabledExtensionNames = required_extensions.data();
-        create_info.flags = 0;
-
-        // Debug validation layers
-        VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
-        create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
-        create_info.ppEnabledLayerNames = validation_layers.data();
-
-        debug_create_info = {};
-        debug_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debug_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debug_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        debug_create_info.pfnUserCallback = debugCallback;
-
-
-        create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
-
-        if (vkCreateInstance(&create_info, nullptr, &vulkan_instance) != VK_SUCCESS)
-        {
-            throw std::runtime_error("error when creating vulkan instance");
-        }
-        std::cout << "vulkan instance created" << std::endl;
-
-        if (CreateDebugUtilsMessengerEXT(vulkan_instance, &debug_create_info, nullptr, &debug_messenger) != VK_SUCCESS) {
-            throw std::runtime_error("error setting up debug messenger");
-        }
+        std::cout << "\t" << (found ? "\033[1;32m" : "\033[1;31m") << glfw_extensions[i] << "\n";
     }
+    std::cout << "\033[0m";
+
+    create_info.enabledExtensionCount = (uint32_t)required_extensions.size();
+    create_info.ppEnabledExtensionNames = required_extensions.data();
+    create_info.flags = 0;
+
+    // Debug validation layers
+    VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
+    create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
+    create_info.ppEnabledLayerNames = validation_layers.data();
+
+    debug_create_info = {};
+    debug_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debug_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug_create_info.pfnUserCallback = debugCallback;
+
+
+    create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
+
+    if (vkCreateInstance(&create_info, nullptr, &vulkan_instance) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error when creating vulkan instance");
+    }
+    std::cout << "vulkan instance created" << std::endl;
+
+    if (CreateDebugUtilsMessengerEXT(vulkan_instance, &debug_create_info, nullptr, &debug_messenger) != VK_SUCCESS) {
+        throw std::runtime_error("error setting up debug messenger");
+    }
+    
 
     // create window surface
     if (glfwCreateWindowSurface(vulkan_instance, window, nullptr, &surface) != VK_SUCCESS)
@@ -833,71 +832,70 @@ void VulkanApplication::setup() {
     std::cout << "window surface created" << std::endl;
 
     // physical device
+    uint32_t physical_device_count = 0;
+    vkEnumeratePhysicalDevices(vulkan_instance, &physical_device_count, nullptr);
+
+    if (physical_device_count == 0)
+        throw std::runtime_error("found no physical devices supporting Vulkan");
+
+    std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+    vkEnumeratePhysicalDevices(vulkan_instance, &physical_device_count, physical_devices.data());
+
+    // pick suitable physical device
+    for (const auto &dev : physical_devices)
     {
-        uint32_t physical_device_count = 0;
-        vkEnumeratePhysicalDevices(vulkan_instance, &physical_device_count, nullptr);
+        // check device suitability
+        VkPhysicalDeviceProperties2 dev_properties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        
+        device.ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
+        device.ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        dev_properties.pNext = &device.ray_tracing_pipeline_properties;
 
-        if (physical_device_count == 0)
-            throw std::runtime_error("found no physical devices supporting Vulkan");
+        vkGetPhysicalDeviceProperties2(dev, &dev_properties);
 
-        std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
-        vkEnumeratePhysicalDevices(vulkan_instance, &physical_device_count, physical_devices.data());
+        VkPhysicalDeviceFeatures dev_features;
+        vkGetPhysicalDeviceFeatures(dev, &dev_features);
 
-        // pick suitable physical device
-        for (const auto &dev : physical_devices)
+        if (dev_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
         {
-            // check device suitability
-            VkPhysicalDeviceProperties2 dev_properties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-            
-            device.ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
-            device.ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-            dev_properties.pNext = &device.ray_tracing_pipeline_properties;
-
-            vkGetPhysicalDeviceProperties2(dev, &dev_properties);
-
-            VkPhysicalDeviceFeatures dev_features;
-            vkGetPhysicalDeviceFeatures(dev, &dev_features);
-
-            if (dev_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-            {
-                physical_device = dev;
-                break;
-            }
-        }
-
-        std::cout << "SBT STRIDE: " << device.ray_tracing_pipeline_properties.shaderGroupHandleSize << std::endl;
-        std::cout << "MAX DEPTH: " << device.ray_tracing_pipeline_properties.maxRayRecursionDepth << std::endl;
-
-        vkGetPhysicalDeviceMemoryProperties(physical_device, &device.memory_properties);
-
-        // find queue families
-        uint32_t queue_family_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
-        std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
-
-        int family_index = 0;
-        for (const auto &queue_family : queue_families)
-        {
-            // check for graphics family
-            if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                queue_family_indices.graphics = std::make_optional(family_index);
-            }
-            VkBool32 present_support = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, family_index, surface, &present_support);
-            if (present_support)
-            {
-                queue_family_indices.present = std::make_optional(family_index);
-            }
-
-            if (queue_family_indices.graphics && queue_family_indices.present) {
-                break;
-            }
-
-            family_index++;
+            physical_device = dev;
+            break;
         }
     }
+
+    std::cout << "SBT STRIDE: " << device.ray_tracing_pipeline_properties.shaderGroupHandleSize << std::endl;
+    std::cout << "MAX DEPTH: " << device.ray_tracing_pipeline_properties.maxRayRecursionDepth << std::endl;
+
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &device.memory_properties);
+
+    // find queue families
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
+
+    int family_index = 0;
+    for (const auto &queue_family : queue_families)
+    {
+        // check for graphics family
+        if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            queue_family_indices.graphics = std::make_optional(family_index);
+        }
+        VkBool32 present_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, family_index, surface, &present_support);
+        if (present_support)
+        {
+            queue_family_indices.present = std::make_optional(family_index);
+        }
+
+        if (queue_family_indices.graphics && queue_family_indices.present) {
+            break;
+        }
+
+        family_index++;
+    }
+    
     std::cout << "valid physical device found" << std::endl;
 
     // create logical device
