@@ -9,6 +9,7 @@
 #include <vector>
 #include <optional>
 #include <chrono>
+#include <functional>
 
 #include "glm/glm.hpp"
 using vec2 = glm::vec2;
@@ -75,12 +76,16 @@ struct VulkanApplication {
     VkQueue graphics_queue;
     VkQueue present_queue;
 
+    Image render_image;
+
     VkSwapchainKHR swap_chain;
     std::vector<VkImage> swap_chain_images;
     VkFormat swap_chain_image_format;
     VkExtent2D swap_chain_extent;
     std::vector<VkImageView> swap_chain_image_views;
     std::vector<VkFramebuffer> framebuffers;
+
+    VkDescriptorPool imgui_descriptor_pool;
 
     VkRenderPass render_pass;
     Pipeline pipeline;
@@ -128,11 +133,16 @@ struct VulkanApplication {
     TLAS build_tlas();
     void free_tlas(TLAS &tlas);
 
+    void submit_immediate(std::function<void()> lambda);
+
     void setup_device();
+    void init_imgui();
     void create_swapchain();
     void create_swapchain_image_views();
     void create_framebuffers();
     void recreate_swapchain();
+    void create_render_image();
+    void recreate_render_image();
     void create_default_descriptor_writes();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);
     void create_synchronization();

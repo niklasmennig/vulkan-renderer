@@ -3,6 +3,8 @@
 
 #include "buffer.h"
 
+#include "image.h"
+
 struct PipelineBuilder;
 
 struct Device
@@ -18,6 +20,7 @@ struct Device
 
     Buffer create_buffer(VkBufferCreateInfo *create_info);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage);
     PipelineBuilder create_pipeline_builder();
 
     // function pointers

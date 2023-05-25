@@ -10,6 +10,10 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_vulkan.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
     "VK_LAYER_KHRONOS_validation"
@@ -312,6 +316,8 @@ void VulkanApplication::free_tlas(TLAS &tlas) {
 }
 
 void VulkanApplication::create_default_descriptor_writes() {
+    pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
+
     VkBufferCreateInfo cam_buffer_info{};
     cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     cam_buffer_info.size = sizeof(Shaders::CameraData);
@@ -419,43 +425,11 @@ void VulkanApplication::create_default_descriptor_writes() {
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
-    // command buffer begin
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = 0;
-    begin_info.pInheritanceInfo = nullptr;
-
-    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error beginning command buffer");
-    }
-
-
     float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
     if (render_clear_accumulated > -6000) render_clear_accumulated -= 1;
 
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, 4, &time);
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 4, 4, &render_clear_accumulated);
-
-    // transition output image to writeable format
-    VkImageMemoryBarrier image_barrier = {};
-    image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    image_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    image_barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-    image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    image_barrier.image = swap_chain_images[image_index];
-    image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_barrier.subresourceRange.baseMipLevel = 0;
-    image_barrier.subresourceRange.levelCount = 1;
-    image_barrier.subresourceRange.baseArrayLayer = 0;
-    image_barrier.subresourceRange.layerCount = 1;
-    image_barrier.srcAccessMask = 0;
-    image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-    // set current image as output image for raytracing pipeline
-    pipeline.set_descriptor_image_binding("out_image", swap_chain_image_views[image_index], ImageType::Storage);
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
 
@@ -464,18 +438,6 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
     uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
 
     device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
-
-    // retransition image layout
-    image_barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-    image_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    image_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    image_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
-
-    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("encountered an error when ending command buffer");
-    }
 }
 
 void VulkanApplication::create_synchronization() {
@@ -570,7 +532,7 @@ void VulkanApplication::create_swapchain() {
         create_info.imageColorSpace = device.surface_format.colorSpace;
         create_info.imageExtent = swap_chain_extent;
         create_info.imageArrayLayers = 1;
-        create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+        create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
         uint32_t queue_family_indices_int[] = {queue_family_indices.graphics.value(), queue_family_indices.present.value()};
 
@@ -673,6 +635,45 @@ void VulkanApplication::recreate_swapchain() {
     create_swapchain();
     create_swapchain_image_views();
     create_framebuffers();
+
+    submit_immediate([&]() {
+        for (int i = 0; i < this->swap_chain_images.size(); i++) {
+            // transition output image to writeable format
+            VkImageMemoryBarrier image_barrier = {};
+            image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            image_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            image_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.image = swap_chain_images[i];
+            image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            image_barrier.subresourceRange.baseMipLevel = 0;
+            image_barrier.subresourceRange.levelCount = 1;
+            image_barrier.subresourceRange.baseArrayLayer = 0;
+            image_barrier.subresourceRange.layerCount = 1;
+            image_barrier.srcAccessMask = 0;
+            image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+            // set current image as output image for raytracing pipeline
+            vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+        }
+    });
+}
+
+void VulkanApplication::create_render_image() {
+    render_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+}
+
+void VulkanApplication::recreate_render_image() {
+    Image old_render_image = render_image;
+    create_render_image();
+
+    submit_immediate([&]() {
+        render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
+    });
+
+    pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
+    old_render_image.free();
 }
 
 void VulkanApplication::draw_frame() {
@@ -683,7 +684,77 @@ void VulkanApplication::draw_frame() {
     vkAcquireNextImageKHR(logical_device, swap_chain, UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
 
     vkResetCommandBuffer(command_buffer, 0);
+
+    // command buffer begin
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0;
+    begin_info.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
+        throw std::runtime_error("error beginning command buffer");
+    }
+
+    // raytracer draw
     record_command_buffer(command_buffer, image_index);
+
+    // transition output image to writeable format
+    VkImageMemoryBarrier image_barrier = {};
+    image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    image_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    image_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    image_barrier.image = swap_chain_images[image_index];
+    image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_barrier.subresourceRange.baseMipLevel = 0;
+    image_barrier.subresourceRange.levelCount = 1;
+    image_barrier.subresourceRange.baseArrayLayer = 0;
+    image_barrier.subresourceRange.layerCount = 1;
+    image_barrier.srcAccessMask = 0;
+    image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    // set current image as output image for raytracing pipeline
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+
+    VkImageCopy image_copy{};
+    image_copy.extent.width = swap_chain_extent.width;
+    image_copy.extent.height = swap_chain_extent.height;
+    image_copy.extent.depth = 1;
+    image_copy.srcSubresource.layerCount = 1;
+    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.srcSubresource.baseArrayLayer = 0;
+    image_copy.dstSubresource.layerCount = 1;
+    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.dstSubresource.baseArrayLayer = 0;
+
+    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
+    vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+
+    // imgui draw
+    VkRenderPassBeginInfo render_pass_info{};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    render_pass_info.renderPass = render_pass;
+    render_pass_info.framebuffer = framebuffers[image_index];
+    render_pass_info.clearValueCount = 0;
+    render_pass_info.pClearValues = nullptr;
+
+    vkCmdBeginRenderPass(command_buffer, &render_pass_info, {});
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow();
+
+    ImGui::Render();
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+    vkCmdEndRenderPass(command_buffer);
+
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("encountered an error when ending command buffer");
+    }
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -700,7 +771,8 @@ void VulkanApplication::draw_frame() {
     submit_info.signalSemaphoreCount = sizeof(signal_semaphores) / sizeof(VkSemaphore);
     submit_info.pSignalSemaphores = signal_semaphores;
 
-    if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fence) != VK_SUCCESS) {
+    if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fence) != VK_SUCCESS)
+    {
         throw std::runtime_error("error submitting draw command buffer");
     }
 
@@ -739,6 +811,94 @@ void VulkanApplication::setup_device() {
     device.vkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdTraceRaysKHR");
 }
 
+void VulkanApplication::submit_immediate(std::function<void()> lambda) {
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0;
+    begin_info.pInheritanceInfo = nullptr;
+
+    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error beginning command buffer");
+    }
+
+    lambda();
+
+    vkEndCommandBuffer(command_buffer);
+
+    vkResetFences(logical_device, 1, &immediate_fence);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 0;
+    submit_info.signalSemaphoreCount = 0;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+
+    vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
+
+    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
+}
+
+void VulkanApplication::init_imgui() {
+    // 1: create descriptor pool for IMGUI
+    // the size of the pool is very oversize, but it's copied from imgui demo itself.
+    VkDescriptorPoolSize pool_sizes[] =
+        {
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 1000;
+    pool_info.poolSizeCount = std::size(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+
+
+    if (vkCreateDescriptorPool(device.vulkan_device, &pool_info, nullptr, &imgui_descriptor_pool) != VK_SUCCESS) {
+        throw std::runtime_error("error creating imgui descriptor pool");
+    }
+
+    // 2: initialize imgui library
+
+    // this initializes the core structures of imgui
+    ImGui::CreateContext();
+
+    // this initializes imgui for SDL
+    ImGui_ImplGlfw_InitForVulkan(window, false);
+
+    // this initializes imgui for Vulkan
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = device.vulkan_instance;
+    init_info.PhysicalDevice = physical_device;
+    init_info.Device = device.vulkan_device;
+    init_info.Queue = graphics_queue;
+    init_info.DescriptorPool = imgui_descriptor_pool;
+    init_info.MinImageCount = device.image_count;
+    init_info.ImageCount = device.image_count;
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+    ImGui_ImplVulkan_Init(&init_info, render_pass);
+
+    // execute a gpu command to upload imgui font textures
+    submit_immediate([&]() {ImGui_ImplVulkan_CreateFontsTexture(command_buffer);});
+
+    // clear font textures from cpu data
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    glfwSetMouseButtonCallback(window, ImGui_ImplGlfw_MouseButtonCallback);
+}
+
 void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
@@ -748,6 +908,7 @@ void VulkanApplication::setup() {
         std::cout << "resized to " << width << "x" << height << std::endl;
         VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
         app->recreate_swapchain();
+        app->recreate_render_image();
     });
 
     startup_time = std::chrono::high_resolution_clock::now();
@@ -1014,47 +1175,44 @@ void VulkanApplication::setup() {
     setup_device();
 
     // create command pool
-    {
-        VkCommandPoolCreateInfo pool_info{};
-        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        pool_info.queueFamilyIndex = queue_family_indices.graphics.value();
+    VkCommandPoolCreateInfo pool_info{};
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    pool_info.queueFamilyIndex = queue_family_indices.graphics.value();
 
-        if (vkCreateCommandPool(logical_device, &pool_info, nullptr, &command_pool) != VK_SUCCESS)
-        {
-            throw std::runtime_error("error creating command pool");
-        }
+    if (vkCreateCommandPool(logical_device, &pool_info, nullptr, &command_pool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error creating command pool");
     }
 
     // create command buffer
-    {
-        VkCommandBufferAllocateInfo alloc_info{};
-        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool = command_pool;
-        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        alloc_info.commandBufferCount = 1;
+    VkCommandBufferAllocateInfo alloc_info{};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.commandPool = command_pool;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandBufferCount = 1;
 
-        if (vkAllocateCommandBuffers(logical_device, &alloc_info, &command_buffer) != VK_SUCCESS)
-        {
-            throw std::runtime_error("error allocating command buffer");
-        }
+    if (vkAllocateCommandBuffers(logical_device, &alloc_info, &command_buffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error allocating command buffer");
     }
 
     create_synchronization();
 
     create_swapchain();
-
     create_swapchain_image_views();
+
+    create_render_image();
 
     // create render pass
     VkAttachmentDescription color_attachment{};
     color_attachment.format = device.surface_format.format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    color_attachment.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference color_attachment_ref{};
@@ -1088,6 +1246,9 @@ void VulkanApplication::setup() {
     {
         throw std::runtime_error("failure to create render pass");
     }
+
+    // create framebuffers after render pass
+    create_framebuffers();
 
     std::filesystem::path scene_path("./scenes/test.toml");
     loaded_scene_data = loaders::load_scene_description(scene_path.string());
@@ -1151,6 +1312,29 @@ void VulkanApplication::setup() {
 
     scene_tlas = build_tlas();
 
+    // transfer framebuffer images to correct format
+    for (int i = 0; i < swap_chain_images.size(); i++) {
+        VkImageMemoryBarrier texture_barrier = {};
+        texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        texture_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        texture_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        texture_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        texture_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        texture_barrier.image = swap_chain_images[i];
+        texture_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        texture_barrier.subresourceRange.baseMipLevel = 0;
+        texture_barrier.subresourceRange.levelCount = 1;
+        texture_barrier.subresourceRange.baseArrayLayer = 0;
+        texture_barrier.subresourceRange.layerCount = 1;
+        texture_barrier.srcAccessMask = 0;
+        texture_barrier.dstAccessMask = 0;
+
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
+    }
+
+    // transfer render image to correct format
+    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
+
     vkEndCommandBuffer(command_buffer);
 
     vkResetFences(logical_device, 1, &immediate_fence);
@@ -1189,9 +1373,8 @@ void VulkanApplication::setup() {
     create_default_descriptor_writes();
 
     std::cout << "pipeline created" << std::endl;
-    
 
-    create_framebuffers();
+    init_imgui();
 }
 
 void VulkanApplication::run() {
@@ -1305,7 +1488,11 @@ void VulkanApplication::run() {
 }
 
 void VulkanApplication::cleanup() {
+    // imgui cleanup
+    vkDestroyDescriptorPool(device.vulkan_device, imgui_descriptor_pool, nullptr);
+    ImGui_ImplVulkan_Shutdown();
     // deinitialization
+    render_image.free();
     camera_buffer.free();
     for (Image i : loaded_textures) {
         i.free();

@@ -52,12 +52,12 @@ Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];
 }
 
-void Pipeline::set_descriptor_image_binding(std::string name, VkImageView image_view, ImageType image_type) {
+void Pipeline::set_descriptor_image_binding(std::string name, Image image, ImageType image_type) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorImageInfo image_info{};
-    image_info.imageView = image_view;
-    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    image_info.imageView = image.view_handle;
+    image_info.imageLayout = image.layout;
 
     VkWriteDescriptorSet descriptor_write_image{};
     descriptor_write_image.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -1,4 +1,7 @@
+add_subdirectory(imgui)
+
 set(SRC_RENDERER
+    ${SRC_IMGUI}
     src/image.cpp
     src/loaders/geometry_obj.cpp
     src/loaders/image.cpp
