@@ -316,8 +316,6 @@ void VulkanApplication::free_tlas(TLAS &tlas) {
 }
 
 void VulkanApplication::create_default_descriptor_writes() {
-    pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
-
     VkBufferCreateInfo cam_buffer_info{};
     cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     cam_buffer_info.size = sizeof(Shaders::CameraData);
@@ -662,18 +660,17 @@ void VulkanApplication::recreate_swapchain() {
 
 void VulkanApplication::create_render_image() {
     render_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
-}
-
-void VulkanApplication::recreate_render_image() {
-    Image old_render_image = render_image;
-    create_render_image();
 
     submit_immediate([&]() {
         render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
     });
 
     pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
-    old_render_image.free();
+}
+
+void VulkanApplication::recreate_render_image() {
+    render_image.free();
+    create_render_image();
 }
 
 void VulkanApplication::draw_frame() {
@@ -694,6 +691,7 @@ void VulkanApplication::draw_frame() {
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
         throw std::runtime_error("error beginning command buffer");
     }
+
 
     // raytracer draw
     record_command_buffer(command_buffer, image_index);
@@ -730,6 +728,7 @@ void VulkanApplication::draw_frame() {
 
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
     vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
 
     // imgui draw
     VkRenderPassBeginInfo render_pass_info{};
@@ -909,6 +908,7 @@ void VulkanApplication::setup() {
         VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
         app->recreate_swapchain();
         app->recreate_render_image();
+        app->render_clear_accumulated = 4;
     });
 
     startup_time = std::chrono::high_resolution_clock::now();
@@ -1202,8 +1202,6 @@ void VulkanApplication::setup() {
     create_swapchain();
     create_swapchain_image_views();
 
-    create_render_image();
-
     // create render pass
     VkAttachmentDescription color_attachment{};
     color_attachment.format = device.surface_format.format;
@@ -1332,9 +1330,6 @@ void VulkanApplication::setup() {
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
     }
 
-    // transfer render image to correct format
-    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
-
     vkEndCommandBuffer(command_buffer);
 
     vkResetFences(logical_device, 1, &immediate_fence);
@@ -1371,6 +1366,8 @@ void VulkanApplication::setup() {
                    .add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/spirv/material.spv")
                    .build();
     create_default_descriptor_writes();
+
+    create_render_image();
 
     std::cout << "pipeline created" << std::endl;
 

@@ -108,7 +108,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
         throw std::runtime_error("error creating image");
     }
 
-    result.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    result.layout = image_info.initialLayout;
     result.access = 0;
 
     VkMemoryRequirements memory_requirements;
