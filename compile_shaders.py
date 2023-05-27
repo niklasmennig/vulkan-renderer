@@ -31,5 +31,10 @@ for file in shader_files:
     compile_args = [shader_compiler_path]
     compile_args.extend(shader_compiler_args)
     compile_args.extend(["-i", ifile, "-o", ofile])
-    print(compile_args)
-    subprocess.run(compile_args)
+    proc = subprocess.Popen(compile_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = proc.communicate()
+    output_lines = output.splitlines()
+    for line in output_lines:
+        line_string = line.decode()
+        if line_string.startswith("ERROR") and "/" in line_string:
+            print(line_string)

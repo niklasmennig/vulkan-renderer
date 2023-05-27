@@ -15,18 +15,28 @@
     [textures.checker]
     path = "./textures/checker.png"
 
+[materials]
+    [materials.lambertian]
+    path = "./shaders/spirv/material_lambertian.spv"
+
+    [materials.mirror]
+    path = "./shaders/spirv/material_mirror.spv"
+
 [instances]
     [instances.floor]
     mesh = "plane"
     position = [0.0, 0.0, 0.0]
     texture = "checker"
+    material = "mirror"
 
     [instances.sphere1]
     mesh = "sphere"
     position = [2.0, 2.0, 0.0]
     texture = "schosch"
+    material = "mirror"
 
     [instances.sphere2]
     mesh = "sphere"
     position = [-2.0, 2.0, 0.0]
     texture = "sus"
+    material = "lambertian"

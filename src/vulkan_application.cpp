@@ -359,6 +359,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     std::vector<uint32_t> mesh_data_offsets;
     std::vector<uint32_t> mesh_offset_indices;
     std::vector<uint32_t> texture_indices;
+    std::vector<uint32_t> material_indices;
 
     // push 0 offset for first instance to align offset positions with instance ids (eliminate need for 'if' in mesh_data shader functions)
     mesh_data_offsets.push_back(vertices.size());
@@ -389,6 +390,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     for (auto instance : loaded_scene_data.instances) {
         mesh_offset_indices.push_back(loaded_mesh_index[instance.mesh_name]);
         texture_indices.push_back(loaded_texture_index[instance.texture_name]);
+        material_indices.push_back(loaded_material_index[instance.material_name]);
     }
 
     vertex_buffer = device.create_buffer(sizeof(vec4) * vertices.size());
@@ -409,6 +411,8 @@ void VulkanApplication::create_default_descriptor_writes() {
     mesh_offset_index_buffer.set_data(mesh_offset_indices.data());
     texture_index_buffer = device.create_buffer(sizeof(uint32_t) * texture_indices.size());
     texture_index_buffer.set_data(texture_indices.data());
+    material_index_buffer = device.create_buffer(sizeof(uint32_t) * material_indices.size());
+    material_index_buffer.set_data(material_indices.data());
 
     pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", vertex_index_buffer, BufferType::Storage);
@@ -420,6 +424,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("material_indices", material_index_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -1340,10 +1345,8 @@ void VulkanApplication::setup() {
 
     std::cout << "TLAS CREATED" << std::endl;
 
-    PipelineBuilder builder = device.create_pipeline_builder();
-
     // create pipeline
-    pipeline = device.create_pipeline_builder()
+    PipelineBuilder pipeline_builder = device.create_pipeline_builder()
                    // framework descriptors (set 0)
                    .add_descriptor("out_image", 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
@@ -1359,12 +1362,20 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_offset_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR, 16)
                    .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+                   .add_descriptor("material_indices", 1, 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")
-                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/spirv/miss.spv")
-                   .add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/spirv/material.spv")
-                   .build();
+                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/spirv/miss.spv");
+    
+    uint32_t index = 0;
+    for (auto material : loaded_scene_data.material_paths) {
+        pipeline_builder.add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, std::get<1>(material));
+        loaded_material_index[std::get<0>(material)] = index;
+        index++;
+    }
+
+    pipeline = pipeline_builder.build();
     create_default_descriptor_writes();
 
     create_render_image();
@@ -1510,6 +1521,7 @@ void VulkanApplication::cleanup() {
     mesh_data_offset_buffer.free();
     mesh_offset_index_buffer.free();
     texture_index_buffer.free();
+    material_index_buffer.free();
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

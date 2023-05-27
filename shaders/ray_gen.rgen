@@ -26,6 +26,8 @@ layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
 
+layout(set = 1, binding = 10) readonly buffer MaterialIndexData {uint data[];} material_indices;
+
 
 void trace(vec3 origin, vec3 direction) {
      traceRayEXT(
@@ -93,7 +95,8 @@ void main() {
             material_payload.uv = payload.uv;
             material_payload.seed = payload.seed;
 
-            executeCallableEXT(0,0);
+            uint material_id = material_indices.data[payload.instance];
+            executeCallableEXT(material_id,0);
 
             ray_origin = material_payload.position;
             ray_direction = material_payload.direction;

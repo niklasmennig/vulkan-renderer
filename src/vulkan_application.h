@@ -115,11 +115,12 @@ struct VulkanApplication {
     std::vector<MeshData> created_meshes;
     std::vector<Image> loaded_textures;
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
+    std::unordered_map<std::string, uint32_t> loaded_material_index;
 
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
-    Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer;
+    Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_index_buffer;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);

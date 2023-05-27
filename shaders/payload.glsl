@@ -24,7 +24,7 @@ struct MaterialPayload
     vec3 normal;
     vec2 uv;
 
-    // output data
+    // ray data
     vec3 emission;
     vec3 surface_color;
     vec3 direction;

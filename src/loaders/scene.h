@@ -11,6 +11,7 @@ struct InstanceData
 {
     std::string mesh_name;
     std::string texture_name;
+    std::string material_name;
     mat4 transformation;
 };
 
@@ -20,6 +21,8 @@ struct SceneData
     std::vector<std::tuple<std::string, std::string>> mesh_paths;
     // tuples containing texture name and path
     std::vector<std::tuple<std::string, std::string>> texture_paths;
+    // tuples containing material name and path
+    std::vector<std::tuple<std::string, std::string>> material_paths;
     // instance data
     std::vector<InstanceData> instances;
 };
