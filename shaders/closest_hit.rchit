@@ -15,7 +15,7 @@ void main() {
 
     payload.hit = true;
     payload.instance = gl_InstanceID;
-    payload.position = gl_ObjectToWorldEXT * vec4(position, 1.0);
+    payload.position = position;
     payload.normal = normal;
     payload.uv = uv;
 }

@@ -22,21 +22,47 @@
     [materials.mirror]
     path = "./shaders/spirv/material_mirror.spv"
 
-[instances]
-    [instances.floor]
-    mesh = "plane"
-    position = [0.0, 0.0, 0.0]
-    texture = "checker"
-    material = "mirror"
+    [materials.light]
+    path = "./shaders/spirv/material_light.spv"
 
-    [instances.sphere1]
-    mesh = "sphere"
-    position = [2.0, 2.0, 0.0]
-    texture = "schosch"
-    material = "mirror"
+[instances]
+    [instances.wallLeft]
+    mesh = "plane"
+    position = [1.0, 0.0, 0.0]
+    rotation = [0.0, 0.0, 90.0]
+    texture = "checker"
+    material = "lambertian"
+
+    [instances.wallRight]
+    mesh = "plane"
+    position = [-1.0, 0.0, 0.0]
+    rotation = [0.0, 0.0, -90.0]
+    texture = "checker"
+    material = "lambertian"
+
+    [instances.wallBack]
+    mesh = "plane"
+    position = [0.0, 0.0, 1.0]
+    rotation = [-90.0, 0.0, 0.0]
+    texture = "checker"
+    material = "lambertian"
+
+    [instances.wallTop]
+    mesh = "plane"
+    position = [0.0, 1.0, 0.0]
+    rotation = [0.0, 0.0, 180.0]
+    texture = "checker"
+    material = "lambertian"
+
+    [instances.wallFloor]
+    mesh = "plane"
+    position = [0.0, -1.0, 0.0]
+    rotation = [0.0, 0.0, 0.0]
+    texture = "checker"
+    material = "lambertian"
 
     [instances.sphere2]
     mesh = "sphere"
-    position = [-2.0, 2.0, 0.0]
+    position = [0.0, 0.0, 0.0]
     texture = "sus"
-    material = "lambertian"
+    material = "light"

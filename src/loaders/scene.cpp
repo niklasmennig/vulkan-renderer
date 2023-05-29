@@ -63,7 +63,6 @@ SceneData loaders::load_scene_description(std::string path) {
         instance_data.mesh_name = mesh_name;
 
 
-        mat4 transformation = glm::mat4(1.0);
         auto data_table = data.as_table();
         if(data_table->contains("texture")) {
             instance_data.texture_name = data["texture"].as_string()->get();
@@ -71,12 +70,23 @@ SceneData loaders::load_scene_description(std::string path) {
         if (data_table->contains("material")) {
             instance_data.material_name = data["material"].as_string()->get();
         }
+
+        mat4 transformation = glm::mat4(1.0);
         if(data_table->contains("position")) {
             auto position_data = data["position"].as_array();
             float x = data["position"][0].as_floating_point()->get();
             float y = data["position"][1].as_floating_point()->get();
             float z = data["position"][2].as_floating_point()->get();
             transformation = glm::translate(transformation, vec3(x,y,z));
+        }
+        if (data_table->contains("rotation")) {
+            auto rotation_data = data["rotation"].as_array();
+            float x = data["rotation"][0].as_floating_point()->get();
+            float y = data["rotation"][1].as_floating_point()->get();
+            float z = data["rotation"][2].as_floating_point()->get();
+            transformation = glm::rotate(transformation, glm::radians(x), vec3(1, 0, 0));
+            transformation = glm::rotate(transformation, glm::radians(y), vec3(0, 1, 0));
+            transformation = glm::rotate(transformation, glm::radians(z), vec3(0, 0, 1));
         }
         instance_data.transformation = transformation;
 

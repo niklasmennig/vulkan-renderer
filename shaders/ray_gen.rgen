@@ -84,7 +84,10 @@ void main() {
     payload.seed = seed;
 
     for (int iteration = 0; iteration < max_iterations; iteration++) {
+        if (length(ray_direction) < epsilon) break;
+
         trace(ray_origin, ray_direction);
+        float cosine_term = max(0, dot(-ray_direction, payload.normal));
 
         if (payload.hit) {
             // prepare material call
@@ -107,11 +110,10 @@ void main() {
             material_payload.surface_color = vec3(0);
         }
 
-        float cosine_term = max(0, dot(ray_direction, payload.normal));
-        vec3 radiance = material_payload.surface_color;
+        vec3 radiance = material_payload.surface_color * cosine_term;
 
-        color += contribution * material_payload.emission * cosine_term;
         contribution *= radiance;
+        color += contribution * material_payload.emission;
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);

@@ -53,9 +53,9 @@ vec3 get_vertex_position(uint instance, vec2 barycentric_coordinates) {
     vec3 vert0 = vertices.data[data_offset + vertex_indices.data[index_offset + idx0]].xyz;
     vec3 vert1 = vertices.data[data_offset + vertex_indices.data[index_offset + idx1]].xyz;
     vec3 vert2 = vertices.data[data_offset + vertex_indices.data[index_offset + idx2]].xyz;
-    vec3 vert = (vert1 * barycentric_coordinates.x + vert2 * barycentric_coordinates.y + vert0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec3 vert = (vert0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + vert1 * barycentric_coordinates.x + vert2 * barycentric_coordinates.y);
 
-    return vert;
+    return vec3(gl_ObjectToWorldEXT * vec4(vert, 1.0));
 }
 
 vec3 get_vertex_normal(uint instance, vec2 barycentric_coordinates) {
@@ -69,9 +69,9 @@ vec3 get_vertex_normal(uint instance, vec2 barycentric_coordinates) {
     vec3 norm0 = normals.data[data_offset + normal_indices.data[index_offset + idx0]].xyz;
     vec3 norm1 = normals.data[data_offset + normal_indices.data[index_offset + idx1]].xyz;
     vec3 norm2 = normals.data[data_offset + normal_indices.data[index_offset + idx2]].xyz;
-    vec3 norm = (norm1 * barycentric_coordinates.x + norm2 * barycentric_coordinates.y + norm0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec3 norm = (norm0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + norm1 * barycentric_coordinates.x + norm2 * barycentric_coordinates.y);
 
-    return normalize(norm);
+    return normalize(vec3(gl_ObjectToWorldEXT * vec4(norm, 0.0)));
 }
 
 vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
@@ -85,7 +85,7 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
     vec2 uv0 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx0]];
     vec2 uv1 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx1]];
     vec2 uv2 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx2]];
-    vec2 uv = (uv1 * barycentric_coordinates.x + uv2 * barycentric_coordinates.y + uv0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y));
+    vec2 uv = (uv0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + uv1 * barycentric_coordinates.x + uv2 * barycentric_coordinates.y);
 
     return uv;
 }
@@ -100,7 +100,7 @@ void main() {
 
     payload.hit = true;
     payload.instance = gl_InstanceID;
-    payload.position = gl_ObjectToWorldEXT * vec4(position, 1.0);
+    payload.position = position;
     payload.normal = normal;
     payload.uv = uv;
 }
