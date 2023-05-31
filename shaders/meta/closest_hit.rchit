@@ -22,17 +22,21 @@ struct MaterialPayload
     // ray data
     float seed;
 
-    // hit data
+    // input data
     uint instance;
     vec3 position;
     vec3 normal;
     vec2 uv;
+    vec3 direction;
 
-    // ray data
+    // output data
     vec3 emission;
     vec3 surface_color;
-    vec3 direction;
+    vec3 sample_direction;
+    float sample_pdf;
 };
+#line 4
+
 layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = 1, binding = 1) readonly buffer VertexIndexData {uint data[];} vertex_indices;
 layout(set = 1, binding = 2) readonly buffer NormalData {vec4 data[];} normals;
@@ -89,6 +93,8 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
+#line 5
+
 hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;

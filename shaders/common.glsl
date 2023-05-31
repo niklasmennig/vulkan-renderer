@@ -5,7 +5,6 @@ float ray_max = 1000.0f;
 
 uint max_bounces = 6;
 
-
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
 {
@@ -25,4 +24,9 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
 
     f = normalize(f);
     r = normalize(r);
+}
+
+// https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
+float luminance(vec3 color) {
+    return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }

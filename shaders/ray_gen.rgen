@@ -5,8 +5,6 @@
 precision highp float;
 
 ~include "shaders/common.glsl"
-
-
 ~include "shaders/camera.glsl"
 
 
@@ -90,6 +88,7 @@ void main() {
         float cosine_term = max(0, dot(-ray_direction, payload.normal));
 
         if (payload.hit) {
+            // surface hit
             // prepare material call
             material_payload.instance = payload.instance;
             material_payload.position = payload.position;
@@ -100,20 +99,30 @@ void main() {
 
             uint material_id = material_indices.data[payload.instance];
             executeCallableEXT(material_id,0);
-
-            ray_origin = material_payload.position;
-            ray_direction = material_payload.direction;
         } else {
-            iteration = max_iterations;
-
-            material_payload.emission = vec3(0);
-            material_payload.surface_color = vec3(0);
+            // miss
+            break;
         }
 
-        vec3 radiance = material_payload.surface_color * cosine_term;
+        if (length(material_payload.emission) > epsilon) {
+            // emissive surface hit
+            color += contribution * material_payload.emission;
+        }
 
-        contribution *= radiance;
-        color += contribution * material_payload.emission;
+        // sample BSDF for light bounce
+        contribution *= material_payload.surface_color * cosine_term / material_payload.sample_pdf;
+
+        ray_origin = payload.position;
+        ray_direction = material_payload.sample_direction;
+
+        // russian roulette
+        if (iteration > 3) {
+            float rr = max(0.05, luminance(contribution));
+            if (seed_random(payload.seed) < rr) {
+                break;
+            }
+            contribution /= 1.0 - rr;
+        }
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);

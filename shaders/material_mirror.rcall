@@ -13,5 +13,6 @@ void main() {
     material_payload.surface_color = vec3(1.0);
     material_payload.emission = vec3(0);
 
-    material_payload.direction = reflect(material_payload.direction, material_payload.normal);
+    material_payload.sample_direction = reflect(material_payload.direction, material_payload.normal);
+    material_payload.sample_pdf = 1.0;
 }

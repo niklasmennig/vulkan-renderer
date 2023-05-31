@@ -49,6 +49,8 @@ float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+#line 9
+
 struct RayPayload
 {
     // ray data
@@ -69,17 +71,21 @@ struct MaterialPayload
     // ray data
     float seed;
 
-    // hit data
+    // input data
     uint instance;
     vec3 position;
     vec3 normal;
     vec2 uv;
+    vec3 direction;
 
-    // ray data
+    // output data
     vec3 emission;
     vec3 surface_color;
-    vec3 direction;
+    vec3 sample_direction;
+    float sample_pdf;
 };
+#line 10
+
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {

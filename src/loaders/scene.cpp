@@ -88,6 +88,13 @@ SceneData loaders::load_scene_description(std::string path) {
             transformation = glm::rotate(transformation, glm::radians(y), vec3(0, 1, 0));
             transformation = glm::rotate(transformation, glm::radians(z), vec3(0, 0, 1));
         }
+        if (data_table->contains("scale")) {
+            auto scale_data = data["scale"].as_array();
+            float x = data["scale"][0].as_floating_point()->get();
+            float y = data["scale"][1].as_floating_point()->get();
+            float z = data["scale"][2].as_floating_point()->get();
+            transformation = glm::scale(transformation, vec3(x,y,z));
+        }
         instance_data.transformation = transformation;
 
         instances.push_back(instance_data);

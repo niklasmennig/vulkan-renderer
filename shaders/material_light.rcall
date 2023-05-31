@@ -11,7 +11,8 @@ layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 void main() {
     material_payload.surface_color = vec3(1.0);
-    material_payload.emission = vec3(10.0);
+    material_payload.emission = vec3(1.0) * 25.0;
 
     material_payload.direction = vec3(0);
+    material_payload.sample_pdf = 1.0;
 }

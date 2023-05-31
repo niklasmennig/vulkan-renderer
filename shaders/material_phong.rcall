@@ -9,15 +9,22 @@
 
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
+
 void main() {
-    material_payload.surface_color = sample_texture(material_payload.instance, material_payload.uv);
+    float k_diffuse = 0.5;
+    float k_specular = 0.5;
+
+    float n = 12.0;
+
     material_payload.emission = vec3(0);
+    material_payload.surface_color = sample_texture(material_payload.instance, material_payload.uv);
 
     vec3 t, bt;
     basis(material_payload.normal, t, bt);
 
-    vec3 sample_dir = sample_cosine_hemisphere(seed_random(material_payload.seed), seed_random(material_payload.seed));
+    vec3 sample_dir = sample_phong_lobe(seed_random(material_payload.seed), seed_random(material_payload.seed), n);
 
     material_payload.sample_direction = material_payload.normal * sample_dir.z + t * sample_dir.x + bt * sample_dir.y;
-    material_payload.sample_pdf = 1.0 / PI;
+    
+    material_payload.sample_pdf = (n + 1.0) / (2.0 * PI) * pow(dot(material_payload.sample_direction, material_payload.normal), n);
 }

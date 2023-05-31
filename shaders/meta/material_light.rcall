@@ -9,7 +9,6 @@ float ray_max = 1000.0f;
 
 uint max_bounces = 6;
 
-
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
 {
@@ -30,6 +29,13 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
     f = normalize(f);
     r = normalize(r);
 }
+
+// https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
+float luminance(vec3 color) {
+    return (0.299*color.r + 0.587*color.g + 0.114*color.b);
+}
+#line 4
+
 // taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 #define PI 3.1415926535897932384626433832795
 
@@ -72,6 +78,8 @@ float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+#line 5
+
 struct RayPayload
 {
     // ray data
@@ -92,29 +100,36 @@ struct MaterialPayload
     // ray data
     float seed;
 
-    // hit data
+    // input data
     uint instance;
     vec3 position;
     vec3 normal;
     vec2 uv;
+    vec3 direction;
 
-    // ray data
+    // output data
     vec3 emission;
     vec3 surface_color;
-    vec3 direction;
+    vec3 sample_direction;
+    float sample_pdf;
 };
+#line 6
+
 layout(set = 1, binding = 8) uniform sampler2D tex[16];
 layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 vec3 sample_texture(uint instance, vec2 uv) {
     return texture(tex[texture_indices.data[instance]], uv).rgb;
 }
+#line 7
+
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
     material_payload.surface_color = vec3(1.0);
-    material_payload.emission = vec3(10.0);
+    material_payload.emission = vec3(1.0) * 25.0;
 
     material_payload.direction = vec3(0);
+    material_payload.sample_pdf = 1.0;
 }

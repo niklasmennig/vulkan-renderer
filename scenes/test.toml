@@ -25,6 +25,9 @@
     [materials.light]
     path = "./shaders/spirv/material_light.spv"
 
+    [materials.phong]
+    path = "./shaders/spirv/material_phong.spv"
+
 [instances]
     [instances.wallLeft]
     mesh = "plane"
@@ -45,7 +48,14 @@
     position = [0.0, 0.0, 1.0]
     rotation = [-90.0, 0.0, 0.0]
     texture = "checker"
-    material = "lambertian"
+    material = "mirror"
+
+    # [instances.wallFront]
+    # mesh = "plane"
+    # position = [0.0, 0.0, -1.0]
+    # rotation = [90.0, 0.0, 0.0]
+    # texture = "checker"
+    # material = "mirror"
 
     [instances.wallTop]
     mesh = "plane"
@@ -61,8 +71,16 @@
     texture = "checker"
     material = "lambertian"
 
-    [instances.sphere2]
+    [instances.sphere]
     mesh = "sphere"
     position = [0.0, 0.0, 0.0]
+    scale = [0.2, 0.2, 0.2]
     texture = "sus"
     material = "light"
+
+    [instances.sphere2]
+    mesh = "sphere"
+    position = [0.0, -0.5, 0.3]
+    scale = [0.2, 0.2, 0.2]
+    texture = "sus"
+    material = "phong"
