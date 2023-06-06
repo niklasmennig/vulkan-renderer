@@ -98,7 +98,7 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+float seed_random( inout float rnd ) { float val = random(rnd); rnd = val; return val; }
 #line 16
 
 struct RayPayload
@@ -189,7 +189,7 @@ void main() {
     ndc.y *= -1;
 
 
-    int max_iterations = 6;
+    int max_iterations = 10;
 
     // initialize path
     vec3 color = vec3(0.0, 0.0, 0.0);
@@ -205,7 +205,7 @@ void main() {
         if (length(ray_direction) < epsilon) break;
 
         trace(ray_origin, ray_direction);
-        float cosine_term = max(0, dot(-ray_direction, payload.normal));
+        float cosine_term = abs(dot(-ray_direction, payload.normal));
 
         if (payload.hit) {
             // surface hit
@@ -216,6 +216,11 @@ void main() {
             material_payload.normal = payload.normal;
             material_payload.uv = payload.uv;
             material_payload.seed = payload.seed;
+
+            material_payload.emission = vec3(0);
+            material_payload.sample_direction = vec3(0);
+            material_payload.surface_color = vec3(0);
+            material_payload.sample_pdf = 0;
 
             uint material_id = material_indices.data[payload.instance];
             executeCallableEXT(material_id,0);

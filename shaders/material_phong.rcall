@@ -11,8 +11,7 @@ layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
-    float k_diffuse = 0.5;
-    float k_specular = 0.5;
+    vec3 specular_tint = vec3(1);
 
     float n = 12.0;
 

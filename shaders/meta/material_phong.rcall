@@ -77,7 +77,7 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+float seed_random( inout float rnd ) { float val = random(rnd); rnd = val; return val; }
 #line 5
 
 struct RayPayload
@@ -152,8 +152,7 @@ layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
-    float k_diffuse = 0.5;
-    float k_specular = 0.5;
+    vec3 specular_tint = vec3(1);
 
     float n = 12.0;
 

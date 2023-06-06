@@ -48,7 +48,7 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
 float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd * 3311.432); rnd = val; return val; }
+float seed_random( inout float rnd ) { float val = random(rnd); rnd = val; return val; }
 #line 9
 
 struct RayPayload
