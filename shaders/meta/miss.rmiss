@@ -21,13 +21,6 @@ uint hash( uint x ) {
 }
 
 
-// Compound versions of the hashing algorithm I whipped together.
-uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
-uint hash( uvec3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
-uint hash( uvec4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
-
-
-
 // Construct a float with half-open range [0:1] using low 23 bits.
 // All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
 float floatConstruct( uint m ) {
@@ -45,17 +38,16 @@ float floatConstruct( uint m ) {
 
 // Pseudo-random value in half-open range [0:1].
 float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
-float random( vec2  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float random( vec3  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float random( vec4  v ) { return floatConstruct(hash(floatBitsToUint(v))); }
-float seed_random( inout float rnd ) { float val = random(rnd); rnd = val; return val; }
+
+
+float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 #line 9
 
 struct RayPayload
 {
     // ray data
     uint depth;
-    float seed;
+    uint seed;
     bool hit;
     
     // hit data
@@ -69,7 +61,7 @@ struct RayPayload
 struct MaterialPayload
 {
     // ray data
-    float seed;
+    uint seed;
 
     // input data
     uint instance;

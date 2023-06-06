@@ -60,7 +60,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    float seed = random(vec4(gl_LaunchIDEXT.x * 135.2131, gl_LaunchIDEXT.y * 465.354, push_constants.time * 1.251431, push_constants.clear_accumulated * 0.24644545));
+    uint seed = gl_LaunchIDEXT.x * 313 + gl_LaunchIDEXT.y * 12 + uint(push_constants.time) * 543 + push_constants.clear_accumulated * 78;
 
     vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);

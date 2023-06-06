@@ -2,7 +2,7 @@ struct RayPayload
 {
     // ray data
     uint depth;
-    float seed;
+    uint seed;
     bool hit;
     
     // hit data
@@ -16,7 +16,7 @@ struct RayPayload
 struct MaterialPayload
 {
     // ray data
-    float seed;
+    uint seed;
 
     // input data
     uint instance;
