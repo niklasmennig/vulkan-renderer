@@ -6,18 +6,22 @@
 ~include "shaders/payload.glsl"
 ~include "shaders/texture_data.glsl"
 ~include "shaders/sampling.glsl"
+~include "shaders/fresnel.glsl"
 
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
-    if (seed_random(material_payload.seed) < 0.00) {
+    float eta = 1.01 / 1.0;
+    float cos_o = dot(material_payload.direction, material_payload.normal);
+    FresnelTerm f = fresnel(eta, cos_o);
+
+    if (seed_random(material_payload.seed) <= f.factor) {
         // reflection
         vec3 reflection = reflect(material_payload.direction, material_payload.normal);
         material_payload.sample_direction = reflection;
     } else {
         // refraction
-        float eta = 1.0 / 1.5;
         vec3 refraction;
         if (dot(material_payload.direction, material_payload.normal) < 0) {
             refraction = refract(material_payload.direction, material_payload.normal, eta);
