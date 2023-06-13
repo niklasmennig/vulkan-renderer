@@ -181,7 +181,7 @@ void main() {
     ndc.y *= -1;
 
 
-    int max_iterations = 10;
+    int max_iterations = 5;
 
     // initialize path
     vec3 color = vec3(0.0, 0.0, 0.0);
@@ -224,6 +224,7 @@ void main() {
         if (length(material_payload.emission) > epsilon) {
             // emissive surface hit
             color += contribution * material_payload.emission;
+            break;
         }
 
         // sample BSDF for light bounce
@@ -238,7 +239,7 @@ void main() {
             if (seed_random(payload.seed) < rr) {
                 break;
             }
-            contribution /= 1.0 - rr;
+            contribution /= (1.0 - rr);
         }
     }
 

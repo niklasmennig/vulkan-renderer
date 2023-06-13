@@ -7,6 +7,8 @@
 
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_obj.h"
+#include "loaders/json.hpp"
+using json = nlohmann::json;
 
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -348,6 +350,31 @@ void VulkanApplication::create_default_descriptor_writes() {
     vkUpdateDescriptorSets(logical_device, 1, &descriptor_write_as, 0, nullptr);
 
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
+
+    // load shader parameter data
+    std::cout << "Loading shader parameter data" << std::endl;
+    std::ifstream parameter_file("shaders/meta/params.json");
+    json param_data = json::parse(parameter_file);
+    std::cout << "Parsed shader parameter data" << std::endl;
+
+    for (auto& [key, value] : param_data.items()) {
+        if (value["type"] == "float") {
+            shader_params_float.push_back(1.0);
+        } else if (value["type"] == "vec3") {
+            shader_params_vec3.push_back(vec4(1.0));
+        }
+    }
+
+    if (shader_params_float.size() < 1) shader_params_float.push_back(0);
+    if (shader_params_vec3.size() < 1) shader_params_vec3.push_back(vec4(0));
+
+    shader_param_float_buffer = device.create_buffer(sizeof(float) * shader_params_float.size());
+    shader_param_float_buffer.set_data(shader_params_float.data());
+    shader_param_vec3_buffer = device.create_buffer(sizeof(vec4) * shader_params_vec3.size());
+    shader_param_vec3_buffer.set_data(shader_params_vec3.data());
+
+    pipeline.set_descriptor_buffer_binding("shader_parameters_float", shader_param_float_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("shader_parameters_vec3", shader_param_vec3_buffer, BufferType::Storage);
 
     // prepare mesh data for buffers
     std::vector<vec4> vertices;
@@ -749,9 +776,26 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+
+    ImGui::Begin("Control");
+    ImGui::Text("Shader Parameters");
+
+    for (int i = 0; i < shader_params_float.size(); i++) {
+        std::string name = "param_float_" + std::to_string(i);
+        ImGui::DragFloat(name.c_str(), &shader_params_float[i], 0.01, 0.1, 10);
+    }
+
+    for (int i = 0; i < shader_params_vec3.size(); i++) {
+        std::string name = "param_vec3_" + std::to_string(i);
+        ImGui::ColorEdit3(name.c_str(), &shader_params_vec3[i].x);
+    }
+
+    ImGui::End();
 
     ImGui::Render();
+
+    shader_param_vec3_buffer.set_data(shader_params_vec3.data());
+    shader_param_float_buffer.set_data(shader_params_float.data());
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
     vkCmdEndRenderPass(command_buffer);
@@ -1351,6 +1395,8 @@ void VulkanApplication::setup() {
                    .add_descriptor("out_image", 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
                    .add_descriptor("camera_parameters", 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+                   .add_descriptor("shader_parameters_float", 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
+                   .add_descriptor("shader_parameters_vec3", 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_vertices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertex_indices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1512,6 +1558,8 @@ void VulkanApplication::cleanup() {
     for (auto mesh = created_meshes.begin(); mesh != created_meshes.end(); mesh++) {
         mesh->free();
     }
+    shader_param_float_buffer.free();
+    shader_param_vec3_buffer.free();
     vertex_buffer.free();
     vertex_index_buffer.free();
     normal_buffer.free();

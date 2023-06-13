@@ -174,11 +174,14 @@ FresnelTerm fresnel(float eta, float cos_i) {
 }
 #line 9
 
+layout(set = 0, binding = 3) readonly buffer FloatParams {float data[];} float_params;
+layout(set = 0, binding = 4) readonly buffer Vec3Params {vec4 data[];} vec3_params;
+
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
-    float eta = 1.01 / 1.0;
+    float eta = float_params.data[0];
     float cos_o = dot(material_payload.direction, material_payload.normal);
     FresnelTerm f = fresnel(eta, cos_o);
 

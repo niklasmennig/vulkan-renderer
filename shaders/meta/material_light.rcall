@@ -115,12 +115,15 @@ vec3 sample_texture(uint instance, vec2 uv) {
 }
 #line 7
 
+layout(set = 0, binding = 3) readonly buffer FloatParams {float data[];} float_params;
+layout(set = 0, binding = 4) readonly buffer Vec3Params {vec4 data[];} vec3_params;
+
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
     material_payload.surface_color = vec3(1.0);
-    material_payload.emission = vec3(1.0) * 10.0;
+    material_payload.emission = vec3_params.data[0].xyz * float_params.data[1];
 
     material_payload.direction = vec3(0);
     material_payload.sample_pdf = 1.0;

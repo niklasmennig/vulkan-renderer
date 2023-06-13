@@ -122,6 +122,10 @@ struct VulkanApplication {
 
     Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_index_buffer;
 
+    std::vector<float> shader_params_float;
+    std::vector<vec4> shader_params_vec3;
+    Buffer shader_param_float_buffer, shader_param_vec3_buffer;
+
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 

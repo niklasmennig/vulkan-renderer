@@ -8,11 +8,13 @@
 ~include "shaders/sampling.glsl"
 ~include "shaders/fresnel.glsl"
 
+~parameter float eta
+
 layout(location = 0) callableDataInEXT MaterialPayload material_payload;
 
 
 void main() {
-    float eta = 1.01 / 1.0;
+    float eta = ~eta;
     float cos_o = dot(material_payload.direction, material_payload.normal);
     FresnelTerm f = fresnel(eta, cos_o);
 
