@@ -3,7 +3,7 @@
 float epsilon = 0.001f;
 float ray_max = 1000.0f;
 
-uint max_bounces = 6;
+uint max_depth = 0;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)

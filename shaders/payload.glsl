@@ -1,15 +1,9 @@
 struct RayPayload
 {
-    // ray data
+    vec3 color;
+    vec3 contribution;
+
     uint depth;
-    uint seed;
-    bool hit;
-    
-    // hit data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
 };
 
 

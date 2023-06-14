@@ -1,14 +1,1 @@
-{
-    "material_glass.rcall:eta": {
-        "type": "float",
-        "offset": 0
-    },
-    "material_light.rcall:light_color": {
-        "type": "vec3",
-        "offset": 0
-    },
-    "material_light.rcall:light_intensity": {
-        "type": "float",
-        "offset": 1
-    }
-}
+{}

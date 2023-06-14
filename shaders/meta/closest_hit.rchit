@@ -2,18 +2,46 @@
 #extension GL_EXT_ray_tracing : enable
 
 
+#define PI 3.1415926535897932384626433832795
+
+float epsilon = 0.001f;
+float ray_max = 1000.0f;
+
+uint max_depth = 0;
+
+// taken from https://www.shadertoy.com/view/tlVczh
+void basis(in vec3 n, out vec3 f, out vec3 r)
+{
+   //looks good but has this ugly branch
+  if(n.z < -0.99995)
+    {
+        f = vec3(0.0 , -1.0, 0.0);
+        r = vec3(-1.0, 0.0, 0.0);
+    }
+    else
+    {
+    	float a = 1.0/(1.0 + n.z);
+    	float b = -n.x*n.y*a;
+    	f = vec3(1.0 - n.x*n.x*a, b, -n.x);
+    	r = vec3(b, 1.0 - n.y*n.y*a , -n.y);
+    }
+
+    f = normalize(f);
+    r = normalize(r);
+}
+
+// https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
+float luminance(vec3 color) {
+    return (0.299*color.r + 0.587*color.g + 0.114*color.b);
+}
+#line 4
+
 struct RayPayload
 {
-    // ray data
+    vec3 color;
+    vec3 contribution;
+
     uint depth;
-    uint seed;
-    bool hit;
-    
-    // hit data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
 };
 
 
@@ -35,7 +63,7 @@ struct MaterialPayload
     vec3 sample_direction;
     float sample_pdf;
 };
-#line 4
+#line 5
 
 layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = 1, binding = 1) readonly buffer VertexIndexData {uint data[];} vertex_indices;
@@ -93,20 +121,50 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
-#line 5
+#line 6
+
+layout(set = 1, binding = 8) uniform sampler2D tex[16];
+layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
+
+vec3 sample_texture(uint instance, vec2 uv) {
+    return texture(tex[texture_indices.data[instance]], uv).rgb;
+}
+#line 7
 
 hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
+layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
 void main() {
     vec3 position = get_vertex_position(gl_InstanceID, barycentrics);
     vec3 normal = get_vertex_normal(gl_InstanceID, barycentrics);
     vec2 uv = get_vertex_uv(gl_InstanceID, barycentrics);
+    uint instance = gl_InstanceID;
 
-    payload.hit = true;
-    payload.instance = gl_InstanceID;
-    payload.position = position;
-    payload.normal = normal;
-    payload.uv = uv;
+    vec3 ray_out = gl_WorldRayDirectionEXT;
+
+    payload.contribution = payload.contribution * 0.5;
+    payload.color = payload.color + payload.contribution * sample_texture(instance, uv);
+    payload.color = vec3(1.0) * sample_texture(instance, uv) * abs(dot(ray_out, normal));
+    vec3 new_origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    vec3 new_direction = reflect(gl_WorldRayDirectionEXT, normal);
+
+    if (payload.depth < max_depth) {
+        payload.depth = payload.depth + 1;
+        traceRayEXT(
+                as,
+                gl_RayFlagsOpaqueEXT,
+                0xff,
+                0,
+                0,
+                0,
+                new_origin,
+                epsilon,
+                new_direction,
+                ray_max,
+                0
+            );
+    }
+
 }

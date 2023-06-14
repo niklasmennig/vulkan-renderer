@@ -4,6 +4,7 @@ set(SRC_RENDERER
     ${SRC_IMGUI}
     src/image.cpp
     src/loaders/geometry_obj.cpp
+    src/loaders/geometry_gltf.cpp
     src/loaders/image.cpp
     src/loaders/scene.cpp
     src/buffer.cpp

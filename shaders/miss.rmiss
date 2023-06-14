@@ -12,5 +12,5 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload.hit = false;
+    payload.color = vec3(0.2);
 }

@@ -7,6 +7,7 @@
 
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_obj.h"
+#include "loaders/geometry_gltf.h"
 #include "loaders/json.hpp"
 using json = nlohmann::json;
 
@@ -1300,6 +1301,9 @@ void VulkanApplication::setup() {
     std::filesystem::path scene_path("./scenes/test.toml");
     loaded_scene_data = loaders::load_scene_description(scene_path.string());
 
+    std::filesystem::path gltf_path("./scenes/gltf/marble_bust/marble_bust_01_4k.gltf");
+    GLTFData gltf = loaders::load_gltf(gltf_path.string());
+
     for (auto tex_path : loaded_scene_data.texture_paths) {
         auto full_texture_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tex_path));
         loaded_textures.push_back(loaders::load_image(&device, full_texture_path.string()));
@@ -1321,9 +1325,11 @@ void VulkanApplication::setup() {
 
     // build blas of loaded meshes
     for (auto tup : loaded_scene_data.mesh_paths) {
-        auto full_mesh_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tup));
-        LoadedMeshData loaded_mesh = loaders::load_obj(full_mesh_path.string());
-        MeshData mesh_data = create_mesh_data(loaded_mesh);
+        //auto full_mesh_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tup));
+        //LoadedMeshData loaded_mesh = loaders::load_obj(full_mesh_path.string());
+        // MeshData mesh_data = create_mesh_data(loaded_mesh);
+        LoadedMeshData loaded_mesh = gltf.get_loaded_mesh_data();
+        MeshData mesh_data = create_mesh_data(gltf.vertices, gltf.indices, gltf.normals, gltf.indices, gltf.uvs, gltf.indices);
         loaded_mesh_data.push_back(loaded_mesh);
         loaded_mesh_index[std::get<0>(tup)] = loaded_mesh_data.size() - 1;
         created_meshes.push_back(mesh_data);
@@ -1393,7 +1399,7 @@ void VulkanApplication::setup() {
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
                    // framework descriptors (set 0)
                    .add_descriptor("out_image", 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+                   .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("camera_parameters", 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    .add_descriptor("shader_parameters_float", 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
                    .add_descriptor("shader_parameters_vec3", 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
@@ -1406,20 +1412,13 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_texcoord_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_data_offsets", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_offset_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR, 16)
-                   .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR)
+                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
+                   .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("material_indices", 1, 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")
                    .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/spirv/miss.spv");
-    
-    uint32_t index = 0;
-    for (auto material : loaded_scene_data.material_paths) {
-        pipeline_builder.add_stage(VK_SHADER_STAGE_CALLABLE_BIT_KHR, std::get<1>(material));
-        loaded_material_index[std::get<0>(material)] = index;
-        index++;
-    }
 
     pipeline = pipeline_builder.build();
     create_default_descriptor_writes();

@@ -10,7 +10,7 @@ precision highp float;
 float epsilon = 0.001f;
 float ray_max = 1000.0f;
 
-uint max_bounces = 6;
+uint max_depth = 0;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
@@ -95,16 +95,10 @@ float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd
 
 struct RayPayload
 {
-    // ray data
+    vec3 color;
+    vec3 contribution;
+
     uint depth;
-    uint seed;
-    bool hit;
-    
-    // hit data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
 };
 
 
@@ -128,32 +122,12 @@ struct MaterialPayload
 };
 #line 17
 layout(location = 0) rayPayloadEXT RayPayload payload;
-layout(location = 0) callableDataEXT MaterialPayload material_payload;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2D img;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 2) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
-
-layout(set = 1, binding = 10) readonly buffer MaterialIndexData {uint data[];} material_indices;
-
-
-void trace(vec3 origin, vec3 direction) {
-     traceRayEXT(
-                as,
-                gl_RayFlagsOpaqueEXT,
-                0xff,
-                0,
-                0,
-                0,
-                origin,
-                epsilon,
-                direction,
-                ray_max,
-                0
-            );
-}
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -180,75 +154,29 @@ void main() {
     vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
     ndc.y *= -1;
 
-
-    int max_iterations = 5;
-
-    // initialize path
-    vec3 color = vec3(0.0, 0.0, 0.0);
-    vec3 contribution = vec3(1);
-
     // initialize payload
     vec3 ray_origin = raygen_data.camera.origin.xyz;
     vec3 ray_direction = compute_ray_direction(ndc);
-    
-    payload.seed = seed;
 
-    for (int iteration = 0; iteration < max_iterations; iteration++) {
-        if (length(ray_direction) < epsilon) break;
+    payload.color = vec3(0);
+    payload.contribution = vec3(1);
+    payload.depth = 0;
 
-        trace(ray_origin, ray_direction);
-        float cosine_term = abs(dot(-ray_direction, payload.normal));
-
-        if (payload.hit) {
-            // surface hit
-            // prepare material call
-            material_payload.instance = payload.instance;
-            material_payload.position = payload.position;
-            material_payload.direction = ray_direction;
-            material_payload.normal = payload.normal;
-            material_payload.uv = payload.uv;
-            material_payload.seed = payload.seed;
-
-            material_payload.emission = vec3(0);
-            material_payload.sample_direction = vec3(0);
-            material_payload.surface_color = vec3(0);
-            material_payload.sample_pdf = 0;
-
-            uint material_id = material_indices.data[payload.instance];
-            executeCallableEXT(material_id,0);
-        } else {
-            // miss
-            break;
-        }
-
-        if (length(material_payload.emission) > epsilon) {
-            // emissive surface hit
-            color += contribution * material_payload.emission;
-            break;
-        }
-
-        // sample BSDF for light bounce
-        contribution *= material_payload.surface_color * cosine_term / material_payload.sample_pdf;
-
-        ray_origin = payload.position;
-        ray_direction = material_payload.sample_direction;
-
-        // russian roulette
-        if (iteration > 3) {
-            float rr = max(0.05, luminance(contribution));
-            if (seed_random(payload.seed) < rr) {
-                break;
-            }
-            contribution /= (1.0 - rr);
-        }
-    }
+    traceRayEXT(
+                as,
+                gl_RayFlagsOpaqueEXT,
+                0xff,
+                0,
+                0,
+                0,
+                ray_origin,
+                epsilon,
+                ray_direction,
+                ray_max,
+                0
+            );
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
-    vec3 old_pixel = imageLoad(img, img_coord).rgb;
 
-    vec3 frame_color = color;
-    int frame_number = (-push_constants.clear_accumulated);
-    if (push_constants.clear_accumulated <= 0) frame_color = ((old_pixel * frame_number) + color) / (frame_number + 1);
-
-    imageStore(img, img_coord, vec4(frame_color, 1.0));
+    imageStore(img, img_coord, vec4(payload.color, 1.0));
 }

@@ -45,16 +45,10 @@ float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd
 
 struct RayPayload
 {
-    // ray data
+    vec3 color;
+    vec3 contribution;
+
     uint depth;
-    uint seed;
-    bool hit;
-    
-    // hit data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
 };
 
 
@@ -81,5 +75,5 @@ struct MaterialPayload
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload.hit = false;
+    payload.color = vec3(0.2);
 }
