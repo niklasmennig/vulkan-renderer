@@ -215,7 +215,7 @@ TLAS VulkanApplication::build_tlas() {
 
     int count = 0;
     for (InstanceData instance : loaded_scene_data.instances) {
-        BLAS& as = loaded_blas[instance.mesh_name];
+        BLAS& as = loaded_blas[instance.object_name];
 
         VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
         blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
@@ -387,7 +387,6 @@ void VulkanApplication::create_default_descriptor_writes() {
     std::vector<uint32_t> mesh_data_offsets;
     std::vector<uint32_t> mesh_offset_indices;
     std::vector<uint32_t> texture_indices;
-    std::vector<uint32_t> material_indices;
 
     // push 0 offset for first instance to align offset positions with instance ids (eliminate need for 'if' in mesh_data shader functions)
     mesh_data_offsets.push_back(vertices.size());
@@ -416,9 +415,13 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // index of mesh and texture used by instance
     for (auto instance : loaded_scene_data.instances) {
-        mesh_offset_indices.push_back(loaded_mesh_index[instance.mesh_name]);
-        texture_indices.push_back(loaded_texture_index[instance.texture_name]);
-        material_indices.push_back(loaded_material_index[instance.material_name]);
+        mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name]);
+
+        // pairs of 3 textures: diffuse, normal, roughness
+        auto tex_id = loaded_texture_index[instance.object_name];
+        texture_indices.push_back(tex_id + 0);
+        texture_indices.push_back(tex_id + 1);
+        texture_indices.push_back(tex_id + 2);
     }
 
     vertex_buffer = device.create_buffer(sizeof(vec4) * vertices.size());
@@ -439,8 +442,6 @@ void VulkanApplication::create_default_descriptor_writes() {
     mesh_offset_index_buffer.set_data(mesh_offset_indices.data());
     texture_index_buffer = device.create_buffer(sizeof(uint32_t) * texture_indices.size());
     texture_index_buffer.set_data(texture_indices.data());
-    material_index_buffer = device.create_buffer(sizeof(uint32_t) * material_indices.size());
-    material_index_buffer.set_data(material_indices.data());
 
     pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_vertex_indices", vertex_index_buffer, BufferType::Storage);
@@ -452,7 +453,6 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("material_indices", material_index_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -1207,6 +1207,11 @@ void VulkanApplication::setup() {
         descriptor_indexing_features.runtimeDescriptorArray = VK_TRUE;
         as_features.pNext = &descriptor_indexing_features;
 
+        VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {};
+        ray_query_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+        ray_query_features.rayQuery = VK_TRUE;
+        descriptor_indexing_features.pNext = &ray_query_features;
+
         device_create_info.pNext = &physical_features2;
 
         if (vkCreateDevice(physical_device, &device_create_info, nullptr, &logical_device) != VK_SUCCESS)
@@ -1301,15 +1306,6 @@ void VulkanApplication::setup() {
     std::filesystem::path scene_path("./scenes/test.toml");
     loaded_scene_data = loaders::load_scene_description(scene_path.string());
 
-    std::filesystem::path gltf_path("./scenes/gltf/marble_bust/marble_bust_01_4k.gltf");
-    GLTFData gltf = loaders::load_gltf(gltf_path.string());
-
-    for (auto tex_path : loaded_scene_data.texture_paths) {
-        auto full_texture_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tex_path));
-        loaded_textures.push_back(loaders::load_image(&device, full_texture_path.string()));
-        loaded_texture_index[std::get<0>(tex_path)] = loaded_textures.size() - 1;
-    }
-
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
 
@@ -1323,17 +1319,26 @@ void VulkanApplication::setup() {
         throw std::runtime_error("error beginning command buffer");
     }
 
+    // load hdri
+    loaded_textures.push_back(loaders::load_image(&device, "./scenes/hdri/vestibule_4k.hdr"));
+
     // build blas of loaded meshes
-    for (auto tup : loaded_scene_data.mesh_paths) {
-        //auto full_mesh_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(tup));
-        //LoadedMeshData loaded_mesh = loaders::load_obj(full_mesh_path.string());
-        // MeshData mesh_data = create_mesh_data(loaded_mesh);
+    for (auto object_path : loaded_scene_data.object_paths) {
+        auto full_object_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(object_path));
+        auto object_name = std::get<0>(object_path);
+        GLTFData gltf = loaders::load_gltf(full_object_path.string());
         LoadedMeshData loaded_mesh = gltf.get_loaded_mesh_data();
         MeshData mesh_data = create_mesh_data(gltf.vertices, gltf.indices, gltf.normals, gltf.indices, gltf.uvs, gltf.indices);
         loaded_mesh_data.push_back(loaded_mesh);
-        loaded_mesh_index[std::get<0>(tup)] = loaded_mesh_data.size() - 1;
+        loaded_mesh_index[object_name] = loaded_mesh_data.size() - 1;
         created_meshes.push_back(mesh_data);
-        loaded_blas[std::get<0>(tup)] = build_blas(mesh_data);
+        loaded_blas[object_name] = build_blas(mesh_data);
+        
+        full_object_path.remove_filename();
+        loaded_texture_index[object_name] = loaded_textures.size();
+        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_diffuse_path).string()));
+        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_normal_path).string()));
+        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_roughness_path).string()));
     }
 
     for (Image i : loaded_textures) {
@@ -1412,9 +1417,8 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_texcoord_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_data_offsets", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_offset_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 16)
+                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 16)
                    .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("material_indices", 1, 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")
@@ -1467,7 +1471,7 @@ void VulkanApplication::run() {
             camera_movement -= camera_data.up;
             render_clear_accumulated = 4;
         }
-        camera_data.origin += camera_movement * 0.1f;
+        camera_data.origin += camera_movement * 0.02f;
 
         // camera rotation
         // horizontal rotation

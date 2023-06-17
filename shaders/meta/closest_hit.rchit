@@ -1,29 +1,30 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 
 #define PI 3.1415926535897932384626433832795
 
-float epsilon = 0.001f;
+float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 0;
+uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
 {
    //looks good but has this ugly branch
-  if(n.z < -0.99995)
+  if(n.y < -0.99995)
     {
-        f = vec3(0.0 , -1.0, 0.0);
+        f = vec3(0.0 , 0.0, -1.0);
         r = vec3(-1.0, 0.0, 0.0);
     }
     else
     {
-    	float a = 1.0/(1.0 + n.z);
-    	float b = -n.x*n.y*a;
+    	float a = 1.0/(1.0 + n.y);
+    	float b = -n.x*n.z*a;
     	f = vec3(1.0 - n.x*n.x*a, b, -n.x);
-    	r = vec3(b, 1.0 - n.y*n.y*a , -n.y);
+    	r = vec3(b, 1.0 - n.y*n.z*a , -n.z);
     }
 
     f = normalize(f);
@@ -34,7 +35,7 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
 float luminance(vec3 color) {
     return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }
-#line 4
+#line 5
 
 struct RayPayload
 {
@@ -42,28 +43,9 @@ struct RayPayload
     vec3 contribution;
 
     uint depth;
-};
-
-
-struct MaterialPayload
-{
-    // ray data
     uint seed;
-
-    // input data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
-    vec3 direction;
-
-    // output data
-    vec3 emission;
-    vec3 surface_color;
-    vec3 sample_direction;
-    float sample_pdf;
 };
-#line 5
+#line 6
 
 layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = 1, binding = 1) readonly buffer VertexIndexData {uint data[];} vertex_indices;
@@ -121,15 +103,89 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
-#line 6
+#line 7
 
 layout(set = 1, binding = 8) uniform sampler2D tex[16];
 layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
-vec3 sample_texture(uint instance, vec2 uv) {
-    return texture(tex[texture_indices.data[instance]], uv).rgb;
+#define TEXTURE_OFFSET_DIFFUSE 0
+#define TEXTURE_OFFSET_NORMAL 1
+#define TEXTURE_OFFSET_ROUGHNESS 2
+
+vec3 sample_texture(uint id, vec2 uv) {
+    return texture(tex[id], uv).rgb;
 }
-#line 7
+
+vec3 sample_texture(uint instance, vec2 uv, uint offset) {
+    return texture(tex[texture_indices.data[instance * 3] + offset], uv).rgb;
+}
+#line 8
+
+// taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+#define PI 3.1415926535897932384626433832795
+
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
+}
+
+// Pseudo-random value in half-open range [0:1].
+float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
+
+float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+
+vec3 random_point_in_unit_sphere(inout uint rnd) {
+    while (true) {
+        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
+        if (length(p) <= 1) {
+            return p;
+        }
+    }
+}
+#line 9
+
+vec3 sample_cosine_hemisphere(float u1, float u2)
+{
+    float theta = 0.5 * acos(-2.0 * u1 + 1.0);
+    float phi = u2 * 2.0 * PI;
+
+    float x = cos(phi) * sin(theta);
+    float y = sin(phi) * sin(theta);
+    float z = cos(theta);
+
+    return vec3(x, y, z);
+}
+
+// taken from https://www.cim.mcgill.ca/~derek/ecse689_a3.html
+vec3 sample_power_hemisphere(float u1, float u2, float n)
+{
+    float alpha = sqrt(1.0 - pow(u1, 2.0 / (n+1.0)));
+
+    float x = alpha * cos(2.0 * PI * u2);
+    float y = alpha * sin(2.0 * PI * u2);
+    float z = pow(u1, 1.0 / (n+1.0));
+
+    return vec3(x, y, z);
+}
+#line 10
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -137,18 +193,50 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
 void main() {
-    vec3 position = get_vertex_position(gl_InstanceID, barycentrics);
-    vec3 normal = get_vertex_normal(gl_InstanceID, barycentrics);
-    vec2 uv = get_vertex_uv(gl_InstanceID, barycentrics);
     uint instance = gl_InstanceID;
+    vec3 position = get_vertex_position(instance, barycentrics);
+    vec3 normal = get_vertex_normal(instance, barycentrics);
+    vec2 uv = get_vertex_uv(instance, barycentrics);
 
-    vec3 ray_out = gl_WorldRayDirectionEXT;
+    vec3 ray_out = -gl_WorldRayDirectionEXT;
+    vec3 new_origin = position;
 
-    payload.contribution = payload.contribution * 0.5;
-    payload.color = payload.color + payload.contribution * sample_texture(instance, uv);
-    payload.color = vec3(1.0) * sample_texture(instance, uv) * abs(dot(ray_out, normal));
-    vec3 new_origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3 new_direction = reflect(gl_WorldRayDirectionEXT, normal);
+    vec3 t, bt;
+    basis(normal, t, bt);
+
+    //normal mapping
+    mat3 tbn = mat3(t,bt,normal);
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    vec3 mapped_normal = normalize(tbn * sampled_normal);
+    normal = mapped_normal;
+
+    vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
+    float roughness = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).g;
+
+    // direct light
+    vec3 light_position = vec3(5,0,1);
+    vec3 light_intensity = vec3(50.0);
+    vec3 light_dir = light_position - new_origin;
+    float light_dist = length(light_dir);
+    light_dir /= light_dist;
+    float light_attenuation = 1.0 / (light_dist * light_dist);
+
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin + normal * epsilon, 0, light_dir, light_dist - epsilon);
+    while(rayQueryProceedEXT(ray_query)) {};
+    bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
+
+    if (!in_shadow) {
+        payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+    }
+
+    // indirect light
+    vec3 sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
+    float pdf = 1.0 / PI;
+    
+    vec3 new_direction = normalize(t * sample_reflection.x + bt * sample_reflection.y + normal * sample_reflection.z);
+
+    payload.contribution *= base_color * max(0, dot(new_direction, normal)) / pdf;
 
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;

@@ -4,6 +4,7 @@
 #include "loaders/image.h"
 #include "loaders/scene.h"
 #include "loaders/geometry_obj.h"
+#include "loaders/geometry_gltf.h"
 #include "pipeline_builder.h"
 
 #include <vector>
@@ -112,10 +113,10 @@ struct VulkanApplication {
     SceneData loaded_scene_data;
     std::vector<LoadedMeshData> loaded_mesh_data;
     std::unordered_map<std::string, uint32_t> loaded_mesh_index;
+    std::unordered_map<std::string, GLTFData> loaded_objects;
     std::vector<MeshData> created_meshes;
     std::vector<Image> loaded_textures;
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
-    std::unordered_map<std::string, uint32_t> loaded_material_index;
 
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;

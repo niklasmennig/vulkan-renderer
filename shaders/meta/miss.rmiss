@@ -20,7 +20,6 @@ uint hash( uint x ) {
     return x;
 }
 
-
 // Construct a float with half-open range [0:1] using low 23 bits.
 // All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
 float floatConstruct( uint m ) {
@@ -34,13 +33,19 @@ float floatConstruct( uint m ) {
     return f - 1.0;                        // Range [0:1]
 }
 
-
-
 // Pseudo-random value in half-open range [0:1].
 float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
-
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+
+vec3 random_point_in_unit_sphere(inout uint rnd) {
+    while (true) {
+        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
+        if (length(p) <= 1) {
+            return p;
+        }
+    }
+}
 #line 9
 
 struct RayPayload
@@ -49,31 +54,36 @@ struct RayPayload
     vec3 contribution;
 
     uint depth;
-};
-
-
-struct MaterialPayload
-{
-    // ray data
     uint seed;
-
-    // input data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
-    vec3 direction;
-
-    // output data
-    vec3 emission;
-    vec3 surface_color;
-    vec3 sample_direction;
-    float sample_pdf;
 };
 #line 10
+
+layout(set = 1, binding = 8) uniform sampler2D tex[16];
+layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
+
+#define TEXTURE_OFFSET_DIFFUSE 0
+#define TEXTURE_OFFSET_NORMAL 1
+#define TEXTURE_OFFSET_ROUGHNESS 2
+
+vec3 sample_texture(uint id, vec2 uv) {
+    return texture(tex[id], uv).rgb;
+}
+
+vec3 sample_texture(uint instance, vec2 uv, uint offset) {
+    return texture(tex[texture_indices.data[instance * 3] + offset], uv).rgb;
+}
+#line 11
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    payload.color = vec3(0.2);
+    vec3 dir = gl_WorldRayDirectionEXT;
+
+    float theta = acos(dir.y);
+    float phi = sign(dir.z) * acos(dir.x / sqrt(dir.x * dir.x + dir.z * dir.z));
+
+    float u = phi / (2.0 * PI);
+    float v = theta / PI;
+
+    payload.color += payload.contribution * sample_texture(0, vec2(u, v));
 }

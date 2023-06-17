@@ -11,7 +11,7 @@ vec3 sample_cosine_hemisphere(float u1, float u2)
 }
 
 // taken from https://www.cim.mcgill.ca/~derek/ecse689_a3.html
-vec3 sample_phong_lobe(float u1, float u2, float n)
+vec3 sample_power_hemisphere(float u1, float u2, float n)
 {
     float alpha = sqrt(1.0 - pow(u1, 2.0 / (n+1.0)));
 

@@ -1,10 +1,13 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 ~include "shaders/common.glsl"
 ~include "shaders/payload.glsl"
 ~include "shaders/mesh_data.glsl"
 ~include "shaders/texture_data.glsl"
+~include "shaders/random.glsl"
+~include "shaders/sampling.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -12,18 +15,50 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
 void main() {
-    vec3 position = get_vertex_position(gl_InstanceID, barycentrics);
-    vec3 normal = get_vertex_normal(gl_InstanceID, barycentrics);
-    vec2 uv = get_vertex_uv(gl_InstanceID, barycentrics);
     uint instance = gl_InstanceID;
+    vec3 position = get_vertex_position(instance, barycentrics);
+    vec3 normal = get_vertex_normal(instance, barycentrics);
+    vec2 uv = get_vertex_uv(instance, barycentrics);
 
-    vec3 ray_out = gl_WorldRayDirectionEXT;
+    vec3 ray_out = -gl_WorldRayDirectionEXT;
+    vec3 new_origin = position;
 
-    payload.contribution = payload.contribution * 0.5;
-    payload.color = payload.color + payload.contribution * sample_texture(instance, uv);
-    payload.color = vec3(1.0) * sample_texture(instance, uv) * abs(dot(ray_out, normal));
-    vec3 new_origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3 new_direction = reflect(gl_WorldRayDirectionEXT, normal);
+    vec3 t, bt;
+    basis(normal, t, bt);
+
+    //normal mapping
+    mat3 tbn = mat3(t,bt,normal);
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    vec3 mapped_normal = normalize(tbn * sampled_normal);
+    normal = mapped_normal;
+
+    vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
+    float roughness = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).g;
+
+    // direct light
+    vec3 light_position = vec3(5,0,1);
+    vec3 light_intensity = vec3(50.0);
+    vec3 light_dir = light_position - new_origin;
+    float light_dist = length(light_dir);
+    light_dir /= light_dist;
+    float light_attenuation = 1.0 / (light_dist * light_dist);
+
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin + normal * epsilon, 0, light_dir, light_dist - epsilon);
+    while(rayQueryProceedEXT(ray_query)) {};
+    bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
+
+    if (!in_shadow) {
+        payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+    }
+
+    // indirect light
+    vec3 sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
+    float pdf = 1.0 / PI;
+    
+    vec3 new_direction = normalize(t * sample_reflection.x + bt * sample_reflection.y + normal * sample_reflection.z);
+
+    payload.contribution *= base_color * max(0, dot(new_direction, normal)) / pdf;
 
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;

@@ -55,6 +55,7 @@ void main() {
     payload.color = vec3(0);
     payload.contribution = vec3(1);
     payload.depth = 0;
+    payload.seed = seed;
 
     traceRayEXT(
                 as,
@@ -71,6 +72,14 @@ void main() {
             );
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
+    int sample_count = -push_constants.clear_accumulated;
+    if (sample_count <= 0) {
+        imageStore(img, img_coord, vec4(payload.color, 1.0));
+    } else {
+        vec3 prev_color = imageLoad(img, img_coord).rgb;
+        vec3 new_color = (prev_color * sample_count + payload.color) / (sample_count + 1);
+        imageStore(img, img_coord, vec4(new_color, 1.0));
+    }
 
-    imageStore(img, img_coord, vec4(payload.color, 1.0));
+    
 }

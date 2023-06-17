@@ -2,6 +2,14 @@
     [objects.bust]
     path = "./gltf/marble_bust/marble_bust_01_4k.gltf"
 
+    [objects.vase]
+    path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
+
 [instances]
     [instances.bust]
     object = "bust"
+
+    [instances.vase]
+    object = "vase"
+    position = [0.5, 0.0, 0.0]
+    scale = [2.5, 2.5, 2.5]

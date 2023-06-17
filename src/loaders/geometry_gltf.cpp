@@ -97,6 +97,8 @@ GLTFData loaders::load_gltf(const std::string path) {
                 const auto textures = model.textures;
                 const auto images = model.images;
                 result.texture_diffuse_path = images[textures[material.pbrMetallicRoughness.baseColorTexture.index].source].uri;
+                result.texture_normal_path = images[textures[material.normalTexture.index].source].uri;
+                result.texture_roughness_path = images[textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source].uri;
             }
 
         }

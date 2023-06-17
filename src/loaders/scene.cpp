@@ -19,37 +19,15 @@ SceneData loaders::load_scene_description(std::string path) {
         throw std::runtime_error(msg.str());
     }
 
-    // meshes
-    std::vector<std::tuple<std::string, std::string>> mesh_paths;
-    auto meshes = scene_table["meshes"].as_table();
+    // objects
+    std::vector<std::tuple<std::string, std::string>> object_paths;
+    auto meshes = scene_table["objects"].as_table();
     for (auto m = meshes->begin(); m != meshes->end(); m++)
     {
         std::string name = m->first.str().data();
-        auto mesh_data = scene_table["meshes"][name];
+        auto mesh_data = scene_table["objects"][name];
         std::string path = mesh_data["path"].as_string()->get();
-        mesh_paths.push_back(std::make_tuple(name, path));
-    }
-
-    // textures
-    std::vector<std::tuple<std::string, std::string>> texture_paths;
-    auto textures = scene_table["textures"].as_table();
-    for (auto m = textures->begin(); m != textures->end(); m++)
-    {
-        std::string name = m->first.str().data();
-        auto texture_data = scene_table["textures"][name];
-        std::string path = texture_data["path"].as_string()->get();
-        texture_paths.push_back(std::make_tuple(name, path));
-    }
-
-    // materials
-    std::vector<std::tuple<std::string, std::string>> material_paths;
-    auto materials = scene_table["materials"].as_table();
-    for (auto m = materials->begin(); m != materials->end(); m++)
-    {
-        std::string name = m->first.str().data();
-        auto material_data = scene_table["materials"][name];
-        std::string path = material_data["path"].as_string()->get();
-        material_paths.push_back(std::make_tuple(name, path));
+        object_paths.push_back(std::make_tuple(name, path));
     }
 
     // instances
@@ -58,18 +36,18 @@ SceneData loaders::load_scene_description(std::string path) {
     for (auto i = instances_table->begin(); i != instances_table->end(); i++) {
         std::string name = i->first.str().data();
         auto data = scene_table["instances"][name];
-        std::string mesh_name = data["mesh"].as_string()->get();
+        std::string object_name = data["object"].as_string()->get();
         InstanceData instance_data;
-        instance_data.mesh_name = mesh_name;
+        instance_data.object_name = object_name;
 
 
         auto data_table = data.as_table();
-        if(data_table->contains("texture")) {
-            instance_data.texture_name = data["texture"].as_string()->get();
-        }
-        if (data_table->contains("material")) {
-            instance_data.material_name = data["material"].as_string()->get();
-        }
+        // if(data_table->contains("texture")) {
+        //     instance_data.texture_name = data["texture"].as_string()->get();
+        // }
+        // if (data_table->contains("material")) {
+        //     instance_data.material_name = data["material"].as_string()->get();
+        // }
 
         mat4 transformation = glm::mat4(1.0);
         if(data_table->contains("position")) {
@@ -101,9 +79,7 @@ SceneData loaders::load_scene_description(std::string path) {
     }
 
     SceneData result;
-    result.mesh_paths = mesh_paths;
-    result.texture_paths = texture_paths;
-    result.material_paths = material_paths;
+    result.object_paths = object_paths;
     result.instances = instances;
     return result;
 }

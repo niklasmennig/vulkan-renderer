@@ -7,26 +7,26 @@ precision highp float;
 
 #define PI 3.1415926535897932384626433832795
 
-float epsilon = 0.001f;
+float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 0;
+uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 void basis(in vec3 n, out vec3 f, out vec3 r)
 {
    //looks good but has this ugly branch
-  if(n.z < -0.99995)
+  if(n.y < -0.99995)
     {
-        f = vec3(0.0 , -1.0, 0.0);
+        f = vec3(0.0 , 0.0, -1.0);
         r = vec3(-1.0, 0.0, 0.0);
     }
     else
     {
-    	float a = 1.0/(1.0 + n.z);
-    	float b = -n.x*n.y*a;
+    	float a = 1.0/(1.0 + n.y);
+    	float b = -n.x*n.z*a;
     	f = vec3(1.0 - n.x*n.x*a, b, -n.x);
-    	r = vec3(b, 1.0 - n.y*n.y*a , -n.y);
+    	r = vec3(b, 1.0 - n.y*n.z*a , -n.z);
     }
 
     f = normalize(f);
@@ -70,7 +70,6 @@ uint hash( uint x ) {
     return x;
 }
 
-
 // Construct a float with half-open range [0:1] using low 23 bits.
 // All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
 float floatConstruct( uint m ) {
@@ -84,13 +83,19 @@ float floatConstruct( uint m ) {
     return f - 1.0;                        // Range [0:1]
 }
 
-
-
 // Pseudo-random value in half-open range [0:1].
 float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
-
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+
+vec3 random_point_in_unit_sphere(inout uint rnd) {
+    while (true) {
+        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
+        if (length(p) <= 1) {
+            return p;
+        }
+    }
+}
 #line 16
 
 struct RayPayload
@@ -99,26 +104,7 @@ struct RayPayload
     vec3 contribution;
 
     uint depth;
-};
-
-
-struct MaterialPayload
-{
-    // ray data
     uint seed;
-
-    // input data
-    uint instance;
-    vec3 position;
-    vec3 normal;
-    vec2 uv;
-    vec3 direction;
-
-    // output data
-    vec3 emission;
-    vec3 surface_color;
-    vec3 sample_direction;
-    float sample_pdf;
 };
 #line 17
 layout(location = 0) rayPayloadEXT RayPayload payload;
@@ -161,6 +147,7 @@ void main() {
     payload.color = vec3(0);
     payload.contribution = vec3(1);
     payload.depth = 0;
+    payload.seed = seed;
 
     traceRayEXT(
                 as,
@@ -177,6 +164,14 @@ void main() {
             );
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
+    int sample_count = -push_constants.clear_accumulated;
+    if (sample_count <= 0) {
+        imageStore(img, img_coord, vec4(payload.color, 1.0));
+    } else {
+        vec3 prev_color = imageLoad(img, img_coord).rgb;
+        vec3 new_color = (prev_color * sample_count + payload.color) / (sample_count + 1);
+        imageStore(img, img_coord, vec4(new_color, 1.0));
+    }
 
-    imageStore(img, img_coord, vec4(payload.color, 1.0));
+    
 }

@@ -11,7 +11,6 @@ uint hash( uint x ) {
     return x;
 }
 
-
 // Construct a float with half-open range [0:1] using low 23 bits.
 // All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
 float floatConstruct( uint m ) {
@@ -25,10 +24,16 @@ float floatConstruct( uint m ) {
     return f - 1.0;                        // Range [0:1]
 }
 
-
-
 // Pseudo-random value in half-open range [0:1].
 float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
-
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+
+vec3 random_point_in_unit_sphere(inout uint rnd) {
+    while (true) {
+        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
+        if (length(p) <= 1) {
+            return p;
+        }
+    }
+}
