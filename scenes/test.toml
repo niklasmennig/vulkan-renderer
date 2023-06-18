@@ -1,6 +1,6 @@
 [objects]
     [objects.bust]
-    path = "./gltf/marble_bust/marble_bust_01_4k.gltf"
+    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     [objects.vase]
     path = "./gltf/brass_vase/brass_vase_03_4k.gltf"

@@ -11,8 +11,9 @@ float ray_max = 1000.0f;
 uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
-void basis(in vec3 n, out vec3 f, out vec3 r)
+mat3 basis(in vec3 n)
 {
+    vec3 f, r;
    //looks good but has this ugly branch
   if(n.y < -0.99995)
     {
@@ -29,6 +30,8 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
 
     f = normalize(f);
     r = normalize(r);
+
+    return mat3(f, r, n);
 }
 
 // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
@@ -162,7 +165,12 @@ vec3 random_point_in_unit_sphere(inout uint rnd) {
 }
 #line 9
 
-vec3 sample_cosine_hemisphere(float u1, float u2)
+struct BSDFSample {
+    vec3 direction;
+    float pdf;
+};
+
+BSDFSample sample_cosine_hemisphere(float u1, float u2)
 {
     float theta = 0.5 * acos(-2.0 * u1 + 1.0);
     float phi = u2 * 2.0 * PI;
@@ -171,11 +179,14 @@ vec3 sample_cosine_hemisphere(float u1, float u2)
     float y = sin(phi) * sin(theta);
     float z = cos(theta);
 
-    return vec3(x, y, z);
+    return BSDFSample(
+        vec3(x, y, z),
+        1.0 / PI
+    );
 }
 
 // taken from https://www.cim.mcgill.ca/~derek/ecse689_a3.html
-vec3 sample_power_hemisphere(float u1, float u2, float n)
+BSDFSample sample_power_hemisphere(float u1, float u2, float n)
 {
     float alpha = sqrt(1.0 - pow(u1, 2.0 / (n+1.0)));
 
@@ -183,9 +194,134 @@ vec3 sample_power_hemisphere(float u1, float u2, float n)
     float y = alpha * sin(2.0 * PI * u2);
     float z = pow(u1, 1.0 / (n+1.0));
 
-    return vec3(x, y, z);
+    return BSDFSample(
+        vec3(x, y, z),
+        1.0 / PI
+    );
 }
 #line 10
+
+//https://www.mathematik.uni-marburg.de/~thormae/lectures/graphics2/graphics_4_3_ger_web.html#1
+vec3 fresnel_schlick(float cosTheta, vec3 F0) {
+  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+} 
+
+float d_ggx(float NoH, float roughness) {
+  float alpha = roughness * roughness;
+  float alpha2 = alpha * alpha;
+  float NoH2 = NoH * NoH;
+  float b = (NoH2 * (alpha2 - 1.0) + 1.0);
+  return alpha2 / (PI * b * b);
+}
+
+float g1_ggx_schlick(float NdotV, float roughness) {
+  //float r = roughness; // original
+  float r = 0.5 + 0.5 * roughness; // Disney remapping
+  float k = (r * r) / 2.0;
+  float denom = NdotV * (1.0 - k) + k;
+  return NdotV / denom;
+}
+
+float g_smith(float NoV, float NoL, float roughness) {
+  float g1_l = g1_ggx_schlick(NoL, roughness);
+  float g1_v = g1_ggx_schlick(NoV, roughness);
+  return g1_l * g1_v;
+}
+
+vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic, float fresnel_reflect, float roughness) {
+    vec3 h = normalize(ray_in + ray_out);
+
+    float no = clamp(dot(normal, ray_out), 0.0, 1.0);
+    float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
+    float nh = clamp(dot(normal, h), 0.0, 1.0);
+    float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+    vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
+    f0 = mix(f0, base_color, metallic);
+
+    // specular
+    vec3 f = fresnel_schlick(oh, f0);
+    float d = d_ggx(nh, roughness);
+    float g = g_smith(no, ni, roughness);
+    vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
+
+    // diffuse
+    vec3 rho = vec3(1.0) - f;
+    rho *= 1.0 - metallic;
+    vec3 diff = rho * base_color / PI;
+
+    return diff + spec;
+}
+
+vec3 sampleGGX(in vec3 V, in vec3 N, 
+              in vec3 baseColor, in float metallicness, 
+              in float fresnelReflect, in float roughness, in vec3 random, out vec3 nextFactor) 
+{
+  if(random.z > 0.5) {
+    // diffuse case
+    
+    // important sampling diffuse
+    // pdf = cos(theta) * sin(theta) / PI
+    float theta = asin(sqrt(random.y));
+    float phi = 2.0 * PI * random.x;
+    // sampled indirect diffuse direction in normal space
+    vec3 localDiffuseDir = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+    vec3 L = basis(N) * localDiffuseDir;  
+    
+     // half vector
+    vec3 H = normalize(V + L);
+    float VoH = clamp(dot(V, H), 0.0, 1.0);     
+    
+    // F0 for dielectics in range [0.0, 0.16] 
+    // default FO is (0.16 * 0.5^2) = 0.04
+    vec3 f0 = vec3(0.16 * (fresnelReflect * fresnelReflect)); 
+    // in case of metals, baseColor contains F0
+    f0 = mix(f0, baseColor, metallicness);    
+    vec3 F = fresnel_schlick(VoH, f0);
+    
+    vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
+    notSpec *= 1.0 - metallicness; // no diffuse for metals
+    vec3 diff = notSpec * baseColor; 
+  
+    nextFactor = notSpec * baseColor;
+    nextFactor *= 2.0; // compensate for splitting diffuse and specular
+    return L;
+    
+  } else {
+    // specular case
+    
+    // important sample GGX
+    // pdf = D * cos(theta) * sin(theta)
+    float a = roughness * roughness;
+    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+    float phi = 2.0 * PI * random.x;
+    
+    vec3 localH = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+    vec3 H = basis(N) * localH;  
+    vec3 L = reflect(-V, H);
+
+    // all required dot products
+    float NoV = clamp(dot(N, V), 0.0, 1.0);
+    float NoL = clamp(dot(N, L), 0.0, 1.0);
+    float NoH = clamp(dot(N, H), 0.0, 1.0);
+    float VoH = clamp(dot(V, H), 0.0, 1.0);     
+    
+    // F0 for dielectics in range [0.0, 0.16] 
+    // default FO is (0.16 * 0.5^2) = 0.04
+    vec3 f0 = vec3(0.16 * (fresnelReflect * fresnelReflect)); 
+    // in case of metals, baseColor contains F0
+    f0 = mix(f0, baseColor, metallicness);
+  
+    // specular microfacet (cook-torrance) BRDF
+    vec3 F = fresnel_schlick(VoH, f0);
+    float D = d_ggx(NoH, roughness);
+    float G = g_smith(NoV, NoL, roughness);
+    nextFactor =  F * G * VoH / max((NoH * NoV), 0.001);
+    nextFactor *= 2.0; // compensate for splitting diffuse and specular
+    return L;
+  } 
+}
+#line 11
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -198,24 +334,25 @@ void main() {
     vec3 normal = get_vertex_normal(instance, barycentrics);
     vec2 uv = get_vertex_uv(instance, barycentrics);
 
-    vec3 ray_out = -gl_WorldRayDirectionEXT;
+    vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
-    vec3 t, bt;
-    basis(normal, t, bt);
-
     //normal mapping
-    mat3 tbn = mat3(t,bt,normal);
+    mat3 tbn = basis(normal);
     vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
     vec3 mapped_normal = normalize(tbn * sampled_normal);
     normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
-    float roughness = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).g;
+    vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
+    float roughness = arm.g;
+    float metallic = arm.b;
+   
+    float fresnel_reflect = 1.0;
 
     // direct light
     vec3 light_position = vec3(5,0,1);
-    vec3 light_intensity = vec3(50.0);
+    vec3 light_intensity = vec3(90.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
@@ -227,16 +364,22 @@ void main() {
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
     if (!in_shadow) {
-        payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        //payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
     }
 
     // indirect light
-    vec3 sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
-    float pdf = 1.0 / PI;
-    
-    vec3 new_direction = normalize(t * sample_reflection.x + bt * sample_reflection.y + normal * sample_reflection.z);
+    //BSDFSample sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
+    //vec3 new_direction = normalize(tbn * sample_reflection.direction);
+    //payload.contribution *= base_color * max(0, dot(new_direction, normal)) / sample_reflection.pdf;
 
-    payload.contribution *= base_color * max(0, dot(new_direction, normal)) / pdf;
+    vec3 next_factor = vec3(0);
+    vec3 r = sampleGGX(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, vec3(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
+
+    vec3 new_direction = r;
+    payload.contribution *= next_factor;
+    
+
 
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;

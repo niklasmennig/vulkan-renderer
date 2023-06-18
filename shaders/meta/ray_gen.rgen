@@ -13,8 +13,9 @@ float ray_max = 1000.0f;
 uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
-void basis(in vec3 n, out vec3 f, out vec3 r)
+mat3 basis(in vec3 n)
 {
+    vec3 f, r;
    //looks good but has this ugly branch
   if(n.y < -0.99995)
     {
@@ -31,6 +32,8 @@ void basis(in vec3 n, out vec3 f, out vec3 r)
 
     f = normalize(f);
     r = normalize(r);
+
+    return mat3(f, r, n);
 }
 
 // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color

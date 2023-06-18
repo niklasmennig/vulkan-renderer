@@ -8,6 +8,7 @@
 ~include "shaders/texture_data.glsl"
 ~include "shaders/random.glsl"
 ~include "shaders/sampling.glsl"
+~include "shaders/ggx.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -20,24 +21,25 @@ void main() {
     vec3 normal = get_vertex_normal(instance, barycentrics);
     vec2 uv = get_vertex_uv(instance, barycentrics);
 
-    vec3 ray_out = -gl_WorldRayDirectionEXT;
+    vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
-    vec3 t, bt;
-    basis(normal, t, bt);
-
     //normal mapping
-    mat3 tbn = mat3(t,bt,normal);
+    mat3 tbn = basis(normal);
     vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
     vec3 mapped_normal = normalize(tbn * sampled_normal);
     normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
-    float roughness = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).g;
+    vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
+    float roughness = arm.g;
+    float metallic = arm.b;
+   
+    float fresnel_reflect = 1.0;
 
     // direct light
     vec3 light_position = vec3(5,0,1);
-    vec3 light_intensity = vec3(50.0);
+    vec3 light_intensity = vec3(90.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
@@ -49,16 +51,22 @@ void main() {
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
     if (!in_shadow) {
-        payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        //payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
     }
 
     // indirect light
-    vec3 sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
-    float pdf = 1.0 / PI;
-    
-    vec3 new_direction = normalize(t * sample_reflection.x + bt * sample_reflection.y + normal * sample_reflection.z);
+    //BSDFSample sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
+    //vec3 new_direction = normalize(tbn * sample_reflection.direction);
+    //payload.contribution *= base_color * max(0, dot(new_direction, normal)) / sample_reflection.pdf;
 
-    payload.contribution *= base_color * max(0, dot(new_direction, normal)) / pdf;
+    vec3 next_factor = vec3(0);
+    vec3 r = sampleGGX(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, vec3(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
+
+    vec3 new_direction = r;
+    payload.contribution *= next_factor;
+    
+
 
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;
