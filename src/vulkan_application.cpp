@@ -1472,12 +1472,17 @@ void VulkanApplication::run() {
             camera_movement -= camera_data.up;
             render_clear_accumulated = 4;
         }
-        camera_data.origin += camera_movement * 0.02f;
+
+        float camera_speed = frame_delta.count();
+        if (fabsf(camera_speed) > 1) camera_speed = 0;
+        camera_data.origin += camera_movement * camera_speed;
 
         // camera rotation
         // horizontal rotation
         glm::mat4 rotation_matrix = glm::mat4(1.0f);
-        float angle = 0.05f;
+        float camera_rotation_speed = frame_delta.count();
+        if (fabsf(camera_rotation_speed) > 1) camera_rotation_speed = 0;
+        float angle = camera_rotation_speed;
         glm::vec3 cam_up = glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z);
         glm::vec3 cam_fwd = glm::vec3(camera_data.forward.x, camera_data.forward.y, camera_data.forward.z);
         glm::vec3 cam_r = glm::vec3(camera_data.right.x, camera_data.right.y, camera_data.right.z);

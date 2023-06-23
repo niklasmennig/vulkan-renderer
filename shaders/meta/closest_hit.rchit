@@ -10,7 +10,7 @@
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 6;
+uint max_depth = 1;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
@@ -342,12 +342,13 @@ void main() {
     vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
+
     //normal mapping
     mat3 tbn = basis(normal);
     vec3 sampled_normal = normalize(sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0);
     //sampled_normal = vec3(0,0,1);
     vec3 mapped_normal = normalize(tbn * sampled_normal);
-    normal = mapped_normal;
+    //normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
@@ -370,7 +371,6 @@ void main() {
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
     if (!in_shadow) {
-        //payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
         payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
     }
 
@@ -380,6 +380,7 @@ void main() {
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
+
     
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;

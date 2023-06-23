@@ -27,6 +27,7 @@ void main() {
     vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
+
     //normal mapping
     mat3 tbn = basis(normal);
     vec3 sampled_normal = normalize(sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0);
@@ -55,7 +56,6 @@ void main() {
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
     if (!in_shadow) {
-        //payload.color += base_color * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
         payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
     }
 
@@ -65,6 +65,7 @@ void main() {
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
+
     
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;

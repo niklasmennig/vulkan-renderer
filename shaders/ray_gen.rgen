@@ -78,7 +78,7 @@ void main() {
     } else {
         vec3 prev_color = imageLoad(img, img_coord).rgb;
         vec3 new_color = (prev_color * sample_count + payload.color) / (sample_count + 1);
-        imageStore(img, img_coord, vec4(new_color, 1.0));
+        imageStore(img, img_coord, vec4(payload.color, 1.0));
     }
 
     

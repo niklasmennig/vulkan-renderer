@@ -10,7 +10,7 @@ precision highp float;
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 6;
+uint max_depth = 1;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
@@ -175,7 +175,7 @@ void main() {
     } else {
         vec3 prev_color = imageLoad(img, img_coord).rgb;
         vec3 new_color = (prev_color * sample_count + payload.color) / (sample_count + 1);
-        imageStore(img, img_coord, vec4(new_color, 1.0));
+        imageStore(img, img_coord, vec4(payload.color, 1.0));
     }
 
     
