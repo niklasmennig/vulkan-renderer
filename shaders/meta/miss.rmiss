@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(push_constant) uniform PushConstants {
     float time;
@@ -38,6 +39,8 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 
+vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
+
 vec3 random_point_in_unit_sphere(inout uint rnd) {
     while (true) {
         vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
@@ -46,7 +49,7 @@ vec3 random_point_in_unit_sphere(inout uint rnd) {
         }
     }
 }
-#line 9
+#line 10
 
 struct RayPayload
 {
@@ -56,7 +59,7 @@ struct RayPayload
     uint depth;
     uint seed;
 };
-#line 10
+#line 11
 
 layout(set = 1, binding = 8) uniform sampler2D tex[16];
 layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
@@ -70,9 +73,9 @@ vec3 sample_texture(uint id, vec2 uv) {
 }
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {
-    return texture(tex[texture_indices.data[instance * 3] + offset], uv).rgb;
+    return texture(tex[nonuniformEXT(texture_indices.data[instance * 3] + offset)], uv).rgb;
 }
-#line 11
+#line 12
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 

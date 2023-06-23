@@ -10,5 +10,5 @@ vec3 sample_texture(uint id, vec2 uv) {
 }
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {
-    return texture(tex[texture_indices.data[instance * 3] + offset], uv).rgb;
+    return texture(tex[nonuniformEXT(texture_indices.data[instance * 3] + offset)], uv).rgb;
 }

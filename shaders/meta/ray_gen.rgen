@@ -17,17 +17,17 @@ mat3 basis(in vec3 n)
 {
     vec3 f, r;
    //looks good but has this ugly branch
-  if(n.y < -0.99995)
+  if(n.z < -0.99995)
     {
-        f = vec3(0.0 , 0.0, -1.0);
-        r = vec3(-1.0, 0.0, 0.0);
+        f = vec3(0 , -1, 0);
+        r = vec3(-1, 0, 0);
     }
     else
     {
-    	float a = 1.0/(1.0 + n.y);
-    	float b = -n.x*n.z*a;
-    	f = vec3(1.0 - n.x*n.x*a, b, -n.x);
-    	r = vec3(b, 1.0 - n.y*n.z*a , -n.z);
+    	float a = 1./(1. + n.z);
+    	float b = -n.x*n.y*a;
+    	f = vec3(1. - n.x*n.x*a, b, -n.x);
+    	r = vec3(b, 1. - n.y*n.y*a , -n.y);
     }
 
     f = normalize(f);
@@ -90,6 +90,8 @@ float floatConstruct( uint m ) {
 float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+
+vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
 
 vec3 random_point_in_unit_sphere(inout uint rnd) {
     while (true) {

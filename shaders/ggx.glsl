@@ -50,7 +50,7 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
     return diff + spec;
 }
 
-vec3 sampleGGX(in vec3 V, in vec3 N, 
+vec3 sample_ggx(in vec3 V, in vec3 N, 
               in vec3 baseColor, in float metallicness, 
               in float fresnelReflect, in float roughness, in vec3 random, out vec3 nextFactor) 
 {

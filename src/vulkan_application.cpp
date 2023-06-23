@@ -1141,7 +1141,7 @@ void VulkanApplication::setup() {
             VK_KHR_SPIRV_1_4_EXTENSION_NAME,
             VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
             VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
         };
 
         uint32_t extension_count = 0;
@@ -1205,6 +1205,7 @@ void VulkanApplication::setup() {
         VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
         descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
         descriptor_indexing_features.runtimeDescriptorArray = VK_TRUE;
+        descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
         as_features.pNext = &descriptor_indexing_features;
 
         VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {};
@@ -1320,7 +1321,7 @@ void VulkanApplication::setup() {
     }
 
     // load hdri
-    loaded_textures.push_back(loaders::load_image(&device, "./scenes/hdri/vestibule_4k.hdr"));
+    loaded_textures.push_back(loaders::load_image(&device, "./scenes/hdri/studio_small_03_4k.hdr", ImageFormat::SRGB));
 
     // build blas of loaded meshes
     for (auto object_path : loaded_scene_data.object_paths) {

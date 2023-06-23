@@ -1,6 +1,8 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_GOOGLE_include_directive : enable
 
 
 #define PI 3.1415926535897932384626433832795
@@ -15,17 +17,17 @@ mat3 basis(in vec3 n)
 {
     vec3 f, r;
    //looks good but has this ugly branch
-  if(n.y < -0.99995)
+  if(n.z < -0.99995)
     {
-        f = vec3(0.0 , 0.0, -1.0);
-        r = vec3(-1.0, 0.0, 0.0);
+        f = vec3(0 , -1, 0);
+        r = vec3(-1, 0, 0);
     }
     else
     {
-    	float a = 1.0/(1.0 + n.y);
-    	float b = -n.x*n.z*a;
-    	f = vec3(1.0 - n.x*n.x*a, b, -n.x);
-    	r = vec3(b, 1.0 - n.y*n.z*a , -n.z);
+    	float a = 1./(1. + n.z);
+    	float b = -n.x*n.y*a;
+    	f = vec3(1. - n.x*n.x*a, b, -n.x);
+    	r = vec3(b, 1. - n.y*n.y*a , -n.y);
     }
 
     f = normalize(f);
@@ -38,7 +40,7 @@ mat3 basis(in vec3 n)
 float luminance(vec3 color) {
     return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }
-#line 5
+#line 7
 
 struct RayPayload
 {
@@ -48,7 +50,7 @@ struct RayPayload
     uint depth;
     uint seed;
 };
-#line 6
+#line 8
 
 layout(set = 1, binding = 0) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = 1, binding = 1) readonly buffer VertexIndexData {uint data[];} vertex_indices;
@@ -106,7 +108,7 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
-#line 7
+#line 9
 
 layout(set = 1, binding = 8) uniform sampler2D tex[16];
 layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
@@ -120,9 +122,9 @@ vec3 sample_texture(uint id, vec2 uv) {
 }
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {
-    return texture(tex[texture_indices.data[instance * 3] + offset], uv).rgb;
+    return texture(tex[nonuniformEXT(texture_indices.data[instance * 3] + offset)], uv).rgb;
 }
-#line 8
+#line 10
 
 // taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 #define PI 3.1415926535897932384626433832795
@@ -155,6 +157,8 @@ float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 
+vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
+
 vec3 random_point_in_unit_sphere(inout uint rnd) {
     while (true) {
         vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
@@ -163,7 +167,7 @@ vec3 random_point_in_unit_sphere(inout uint rnd) {
         }
     }
 }
-#line 9
+#line 11
 
 struct BSDFSample {
     vec3 direction;
@@ -199,7 +203,7 @@ BSDFSample sample_power_hemisphere(float u1, float u2, float n)
         1.0 / PI
     );
 }
-#line 10
+#line 12
 
 //https://www.mathematik.uni-marburg.de/~thormae/lectures/graphics2/graphics_4_3_ger_web.html#1
 vec3 fresnel_schlick(float cosTheta, vec3 F0) {
@@ -253,7 +257,7 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
     return diff + spec;
 }
 
-vec3 sampleGGX(in vec3 V, in vec3 N, 
+vec3 sample_ggx(in vec3 V, in vec3 N, 
               in vec3 baseColor, in float metallicness, 
               in float fresnelReflect, in float roughness, in vec3 random, out vec3 nextFactor) 
 {
@@ -321,7 +325,7 @@ vec3 sampleGGX(in vec3 V, in vec3 N,
     return L;
   } 
 }
-#line 11
+#line 13
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -330,6 +334,7 @@ layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
 void main() {
     uint instance = gl_InstanceID;
+
     vec3 position = get_vertex_position(instance, barycentrics);
     vec3 normal = get_vertex_normal(instance, barycentrics);
     vec2 uv = get_vertex_uv(instance, barycentrics);
@@ -339,20 +344,21 @@ void main() {
 
     //normal mapping
     mat3 tbn = basis(normal);
-    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    vec3 sampled_normal = normalize(sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0);
+    //sampled_normal = vec3(0,0,1);
     vec3 mapped_normal = normalize(tbn * sampled_normal);
     normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
     float roughness = arm.g;
-    float metallic = arm.b;
+    float metallic = 0.0;
    
-    float fresnel_reflect = 1.0;
+    float fresnel_reflect = 0.5;
 
     // direct light
-    vec3 light_position = vec3(5,0,1);
-    vec3 light_intensity = vec3(90.0);
+    vec3 light_position = vec3(1,1,1);
+    vec3 light_intensity = vec3(30.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
@@ -369,18 +375,12 @@ void main() {
     }
 
     // indirect light
-    //BSDFSample sample_reflection = sample_cosine_hemisphere(seed_random(payload.seed), seed_random(payload.seed));
-    //vec3 new_direction = normalize(tbn * sample_reflection.direction);
-    //payload.contribution *= base_color * max(0, dot(new_direction, normal)) / sample_reflection.pdf;
-
     vec3 next_factor = vec3(0);
-    vec3 r = sampleGGX(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, vec3(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
+    vec3 r = sample_ggx(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, random_vec3(payload.seed), next_factor);
 
-    vec3 new_direction = r;
+    vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
     
-
-
     if (payload.depth < max_depth) {
         payload.depth = payload.depth + 1;
         traceRayEXT(

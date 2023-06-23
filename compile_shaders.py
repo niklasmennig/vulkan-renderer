@@ -30,7 +30,7 @@ for file in shader_files:
     ofile = "/".join([shaders_spirv_path, file_name + ".spv"])
     compile_args = [shader_compiler_path]
     compile_args.extend(shader_compiler_args)
-    compile_args.extend(["-i", ifile, "-o", ofile])
+    compile_args.extend(["-l", "-i", ifile, "-o", ofile])
     proc = subprocess.Popen(compile_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = proc.communicate()
     output_lines = output.splitlines()

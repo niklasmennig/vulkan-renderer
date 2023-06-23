@@ -1,5 +1,6 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(push_constant) uniform PushConstants {
     float time;
