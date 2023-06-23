@@ -299,7 +299,7 @@ Pipeline PipelineBuilder::build() {
     pipeline_info.pStages = stage_create_infos.data();
     pipeline_info.groupCount = (uint32_t)group_create_infos.size();
     pipeline_info.pGroups = group_create_infos.data();
-    pipeline_info.maxPipelineRayRecursionDepth = 1;
+    pipeline_info.maxPipelineRayRecursionDepth = 10;
 
     VkPipelineCacheCreateInfo cache_create_info{};
     cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;

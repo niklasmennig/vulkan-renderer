@@ -2,15 +2,13 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_flags_primitive_culling : enable
 
-precision highp float;
-
 
 #define PI 3.1415926535897932384626433832795
 
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 1;
+uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
@@ -40,7 +38,7 @@ mat3 basis(in vec3 n)
 float luminance(vec3 color) {
     return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }
-#line 7
+#line 5
 
 struct CameraData
 {
@@ -51,7 +49,7 @@ struct CameraData
     float fov_x;
 };
 
-#line 8
+#line 6
 
 
 layout(push_constant) uniform PushConstants {
@@ -87,21 +85,11 @@ float floatConstruct( uint m ) {
 }
 
 // Pseudo-random value in half-open range [0:1].
-float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 
 vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
-
-vec3 random_point_in_unit_sphere(inout uint rnd) {
-    while (true) {
-        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
-        if (length(p) <= 1) {
-            return p;
-        }
-    }
-}
-#line 16
+#line 14
 
 struct RayPayload
 {
@@ -111,7 +99,7 @@ struct RayPayload
     uint depth;
     uint seed;
 };
-#line 17
+#line 15
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = 0, binding = 0, rgba32f) uniform image2D img;
@@ -175,7 +163,7 @@ void main() {
     } else {
         vec3 prev_color = imageLoad(img, img_coord).rgb;
         vec3 new_color = (prev_color * sample_count + payload.color) / (sample_count + 1);
-        imageStore(img, img_coord, vec4(payload.color, 1.0));
+        imageStore(img, img_coord, vec4(new_color, 1.0));
     }
 
     

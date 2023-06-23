@@ -10,7 +10,7 @@
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 1;
+uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
@@ -153,20 +153,10 @@ float floatConstruct( uint m ) {
 }
 
 // Pseudo-random value in half-open range [0:1].
-float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 
 vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
-
-vec3 random_point_in_unit_sphere(inout uint rnd) {
-    while (true) {
-        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
-        if (length(p) <= 1) {
-            return p;
-        }
-    }
-}
 #line 11
 
 struct BSDFSample {
@@ -383,7 +373,7 @@ void main() {
 
     
     if (payload.depth < max_depth) {
-        payload.depth = payload.depth + 1;
+        payload.depth += 1;
         traceRayEXT(
                 as,
                 gl_RayFlagsOpaqueEXT,

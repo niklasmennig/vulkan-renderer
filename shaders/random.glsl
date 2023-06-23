@@ -25,17 +25,7 @@ float floatConstruct( uint m ) {
 }
 
 // Pseudo-random value in half-open range [0:1].
-float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
 
 float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
 
 vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
-
-vec3 random_point_in_unit_sphere(inout uint rnd) {
-    while (true) {
-        vec3 p = vec3(seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0, seed_random(rnd) * 2.0 - 1.0);
-        if (length(p) <= 1) {
-            return p;
-        }
-    }
-}

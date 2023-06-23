@@ -68,7 +68,7 @@ void main() {
 
     
     if (payload.depth < max_depth) {
-        payload.depth = payload.depth + 1;
+        payload.depth += 1;
         traceRayEXT(
                 as,
                 gl_RayFlagsOpaqueEXT,
