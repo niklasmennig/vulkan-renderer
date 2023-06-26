@@ -59,7 +59,7 @@ layout(set = 1, binding = 10) readonly buffer TextureIndexData {uint data[];} te
 #define TEXTURE_OFFSET_ROUGHNESS 2
 
 vec3 sample_texture(uint id, vec2 uv) {
-    return texture(tex[id], uv).rgb;
+    return texture(tex[nonuniformEXT(id)], uv).rgb;
 }
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {

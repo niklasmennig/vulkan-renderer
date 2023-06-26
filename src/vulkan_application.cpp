@@ -1451,40 +1451,45 @@ void VulkanApplication::run() {
         glfwPollEvents();
 
         // camera movement
-        vec4 camera_movement = vec4(0.0f);
+        glm::vec3 cam_up = glm::normalize(glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z));
+        glm::vec3 cam_fwd = glm::normalize(glm::vec3(camera_data.forward.x, camera_data.forward.y, camera_data.forward.z));
+        glm::vec3 cam_r = glm::normalize(glm::vec3(camera_data.right.x, camera_data.right.y, camera_data.right.z));
+
+        vec3 camera_movement = vec3(0.0f);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            camera_movement += camera_data.forward;
+            camera_movement += cam_fwd;
             render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         {
-            camera_movement -= camera_data.right;
+            camera_movement -= cam_r;
             render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         {
-            camera_movement -= camera_data.forward;
+            camera_movement -= cam_fwd;
             render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         {
-            camera_movement += camera_data.right;
+            camera_movement += cam_r;
             render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         {
-            camera_movement += camera_data.up;
+            camera_movement += cam_up;
             render_clear_accumulated = 4;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         {
-            camera_movement -= camera_data.up;
+            camera_movement -= cam_up;
             render_clear_accumulated = 4;
         }
 
         float camera_speed = frame_delta.count();
         if (fabsf(camera_speed) > 1) camera_speed = 0;
-        camera_data.origin += camera_movement * camera_speed;
+        glm::vec3 cam_delta = camera_movement * camera_speed;
+        camera_data.origin += glm::vec4(cam_delta.x, cam_delta.y, cam_delta.z, 0.0f);
 
         // camera rotation
         // horizontal rotation
@@ -1492,9 +1497,7 @@ void VulkanApplication::run() {
         float camera_rotation_speed = frame_delta.count();
         if (fabsf(camera_rotation_speed) > 1) camera_rotation_speed = 0;
         float angle = camera_rotation_speed;
-        glm::vec3 cam_up = glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z);
-        glm::vec3 cam_fwd = glm::vec3(camera_data.forward.x, camera_data.forward.y, camera_data.forward.z);
-        glm::vec3 cam_r = glm::vec3(camera_data.right.x, camera_data.right.y, camera_data.right.z);
+        
 
         if (glfwGetKey(window, GLFW_KEY_RIGHT)) 
         {

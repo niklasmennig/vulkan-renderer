@@ -135,7 +135,7 @@ layout(set = 1, binding = 10) readonly buffer TextureIndexData {uint data[];} te
 #define TEXTURE_OFFSET_ROUGHNESS 2
 
 vec3 sample_texture(uint id, vec2 uv) {
-    return texture(tex[id], uv).rgb;
+    return texture(tex[nonuniformEXT(id)], uv).rgb;
 }
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {
@@ -349,7 +349,6 @@ void main() {
     vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
-
     //normal mapping
     vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
     vec3 tangent = tangent_fsign.xyz;
@@ -377,7 +376,7 @@ void main() {
     float light_attenuation = 1.0 / (light_dist * light_dist);
 
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - epsilon);
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
     while(rayQueryProceedEXT(ray_query)) {};
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
