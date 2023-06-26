@@ -2,7 +2,9 @@ add_subdirectory(imgui)
 
 set(SRC_RENDERER
     ${SRC_IMGUI}
+    src/mikktspace/mikktspace.c
     src/image.cpp
+    src/loaders/geometry.cpp
     src/loaders/geometry_obj.cpp
     src/loaders/geometry_gltf.cpp
     src/loaders/image.cpp

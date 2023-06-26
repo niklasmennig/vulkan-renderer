@@ -121,7 +121,7 @@ struct VulkanApplication {
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
-    Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_index_buffer;
+    Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, tangent_buffer, texture_index_buffer, material_index_buffer;
 
     std::vector<float> shader_params_float;
     std::vector<vec4> shader_params_vec3;

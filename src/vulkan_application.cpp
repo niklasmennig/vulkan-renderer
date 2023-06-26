@@ -384,6 +384,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     std::vector<uint32_t> normal_indices;
     std::vector<vec2> texcoords;
     std::vector<uint32_t> texcoord_indices;
+    std::vector<vec4> tangents;
     std::vector<uint32_t> mesh_data_offsets;
     std::vector<uint32_t> mesh_offset_indices;
     std::vector<uint32_t> texture_indices;
@@ -395,6 +396,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     mesh_data_offsets.push_back(normal_indices.size());
     mesh_data_offsets.push_back(texcoords.size());
     mesh_data_offsets.push_back(texcoord_indices.size());
+    mesh_data_offsets.push_back(tangents.size());
 
     for (int i = 0; i < loaded_mesh_data.size(); i++) {
         vertices.insert(vertices.end(), loaded_mesh_data[i].vertices.begin(), loaded_mesh_data[i].vertices.end());
@@ -403,6 +405,7 @@ void VulkanApplication::create_default_descriptor_writes() {
         normal_indices.insert(normal_indices.end(), loaded_mesh_data[i].normal_indices.begin(), loaded_mesh_data[i].normal_indices.end());
         texcoords.insert(texcoords.end(), loaded_mesh_data[i].texcoords.begin(), loaded_mesh_data[i].texcoords.end());
         texcoord_indices.insert(texcoord_indices.end(), loaded_mesh_data[i].texcoord_indices.begin(), loaded_mesh_data[i].texcoord_indices.end());
+        tangents.insert(tangents.end(), loaded_mesh_data[i].tangents.begin(), loaded_mesh_data[i].tangents.end());
 
         // add all 6 offsets contiguously
         mesh_data_offsets.push_back(vertices.size());
@@ -411,6 +414,7 @@ void VulkanApplication::create_default_descriptor_writes() {
         mesh_data_offsets.push_back(normal_indices.size());
         mesh_data_offsets.push_back(texcoords.size());
         mesh_data_offsets.push_back(texcoord_indices.size());
+        mesh_data_offsets.push_back(tangents.size());
     }
 
     // index of mesh and texture used by instance
@@ -436,6 +440,8 @@ void VulkanApplication::create_default_descriptor_writes() {
     texcoord_buffer.set_data(texcoords.data());
     texcoord_index_buffer = device.create_buffer(sizeof(uint32_t) * texcoord_indices.size());
     texcoord_index_buffer.set_data(texcoord_indices.data());
+    tangent_buffer = device.create_buffer(sizeof(vec4) * tangents.size());
+    tangent_buffer.set_data(tangents.data());
     mesh_data_offset_buffer = device.create_buffer(sizeof(uint32_t) * mesh_data_offsets.size());
     mesh_data_offset_buffer.set_data(mesh_data_offsets.data());
     mesh_offset_index_buffer = device.create_buffer(sizeof(uint32_t) * mesh_offset_indices.size());
@@ -449,6 +455,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_normal_indices", normal_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_texcoord_indices", texcoord_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
@@ -1329,6 +1336,7 @@ void VulkanApplication::setup() {
         auto object_name = std::get<0>(object_path);
         GLTFData gltf = loaders::load_gltf(full_object_path.string());
         LoadedMeshData loaded_mesh = gltf.get_loaded_mesh_data();
+        loaded_mesh.calculate_tangents();
         MeshData mesh_data = create_mesh_data(gltf.vertices, gltf.indices, gltf.normals, gltf.indices, gltf.uvs, gltf.indices);
         loaded_mesh_data.push_back(loaded_mesh);
         loaded_mesh_index[object_name] = loaded_mesh_data.size() - 1;
@@ -1416,10 +1424,11 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_normal_indices", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_texcoords", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_texcoord_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_data_offsets", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_offset_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 16)
-                   .add_descriptor("texture_indices", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_tangents", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_data_offsets", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("mesh_offset_indices", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("textures", 1, 9, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 16)
+                   .add_descriptor("texture_indices", 1, 10, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")

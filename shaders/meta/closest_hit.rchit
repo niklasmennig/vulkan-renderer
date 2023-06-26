@@ -58,16 +58,17 @@ layout(set = 1, binding = 2) readonly buffer NormalData {vec4 data[];} normals;
 layout(set = 1, binding = 3) readonly buffer NormalIndexData {uint data[];} normal_indices;
 layout(set = 1, binding = 4) readonly buffer TexcoordData {vec2 data[];} texcoords;
 layout(set = 1, binding = 5) readonly buffer TexcoordIndexData {uint data[];} texcoord_indices;
-layout(set = 1, binding = 6) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
-layout(set = 1, binding = 7) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
+layout(set = 1, binding = 6) readonly buffer TangentData {vec4 data[];} tangents;
+layout(set = 1, binding = 7) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
+layout(set = 1, binding = 8) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
 
 vec3 get_vertex_position(uint instance, vec2 barycentric_coordinates) {
     uint idx0 = gl_PrimitiveID * 3 + 0;
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 0];
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 1];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 0];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 1];
 
     vec3 vert0 = vertices.data[data_offset + vertex_indices.data[index_offset + idx0]].xyz;
     vec3 vert1 = vertices.data[data_offset + vertex_indices.data[index_offset + idx1]].xyz;
@@ -82,8 +83,8 @@ vec3 get_vertex_normal(uint instance, vec2 barycentric_coordinates) {
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 2];
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 3];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 2];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 3];
 
     vec3 norm0 = normals.data[data_offset + normal_indices.data[index_offset + idx0]].xyz;
     vec3 norm1 = normals.data[data_offset + normal_indices.data[index_offset + idx1]].xyz;
@@ -98,8 +99,8 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
     uint idx1 = gl_PrimitiveID * 3 + 1;
     uint idx2 = gl_PrimitiveID * 3 + 2;
 
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 4];
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 6 + 5];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 4];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 5];
 
     vec2 uv0 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx0]];
     vec2 uv1 = texcoords.data[data_offset + texcoord_indices.data[index_offset + idx1]];
@@ -108,10 +109,26 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
+
+vec4 get_vertex_tangent(uint instance, vec2 barycentric_coordinates) {
+    uint idx0 = gl_PrimitiveID * 3 + 0;
+    uint idx1 = gl_PrimitiveID * 3 + 1;
+    uint idx2 = gl_PrimitiveID * 3 + 2;
+
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 6];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * 7 + 1];
+
+    vec4 tang0 = tangents.data[data_offset + vertex_indices.data[index_offset + idx0]];
+    vec4 tang1 = tangents.data[data_offset + vertex_indices.data[index_offset + idx1]];
+    vec4 tang2 = tangents.data[data_offset + vertex_indices.data[index_offset + idx2]];
+    vec4 tangent = (tang0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + tang1 * barycentric_coordinates.x + tang2 * barycentric_coordinates.y);
+
+    return tangent;
+}
 #line 9
 
-layout(set = 1, binding = 8) uniform sampler2D tex[16];
-layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
+layout(set = 1, binding = 9) uniform sampler2D tex[16];
+layout(set = 1, binding = 10) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 #define TEXTURE_OFFSET_DIFFUSE 0
 #define TEXTURE_OFFSET_NORMAL 1
@@ -334,11 +351,15 @@ void main() {
 
 
     //normal mapping
-    mat3 tbn = basis(normal);
-    vec3 sampled_normal = normalize(sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0);
-    //sampled_normal = vec3(0,0,1);
+    vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
+    vec3 tangent = tangent_fsign.xyz;
+    vec3 bitangent = tangent_fsign.w * cross(normal, tangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
+
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    sampled_normal = vec3(0,0,1);
     vec3 mapped_normal = normalize(tbn * sampled_normal);
-    //normal = mapped_normal;
+    normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
@@ -356,7 +377,7 @@ void main() {
     float light_attenuation = 1.0 / (light_dist * light_dist);
 
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin + normal * epsilon, 0, light_dir, light_dist - epsilon);
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - epsilon);
     while(rayQueryProceedEXT(ray_query)) {};
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 

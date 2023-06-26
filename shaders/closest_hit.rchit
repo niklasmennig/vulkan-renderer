@@ -29,11 +29,15 @@ void main() {
 
 
     //normal mapping
-    mat3 tbn = basis(normal);
-    vec3 sampled_normal = normalize(sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0);
-    //sampled_normal = vec3(0,0,1);
+    vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
+    vec3 tangent = tangent_fsign.xyz;
+    vec3 bitangent = tangent_fsign.w * cross(normal, tangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
+
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    sampled_normal = vec3(0,0,1);
     vec3 mapped_normal = normalize(tbn * sampled_normal);
-    //normal = mapped_normal;
+    normal = mapped_normal;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
@@ -51,7 +55,7 @@ void main() {
     float light_attenuation = 1.0 / (light_dist * light_dist);
 
     rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin + normal * epsilon, 0, light_dir, light_dist - epsilon);
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - epsilon);
     while(rayQueryProceedEXT(ray_query)) {};
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 

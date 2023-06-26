@@ -51,8 +51,8 @@ struct RayPayload
 };
 #line 11
 
-layout(set = 1, binding = 8) uniform sampler2D tex[16];
-layout(set = 1, binding = 9) readonly buffer TextureIndexData {uint data[];} texture_indices;
+layout(set = 1, binding = 9) uniform sampler2D tex[16];
+layout(set = 1, binding = 10) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 #define TEXTURE_OFFSET_DIFFUSE 0
 #define TEXTURE_OFFSET_NORMAL 1

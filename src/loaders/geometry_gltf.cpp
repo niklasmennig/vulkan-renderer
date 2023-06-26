@@ -6,6 +6,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "tiny_gltf.h"
 
+
 LoadedMeshData GLTFData::get_loaded_mesh_data() {
     LoadedMeshData result;
     result.vertices = this->vertices;
@@ -90,6 +91,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                     }
                 }
             }
+
 
             // Material, Textures
             {
