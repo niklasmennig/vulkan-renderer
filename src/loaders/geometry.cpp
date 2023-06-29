@@ -55,6 +55,7 @@ void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, i
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
+    int tangent_idx = mesh_data->vertex_indices[idx];
 
     glm::vec4 tangent;
     tangent.x = in[0];
@@ -62,7 +63,7 @@ void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, i
     tangent.z = in[2];
     tangent.w = f_sign;
 
-    mesh_data->tangents.push_back(tangent);
+    mesh_data->tangents[tangent_idx] = tangent;
 }
 
 void LoadedMeshData::calculate_tangents() {
@@ -78,6 +79,8 @@ void LoadedMeshData::calculate_tangents() {
 
     ctx.m_pInterface = &interface;
     ctx.m_pUserData = this;
+
+    tangents.resize(vertices.size());
 
     genTangSpaceDefault(&ctx);
 }

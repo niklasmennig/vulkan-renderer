@@ -123,7 +123,7 @@ vec4 get_vertex_tangent(uint instance, vec2 barycentric_coordinates) {
     vec4 tang2 = tangents.data[data_offset + vertex_indices.data[index_offset + idx2]];
     vec4 tangent = (tang0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + tang1 * barycentric_coordinates.x + tang2 * barycentric_coordinates.y);
 
-    return tangent;
+    return normalize(tangent);
 }
 #line 9
 
@@ -352,13 +352,16 @@ void main() {
     //normal mapping
     vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
     vec3 tangent = tangent_fsign.xyz;
-    vec3 bitangent = tangent_fsign.w * cross(normal, tangent);
+    tangent = normalize(vec3(gl_ObjectToWorldEXT * vec4(tangent, 0.0)));
+    vec3 bitangent = normalize(tangent_fsign.w * cross(normal, tangent));
     mat3 tbn = mat3(tangent, bitangent, normal);
 
     vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
-    sampled_normal = vec3(0,0,1);
-    vec3 mapped_normal = normalize(tbn * sampled_normal);
-    normal = mapped_normal;
+    //sampled_normal = vec3(1,0,0);
+    vec3 mapped_normal = tbn * sampled_normal;
+    float test = dot(normal, mapped_normal);
+    payload.color = mapped_normal;
+    return;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);

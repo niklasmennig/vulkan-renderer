@@ -407,7 +407,7 @@ void VulkanApplication::create_default_descriptor_writes() {
         texcoord_indices.insert(texcoord_indices.end(), loaded_mesh_data[i].texcoord_indices.begin(), loaded_mesh_data[i].texcoord_indices.end());
         tangents.insert(tangents.end(), loaded_mesh_data[i].tangents.begin(), loaded_mesh_data[i].tangents.end());
 
-        // add all 6 offsets contiguously
+        // add all 7 offsets contiguously
         mesh_data_offsets.push_back(vertices.size());
         mesh_data_offsets.push_back(vertex_indices.size());
         mesh_data_offsets.push_back(normals.size());
