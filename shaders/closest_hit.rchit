@@ -45,7 +45,6 @@ void main() {
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
     float roughness = arm.g;
-    //float roughness = 1.0;
     float metallic = 0.0;
    
     float fresnel_reflect = 0.5;

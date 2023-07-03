@@ -5,7 +5,7 @@
 int get_num_faces(const SMikkTSpaceContext* ctx) {
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
-    return mesh_data->vertex_indices.size() / 3;
+    return mesh_data->indices.size() / 3;
 }
 
 int get_num_vertices_of_face(const SMikkTSpaceContext* ctx, int face) {
@@ -17,7 +17,7 @@ void get_position(const SMikkTSpaceContext* ctx, float* out, int face, int vert)
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
-    int vertex_index = mesh_data->vertex_indices[idx];
+    int vertex_index = mesh_data->indices[idx];
 
     glm::vec4 vertex = mesh_data->vertices[vertex_index];
 
@@ -30,7 +30,7 @@ void get_normal(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
-    int normal_index = mesh_data->normal_indices[idx];
+    int normal_index = mesh_data->indices[idx];
 
     glm::vec4 normal = mesh_data->normals[normal_index];
 
@@ -43,7 +43,7 @@ void get_uv(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
-    int uv_index = mesh_data->texcoord_indices[idx];
+    int uv_index = mesh_data->indices[idx];
 
     glm::vec2 uv = mesh_data->texcoords[uv_index];
 
@@ -55,7 +55,7 @@ void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, i
     LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
-    int tangent_idx = mesh_data->vertex_indices[idx];
+    int tangent_idx = mesh_data->indices[idx];
 
     glm::vec4 tangent;
     tangent.x = in[0];

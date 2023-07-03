@@ -13,9 +13,7 @@ LoadedMeshData GLTFData::get_loaded_mesh_data() {
     result.normals = this->normals;
     result.texcoords = this->uvs;
 
-    result.vertex_indices = this->indices;
-    result.normal_indices = this->indices;
-    result.texcoord_indices = this->indices;
+    result.indices = this->indices;
 
     return result;
 }

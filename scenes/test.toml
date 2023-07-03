@@ -1,6 +1,6 @@
 [objects]
-    #[objects.bust]
-    #path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+    [objects.bust]
+    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     # [objects.vase]
     # path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
@@ -12,8 +12,8 @@
     #path = "./gltf/test/test.gltf"
 
 [instances]
-    #[instances.bust]
-    #object = "bust"
+    [instances.bust]
+    object = "bust"
 
     [instances.table]
     object = "table"

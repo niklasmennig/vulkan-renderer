@@ -30,18 +30,14 @@ struct QueueFamilyIndices
 
 struct MeshData {
     VkDevice device_handle;
+    uint32_t index_count;
     uint32_t vertex_count;
     uint32_t normal_count;
     uint32_t texcoord_count;
-    uint32_t vertex_index_count;
-    uint32_t normal_index_count;
-    uint32_t texcoord_index_count;
+    Buffer indices;
     Buffer vertices;
-    Buffer vertex_indices;
     Buffer normals;
-    Buffer normal_indices;
     Buffer texcoords;
-    Buffer texcoord_indices;
 
     void free();
 };
@@ -121,7 +117,7 @@ struct VulkanApplication {
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
-    Buffer vertex_buffer, vertex_index_buffer, normal_buffer, normal_index_buffer, texcoord_buffer, texcoord_index_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, tangent_buffer, texture_index_buffer, material_index_buffer;
+    Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_index_buffer;
 
     std::vector<float> shader_params_float;
     std::vector<vec4> shader_params_vec3;
@@ -130,7 +126,7 @@ struct VulkanApplication {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
-    MeshData create_mesh_data(std::vector<vec4> &vertices, std::vector<uint32_t> &vertex_indices, std::vector<vec4> &normals, std::vector<uint32_t> &normal_indices, std::vector<vec2> &texcoords, std::vector<uint32_t> &texcoord_indices);
+    MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec4> &vertices, std::vector<vec4> &normals, std::vector<vec2> &texcoords);
     MeshData create_mesh_data(LoadedMeshData loaded_mesh_data);
 
     BLAS build_blas(MeshData &mesh_data);
