@@ -28,19 +28,16 @@ void main() {
     vec3 new_origin = position;
 
     //normal mapping
-    // vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
-    // vec3 tangent = tangent_fsign.xyz;
-    // // tangent = normalize(vec3(gl_ObjectToWorldEXT * vec4(tangent, 0.0)));
-    // vec3 bitangent = normalize(tangent_fsign.w * cross(normal, tangent));
+    // vec3 tangent, bitangent;
+    // calculate_tangents(instance, barycentrics, tangent, bitangent);
     // mat3 tbn = mat3(tangent, bitangent, normal);
 
-    // vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
-    // //sampled_normal = vec3(1,0,0);
-    // payload.color = tangent;
-    // return;
+    // vec3 sampled_normal = vec3(1,0,0);// sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
 
-    // vec3 mapped_normal = (tbn * sampled_normal);
-    // normal = normalize(mapped_normal);
+    // vec3 mapped_normal = (tbn * normalize(sampled_normal));
+    // //normal = normalize(mapped_normal);
+    // payload.color = vec3(normal.x, -normal.z, normal.y);
+    // return;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);

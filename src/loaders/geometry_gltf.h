@@ -16,9 +16,11 @@ struct GLTFData {
     std::vector<vec2> uvs;
     std::vector<uint32_t> indices;
 
-    std::string texture_diffuse_path;
-    std::string texture_normal_path;
-    std::string texture_roughness_path;
+    std::string texture_diffuse_path = "";
+    std::string texture_normal_path = "";
+    std::string texture_roughness_path = "";
+
+    float metallic_factor = 0;
 
     LoadedMeshData get_loaded_mesh_data();
 };

@@ -108,6 +108,39 @@ vec2 get_vertex_uv(uint instance, vec2 barycentric_coordinates) {
 
     return uv;
 }
+
+void calculate_tangents(uint instance, vec2 barycentric_coordinates, out vec3 tu, out vec3 tv) {
+    uint idx0 = gl_PrimitiveID * 3 + 0;
+    uint idx1 = gl_PrimitiveID * 3 + 1;
+    uint idx2 = gl_PrimitiveID * 3 + 2;
+
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
+    uint vertex_data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 1];
+    uint uv_data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 3];
+
+    vec3 vert0 = vertices.data[vertex_data_offset + indices.data[index_offset + idx0]].xyz;
+    vec3 vert1 = vertices.data[vertex_data_offset + indices.data[index_offset + idx1]].xyz;
+    vec3 vert2 = vertices.data[vertex_data_offset + indices.data[index_offset + idx2]].xyz;
+
+    vec2 uv0 = texcoords.data[uv_data_offset + indices.data[index_offset + idx0]];
+    vec2 uv1 = texcoords.data[uv_data_offset + indices.data[index_offset + idx1]];
+    vec2 uv2 = texcoords.data[uv_data_offset + indices.data[index_offset + idx2]];
+
+    vec2 tc = uv0;
+    mat2 t = mat2(
+        uv1 - tc,
+        uv2 - tc
+    );
+
+    vec3 pc = vert0;
+    mat2x3 p = mat2x3(
+        vert1 - pc,
+        vert2 - pc
+    );
+
+    tu = normalize((gl_ObjectToWorldEXT * vec4(p * vec2(t[1][1], -t[0][1]), 0)).xyz);
+    tv = normalize((gl_ObjectToWorldEXT * vec4(p * vec2(-t[1][0], t[0][0]), 0)).xyz);
+}
 #line 9
 
 layout(set = 1, binding = 6) uniform sampler2D tex[16];
@@ -333,19 +366,16 @@ void main() {
     vec3 new_origin = position;
 
     //normal mapping
-    // vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
-    // vec3 tangent = tangent_fsign.xyz;
-    // // tangent = normalize(vec3(gl_ObjectToWorldEXT * vec4(tangent, 0.0)));
-    // vec3 bitangent = normalize(tangent_fsign.w * cross(normal, tangent));
+    // vec3 tangent, bitangent;
+    // calculate_tangents(instance, barycentrics, tangent, bitangent);
     // mat3 tbn = mat3(tangent, bitangent, normal);
 
-    // vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
-    // //sampled_normal = vec3(1,0,0);
-    // payload.color = tangent;
-    // return;
+    // vec3 sampled_normal = vec3(1,0,0);// sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
 
-    // vec3 mapped_normal = (tbn * sampled_normal);
-    // normal = normalize(mapped_normal);
+    // vec3 mapped_normal = (tbn * normalize(sampled_normal));
+    // //normal = normalize(mapped_normal);
+    // payload.color = vec3(normal.x, -normal.z, normal.y);
+    // return;
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
