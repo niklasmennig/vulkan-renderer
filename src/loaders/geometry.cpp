@@ -45,10 +45,10 @@ void get_uv(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
     int idx = face * 3 + vert;
     int uv_index = mesh_data->texcoord_indices[idx];
 
-    glm::vec2 vertex = mesh_data->texcoords[uv_index];
+    glm::vec2 uv = mesh_data->texcoords[uv_index];
 
-    out[0] = vertex.x;
-    out[1] = vertex.y;
+    out[0] = uv.x;
+    out[1] = uv.y;
 }
 
 void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, int face, int vert) {

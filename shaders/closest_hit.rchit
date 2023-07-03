@@ -28,25 +28,24 @@ void main() {
     vec3 new_origin = position;
 
     //normal mapping
-    vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
-    vec3 tangent = tangent_fsign.xyz;
-    tangent = normalize(vec3(gl_ObjectToWorldEXT * vec4(tangent, 0.0)));
-    vec3 bitangent = normalize(tangent_fsign.w * cross(normal, tangent));
-    mat3 tbn = mat3(tangent, bitangent, normal);
+    // vec4 tangent_fsign = get_vertex_tangent(instance, barycentrics);
+    // vec3 tangent = tangent_fsign.xyz;
+    // // tangent = normalize(vec3(gl_ObjectToWorldEXT * vec4(tangent, 0.0)));
+    // vec3 bitangent = normalize(tangent_fsign.w * cross(normal, tangent));
+    // mat3 tbn = mat3(tangent, bitangent, normal);
 
-    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
-    //sampled_normal = vec3(1,0,0);
+    // vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    // //sampled_normal = vec3(1,0,0);
+    // payload.color = tangent;
+    // return;
 
-    // why does it look even worse when i normalize here?
-    vec3 mapped_normal = normalize(tbn * sampled_normal);
-    float test = dot(normal, mapped_normal);
-    payload.color = vec3(test);
-    if (test < 0.2) payload.color = vec3(1.0);
-    return;
+    // vec3 mapped_normal = (tbn * sampled_normal);
+    // normal = normalize(mapped_normal);
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
     float roughness = arm.g;
+    //float roughness = 1.0;
     float metallic = 0.0;
    
     float fresnel_reflect = 0.5;

@@ -69,5 +69,5 @@ vec4 get_vertex_tangent(uint instance, vec2 barycentric_coordinates) {
     vec4 tang2 = tangents.data[data_offset + vertex_indices.data[index_offset + idx2]];
     vec4 tangent = (tang0 * (1.0 - barycentric_coordinates.x - barycentric_coordinates.y) + tang1 * barycentric_coordinates.x + tang2 * barycentric_coordinates.y);
 
-    return normalize(tangent);
+    return tang0;
 }
