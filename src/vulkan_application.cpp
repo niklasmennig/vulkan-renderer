@@ -569,26 +569,27 @@ void VulkanApplication::create_swapchain_image_views() {
 }
 
 void VulkanApplication::create_framebuffers() {
-        framebuffers.resize(swap_chain_image_views.size());
-        for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+    framebuffers.resize(swap_chain_image_views.size());
+    for (size_t i = 0; i < swap_chain_image_views.size(); i++)
+    {
+        VkImageView attachments[] = {
+            swap_chain_image_views[i]
+        };
+
+        VkFramebufferCreateInfo framebuffer_info{};
+        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_info.renderPass = render_pass;
+        framebuffer_info.attachmentCount = 1;
+        framebuffer_info.pAttachments = attachments;
+        framebuffer_info.width = swap_chain_extent.width;
+        framebuffer_info.height = swap_chain_extent.height;
+        framebuffer_info.layers = 1;
+
+        if (vkCreateFramebuffer(logical_device, &framebuffer_info, nullptr, framebuffers.data() + i) != VK_SUCCESS)
         {
-            VkImageView attachments[] = {
-                swap_chain_image_views[i]};
-
-            VkFramebufferCreateInfo framebuffer_info{};
-            framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebuffer_info.renderPass = render_pass;
-            framebuffer_info.attachmentCount = 1;
-            framebuffer_info.pAttachments = attachments;
-            framebuffer_info.width = swap_chain_extent.width;
-            framebuffer_info.height = swap_chain_extent.height;
-            framebuffer_info.layers = 1;
-
-            if (vkCreateFramebuffer(logical_device, &framebuffer_info, nullptr, &framebuffers[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failure creating framebuffer");
-            }
+            throw std::runtime_error("failure creating framebuffer");
         }
+    }
 }
 
 void VulkanApplication::recreate_swapchain() {
@@ -605,7 +606,6 @@ void VulkanApplication::recreate_swapchain() {
 
     create_swapchain();
     create_swapchain_image_views();
-    create_framebuffers();
 
     submit_immediate([&]() {
         for (int i = 0; i < this->swap_chain_images.size(); i++) {
@@ -625,10 +625,11 @@ void VulkanApplication::recreate_swapchain() {
             image_barrier.srcAccessMask = 0;
             image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-            // set current image as output image for raytracing pipeline
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
         }
     });
+
+    create_framebuffers();
 }
 
 void VulkanApplication::create_render_image() {
@@ -685,7 +686,6 @@ void VulkanApplication::draw_frame() {
     image_barrier.srcAccessMask = 0;
     image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    // set current image as output image for raytracing pipeline
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     VkImageCopy image_copy{};
@@ -700,7 +700,7 @@ void VulkanApplication::draw_frame() {
     image_copy.dstSubresource.baseArrayLayer = 0;
 
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
-    vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    //vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
 
     // imgui draw
@@ -713,18 +713,32 @@ void VulkanApplication::draw_frame() {
     render_pass_info.clearValueCount = 0;
     render_pass_info.pClearValues = nullptr;
 
-    vkCmdBeginRenderPass(command_buffer, &render_pass_info, {});
+    vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
+
+    ImGui::Begin("TEST");
+    ImGui::Text("test");
+    ImGui::Text("test2");
+    ImGui::Text("test3");
+    ImGui::End();
+
     ImGui::ShowDemoWindow();
+
     ImGui::Render();
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+
     vkCmdEndRenderPass(command_buffer);
-    material_parameter_buffer.set_data(material_parameters.data());
+    // material_parameter_buffer.set_data(material_parameters.data());
+
+    // set current image as output image for raytracing pipeline
+    image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    image_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    //vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
         throw std::runtime_error("encountered an error when ending command buffer");

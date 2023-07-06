@@ -32,10 +32,10 @@ struct QueueFamilyIndices
 
 struct MeshData {
     VkDevice device_handle;
-    uint32_t index_count;
-    uint32_t vertex_count;
-    uint32_t normal_count;
-    uint32_t texcoord_count;
+    size_t index_count;
+    size_t vertex_count;
+    size_t normal_count;
+    size_t texcoord_count;
     Buffer indices;
     Buffer vertices;
     Buffer normals;
