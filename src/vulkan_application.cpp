@@ -330,31 +330,6 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
-    // load shader parameter data
-    std::cout << "Loading shader parameter data" << std::endl;
-    std::ifstream parameter_file("shaders/meta/params.json");
-    json param_data = json::parse(parameter_file);
-    std::cout << "Parsed shader parameter data" << std::endl;
-
-    for (auto& [key, value] : param_data.items()) {
-        if (value["type"] == "float") {
-            shader_params_float.push_back(1.0);
-        } else if (value["type"] == "vec3") {
-            shader_params_vec3.push_back(vec4(1.0));
-        }
-    }
-
-    if (shader_params_float.size() < 1) shader_params_float.push_back(0);
-    if (shader_params_vec3.size() < 1) shader_params_vec3.push_back(vec4(0));
-
-    shader_param_float_buffer = device.create_buffer(sizeof(float) * shader_params_float.size());
-    shader_param_float_buffer.set_data(shader_params_float.data());
-    shader_param_vec3_buffer = device.create_buffer(sizeof(vec4) * shader_params_vec3.size());
-    shader_param_vec3_buffer.set_data(shader_params_vec3.data());
-
-    pipeline.set_descriptor_buffer_binding("shader_parameters_float", shader_param_float_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("shader_parameters_vec3", shader_param_vec3_buffer, BufferType::Storage);
-
     // prepare mesh data for buffers
     std::vector<uint32_t> indices;
     std::vector<vec4> vertices;
@@ -417,6 +392,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
@@ -728,6 +704,8 @@ void VulkanApplication::draw_frame() {
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
 
     // imgui draw
+
+
     VkRenderPassBeginInfo render_pass_info{};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = render_pass;
@@ -741,29 +719,12 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-
-    ImGui::Begin("Control");
-    ImGui::Text("Shader Parameters");
-
-    for (int i = 0; i < shader_params_float.size(); i++) {
-        std::string name = "param_float_" + std::to_string(i);
-        ImGui::DragFloat(name.c_str(), &shader_params_float[i], 0.01, 0.1, 10);
-    }
-
-    for (int i = 0; i < shader_params_vec3.size(); i++) {
-        std::string name = "param_vec3_" + std::to_string(i);
-        ImGui::ColorEdit3(name.c_str(), &shader_params_vec3[i].x);
-    }
-
-    ImGui::End();
-
+    ImGui::ShowDemoWindow();
     ImGui::Render();
-
-    shader_param_vec3_buffer.set_data(shader_params_vec3.data());
-    shader_param_float_buffer.set_data(shader_params_float.data());
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
     vkCmdEndRenderPass(command_buffer);
+    material_parameter_buffer.set_data(material_parameters.data());
 
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
         throw std::runtime_error("encountered an error when ending command buffer");
@@ -1304,13 +1265,17 @@ void VulkanApplication::setup() {
         loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_diffuse_path).string()));
         loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_normal_path).string()));
         loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_roughness_path).string()));
+
+        material_parameters.push_back(gltf.metallic_factor);
     }
+
 
     for (Image i : loaded_textures) {
         i.cmd_setup_texture(command_buffer);
     }
 
     vkEndCommandBuffer(command_buffer);
+    material_parameter_buffer = device.create_buffer(sizeof(float) * material_parameters.size());
 
     vkResetFences(logical_device, 1, &immediate_fence);
     
@@ -1365,14 +1330,15 @@ void VulkanApplication::setup() {
 
     std::cout << "TLAS CREATED" << std::endl;
 
+    //const char* glsl_version = glslang::GetGlslVersionString();
+    //std::cout << "GLSLang Version: " << glsl_version << std::endl;
+
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
                    // framework descriptors (set 0)
                    .add_descriptor("out_image", 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("camera_parameters", 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .add_descriptor("shader_parameters_float", 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
-                   .add_descriptor("shader_parameters_vec3", 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL)
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1382,6 +1348,7 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_offset_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("textures", 1, 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 16)
                    .add_descriptor("texture_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("material_parameters", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
                    .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
                    .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")
@@ -1532,8 +1499,6 @@ void VulkanApplication::cleanup() {
     for (auto mesh = created_meshes.begin(); mesh != created_meshes.end(); mesh++) {
         mesh->free();
     }
-    shader_param_float_buffer.free();
-    shader_param_vec3_buffer.free();
     index_buffer.free();
     vertex_buffer.free();
     normal_buffer.free();
@@ -1541,7 +1506,7 @@ void VulkanApplication::cleanup() {
     mesh_data_offset_buffer.free();
     mesh_offset_index_buffer.free();
     texture_index_buffer.free();
-    material_index_buffer.free();
+    material_parameter_buffer.free();
     pipeline.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);

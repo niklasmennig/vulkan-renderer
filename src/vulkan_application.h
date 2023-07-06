@@ -17,6 +17,8 @@ using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 
+#include "glslang/SPIRV/GlslangToSpv.h"
+
 namespace Shaders
 {
     #include "../shaders/camera.glsl"
@@ -117,11 +119,8 @@ struct VulkanApplication {
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
-    Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_index_buffer;
-
-    std::vector<float> shader_params_float;
-    std::vector<vec4> shader_params_vec3;
-    Buffer shader_param_float_buffer, shader_param_vec3_buffer;
+    Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
+    std::vector<float> material_parameters;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);

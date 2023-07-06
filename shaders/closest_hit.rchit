@@ -17,6 +17,14 @@ hitAttributeEXT vec2 barycentrics;
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
 
+#define MATERIAL_PARAMETER_METALLIC 0
+#define MATERIAL_PARAMETERS_COUNT 1
+layout(set = 1, binding = 8) readonly buffer MaterialParameters {float[] data;} material_parameters;
+
+float get_material_parameter(uint instance, uint parameter) {
+    return material_parameters.data[instance * MATERIAL_PARAMETERS_COUNT + parameter];
+}
+
 void main() {
     uint instance = gl_InstanceID;
 
@@ -42,7 +50,7 @@ void main() {
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
     float roughness = arm.g;
-    float metallic = 0.0;
+    float metallic = get_material_parameter(instance, MATERIAL_PARAMETER_METALLIC);
    
     float fresnel_reflect = 0.5;
 

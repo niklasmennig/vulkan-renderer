@@ -10,6 +10,8 @@
 
 #include "vulkan_application.h"
 
+#include "glslang/SPIRV/GlslangToSpv.h"
+
 int main()
 {
     // initialize glfw
