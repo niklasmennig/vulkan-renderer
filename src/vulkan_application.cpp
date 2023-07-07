@@ -684,7 +684,7 @@ void VulkanApplication::draw_frame() {
     image_barrier.subresourceRange.baseArrayLayer = 0;
     image_barrier.subresourceRange.layerCount = 1;
     image_barrier.srcAccessMask = 0;
-    image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    image_barrier.dstAccessMask = 0;
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
@@ -705,41 +705,53 @@ void VulkanApplication::draw_frame() {
 
     // imgui draw
 
+    VkOffset2D render_area_offset{};
+    render_area_offset.x = 0;
+    render_area_offset.y = 0;
+
+    VkExtent2D render_area_extent{};
+    render_area_extent.width = swap_chain_extent.width;
+    render_area_extent.height = swap_chain_extent.height;
+
+    VkRect2D render_area{};
+    render_area.offset = render_area_offset;
+    render_area.extent = render_area_extent;
 
     VkRenderPassBeginInfo render_pass_info{};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_info.renderPass = render_pass;
     render_pass_info.framebuffer = framebuffers[image_index];
+    render_pass_info.renderArea = render_area;
     render_pass_info.clearValueCount = 0;
-    render_pass_info.pClearValues = nullptr;
 
-    vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-    ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
-
+    ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("TEST");
-    ImGui::Text("test");
-    ImGui::Text("test2");
-    ImGui::Text("test3");
-    ImGui::End();
+
+    // ImGui::Begin("TEST");
+    // ImGui::Text("test");
+    // ImGui::Text("test2");
+    // ImGui::Text("test3");
+    // ImGui::End();
 
     ImGui::ShowDemoWindow();
 
     ImGui::Render();
 
+
+    vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     ImDrawData* draw_data = ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
-
     vkCmdEndRenderPass(command_buffer);
+
     // material_parameter_buffer.set_data(material_parameters.data());
 
     // set current image as output image for raytracing pipeline
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     image_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    //vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+    //vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
         throw std::runtime_error("encountered an error when ending command buffer");
@@ -829,6 +841,10 @@ void VulkanApplication::submit_immediate(std::function<void()> lambda) {
     vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
 }
 
+void check_vk_result(VkResult r) {
+    if (r != VK_SUCCESS) std::cout << "VKResult was not VK_SUCCESS" << std::endl;
+}
+
 void VulkanApplication::init_imgui() {
     // 1: create descriptor pool for IMGUI
     // the size of the pool is very oversize, but it's copied from imgui demo itself.
@@ -858,15 +874,12 @@ void VulkanApplication::init_imgui() {
         throw std::runtime_error("error creating imgui descriptor pool");
     }
 
-    // 2: initialize imgui library
+    // initialize imgui library
+    auto ctx = ImGui::CreateContext();
+    ImGui::SetCurrentContext(ctx);
 
-    // this initializes the core structures of imgui
-    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForVulkan(window, true);
 
-    // this initializes imgui for SDL
-    ImGui_ImplGlfw_InitForVulkan(window, false);
-
-    // this initializes imgui for Vulkan
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = device.vulkan_instance;
     init_info.PhysicalDevice = physical_device;
@@ -876,6 +889,11 @@ void VulkanApplication::init_imgui() {
     init_info.MinImageCount = device.image_count;
     init_info.ImageCount = device.image_count;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.ColorAttachmentFormat = device.surface_format.format;
+    init_info.PipelineCache = pipeline.pipeline_cache_handle;
+    init_info.QueueFamily = queue_family_indices.graphics.value();
+    init_info.Subpass = 0;
+    init_info.CheckVkResultFn = check_vk_result;
 
     ImGui_ImplVulkan_Init(&init_info, render_pass);
 
@@ -895,10 +913,12 @@ void VulkanApplication::setup() {
 
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
         std::cout << "resized to " << width << "x" << height << std::endl;
-        VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
-        app->recreate_swapchain();
-        app->recreate_render_image();
-        app->render_clear_accumulated = 4;
+        if (width > 1 && height > 1) {
+            VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+            app->recreate_swapchain();
+            app->recreate_render_image();
+            app->render_clear_accumulated = 4;
+        }
     });
 
     startup_time = std::chrono::high_resolution_clock::now();
@@ -1217,7 +1237,8 @@ void VulkanApplication::setup() {
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
-    
+    subpass.inputAttachmentCount = 0;
+
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
@@ -1232,7 +1253,6 @@ void VulkanApplication::setup() {
     render_pass_info.pAttachments = &color_attachment;
     render_pass_info.subpassCount = 1;
     render_pass_info.pSubpasses = &subpass;
-
     render_pass_info.dependencyCount = 1;
     render_pass_info.pDependencies = &dependency;
 
