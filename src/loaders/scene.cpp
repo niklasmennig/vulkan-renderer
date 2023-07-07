@@ -7,17 +7,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 
 SceneData loaders::load_scene_description(std::string path) {
-    toml::table scene_table;
-    try
-    {
-        scene_table = toml::parse_file(path);
-    }
-    catch (const toml::parse_error &err)
-    {
-        std::stringstream msg;
-        msg << "error parsing scene file: " << err.source().begin << " " << err.what();
-        throw std::runtime_error(msg.str());
-    }
+    toml::table scene_table = toml::parse_file(path);
 
     // objects
     std::vector<std::tuple<std::string, std::string>> object_paths;

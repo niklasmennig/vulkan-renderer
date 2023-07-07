@@ -700,7 +700,7 @@ void VulkanApplication::draw_frame() {
     image_copy.dstSubresource.baseArrayLayer = 0;
 
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
-    //vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
     render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
 
     // imgui draw
@@ -730,7 +730,8 @@ void VulkanApplication::draw_frame() {
 
     ImGui::Render();
 
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+    ImDrawData* draw_data = ImGui::GetDrawData();
+    ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
 
     vkCmdEndRenderPass(command_buffer);
     // material_parameter_buffer.set_data(material_parameters.data());
@@ -833,22 +834,22 @@ void VulkanApplication::init_imgui() {
     // the size of the pool is very oversize, but it's copied from imgui demo itself.
     VkDescriptorPoolSize pool_sizes[] =
         {
-            {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 300},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 300},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 300},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 300},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 300},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 300},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 300},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 300},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 300},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 300},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 300}};
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets = 1000;
+    pool_info.maxSets = 300;
     pool_info.poolSizeCount = std::size(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
 
@@ -935,7 +936,7 @@ void VulkanApplication::setup() {
         bool found = false;
         for (uint32_t j = 0; j < available_extension_count; j++)
         {
-            if (strcmp(available_extensions[i].extensionName, glfw_extensions[i]))
+            if (!strcmp(available_extensions[i].extensionName, glfw_extensions[i]))
             {
                 found = true;
                 break;
@@ -1344,8 +1345,8 @@ void VulkanApplication::setup() {
 
     std::cout << "TLAS CREATED" << std::endl;
 
-    //const char* glsl_version = glslang::GetGlslVersionString();
-    //std::cout << "GLSLang Version: " << glsl_version << std::endl;
+    // compile shaders
+    glsl_compiler.initialize();
 
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
@@ -1500,6 +1501,8 @@ void VulkanApplication::cleanup() {
     // imgui cleanup
     vkDestroyDescriptorPool(device.vulkan_device, imgui_descriptor_pool, nullptr);
     ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     // deinitialization
     render_image.free();
     camera_buffer.free();

@@ -1,0 +1,3 @@
+struct GLSLCompiler {
+    void initialize();
+};
