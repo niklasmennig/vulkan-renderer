@@ -1,9 +1,15 @@
+[environment]
+    path = "./hdri/vestibule_4k.hdr"
+
 [objects]
     [objects.bust]
     path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
-    # [objects.vase]
-    # path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
+    #[objects.vase]
+    #path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
+
+    [objects.helmet]
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     [objects.table]
     path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
@@ -19,10 +25,11 @@
     object = "table"
     position = [0.0, -1.0, 0.0]
 
-    # [instances.vase]
-    # object = "vase"
-    # position = [0.5, 0.0, 0.0]
-    # scale = [2.5, 2.5, 2.5]
+    [instances.helmet]
+    object = "helmet"
+    position = [0.5, 0.2, 0.0]
+    scale = [0.2, 0.2, 0.2]
+    rotation = [90.0, 0.0, 0.0]
 
     #[instances.test]
     #object = "test"

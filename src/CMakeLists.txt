@@ -13,6 +13,7 @@ set(SRC_RENDERER
     src/buffer.cpp
     src/device.cpp
     src/pipeline_builder.cpp
+    src/ui.cpp
     src/vulkan_application.cpp
     src/main.cpp
 PARENT_SCOPE)

@@ -3,16 +3,35 @@
 
 #include <stdexcept>
 
+#include <iostream>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-Image loaders::load_image(Device* device, std::string path, ImageFormat format) {
+Image loaders::load_image(Device* device, std::string path) {
+    stbi_set_unpremultiply_on_load(1);
+    stbi_ldr_to_hdr_scale(1.0f);
+    stbi_ldr_to_hdr_gamma(1.0f);
+
     int width, height, channels;
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    float* data = stbi_loadf(path.c_str(), &width, &height, &channels, 0);
+
+    std::cout << "loading " << path << "| Channels: " << channels << std::endl;
+
+    VkFormat format;
+    switch (channels)
+    {
+    case 1u:
+        format = VK_FORMAT_R32_SFLOAT;
+        break;
+    case 3u:
+        format = VK_FORMAT_R32G32B32_SFLOAT;
+        break;
+    }
 
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = width * height * 4;
+    buffer_info.size = width * height * channels * sizeof(float);
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
     Image result;
@@ -30,8 +49,8 @@ Image loaders::load_image(Device* device, std::string path, ImageFormat format) 
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
-    image_info.format = (VkFormat)format;
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.format = format;
+    image_info.tiling = VK_IMAGE_TILING_LINEAR;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -61,7 +80,7 @@ Image loaders::load_image(Device* device, std::string path, ImageFormat format) 
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_info.image = result.image_handle;
     image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_info.format = (VkFormat)format;
+    image_view_info.format = format;
     image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;

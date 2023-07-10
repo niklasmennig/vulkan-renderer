@@ -9,6 +9,11 @@
 SceneData loaders::load_scene_description(std::string path) {
     toml::table scene_table = toml::parse_file(path);
 
+    // environment
+    std::string environment_path;
+    auto environment = scene_table["environment"].as_table();
+    environment_path = scene_table["environment"]["path"].as_string()->get();
+
     // objects
     std::vector<std::tuple<std::string, std::string>> object_paths;
     auto meshes = scene_table["objects"].as_table();
@@ -69,6 +74,7 @@ SceneData loaders::load_scene_description(std::string path) {
     }
 
     SceneData result;
+    result.environment_path = environment_path;
     result.object_paths = object_paths;
     result.instances = instances;
     return result;

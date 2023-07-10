@@ -10,7 +10,7 @@
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
 
-uint max_depth = 6;
+uint max_depth = 10;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
@@ -374,27 +374,25 @@ void main() {
     vec3 new_origin = position;
 
     //normal mapping
-    // vec3 tangent, bitangent;
-    // calculate_tangents(instance, barycentrics, tangent, bitangent);
-    // mat3 tbn = mat3(tangent, bitangent, normal);
+    vec3 tangent, bitangent;
+    calculate_tangents(instance, barycentrics, tangent, bitangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
 
-    // vec3 sampled_normal = vec3(1,0,0);// sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
 
-    // vec3 mapped_normal = (tbn * normalize(sampled_normal));
-    // //normal = normalize(mapped_normal);
-    // payload.color = vec3(normal.x, -normal.z, normal.y);
-    // return;
+    vec3 mapped_normal = (tbn * normalize(sampled_normal));
+    normal = normalize(mapped_normal);
 
     vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
-    float roughness = arm.g;
-    float metallic = get_material_parameter(instance, MATERIAL_PARAMETER_METALLIC);
-   
+    float roughness = arm.y;
+    float metallic = arm.z;
+
     float fresnel_reflect = 0.5;
 
     // direct light
-    vec3 light_position = vec3(1,1,1);
-    vec3 light_intensity = vec3(30.0);
+    vec3 light_position = vec3(51,1,1);
+    vec3 light_intensity = vec3(0.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
@@ -411,7 +409,7 @@ void main() {
 
     // indirect light
     vec3 next_factor = vec3(0);
-    vec3 r = sample_ggx(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, random_vec3(payload.seed), next_factor);
+    vec3 r = sample_ggx(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, vec3(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;

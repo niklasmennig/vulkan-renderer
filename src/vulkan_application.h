@@ -7,6 +7,7 @@
 #include "loaders/geometry_gltf.h"
 #include "pipeline_builder.h"
 #include "glsl_compiler.h"
+#include "ui.h"
 
 #include <vector>
 #include <optional>
@@ -78,6 +79,8 @@ struct VulkanApplication {
 
     Image render_image;
 
+    UI ui;
+
     VkSwapchainKHR swap_chain;
     std::vector<VkImage> swap_chain_images;
     VkFormat swap_chain_image_format;
@@ -104,7 +107,7 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
-    int32_t render_clear_accumulated = 4;
+    uint32_t render_clear_accumulated = 4;
 
 
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
@@ -154,4 +157,7 @@ struct VulkanApplication {
     void setup();
     void run();
     void cleanup();
+
+    double get_fps();
+    uint32_t get_samples();
 };
