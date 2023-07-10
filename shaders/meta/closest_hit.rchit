@@ -391,7 +391,7 @@ void main() {
     float fresnel_reflect = 0.5;
 
     // direct light
-    vec3 light_position = vec3(51,1,1);
+    vec3 light_position = vec3(3,1,1);
     vec3 light_intensity = vec3(0.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);

@@ -21,10 +21,10 @@ Image loaders::load_image(Device* device, std::string path) {
     VkFormat format;
     switch (channels)
     {
-    case 1u:
+    case 1:
         format = VK_FORMAT_R32_SFLOAT;
         break;
-    case 3u:
+    case 3:
         format = VK_FORMAT_R32G32B32_SFLOAT;
         break;
     }
