@@ -10,11 +10,13 @@ void UI::init(VulkanApplication* app) {
 void UI::draw() {
     ImGui::Begin("Scene Inspector");
 
+    ImGui::Text("Display");
+    static const char* items[]{"Result Image", "Instance Indices"};
+    ImGui::Combo("display_selector", &displayed_image_index, items, 2);
+
     ImGui::Text("Application Information");
-    ImGui::BeginChild("app_info");
     ImGui::Text("%.2f FPS", application->get_fps());
     ImGui::Text("%d Samples", application->get_samples());
-    ImGui::EndChild();
 
     ImGui::End();
 }

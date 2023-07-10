@@ -1,4 +1,5 @@
 #define PI 3.1415926535897932384626433832795
+#define NULL_INSTANCE 999999
 
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;

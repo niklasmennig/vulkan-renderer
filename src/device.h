@@ -20,7 +20,7 @@ struct Device
 
     Buffer create_buffer(VkBufferCreateInfo *create_info);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage);
+    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1);
     PipelineBuilder create_pipeline_builder();
 
     // function pointers

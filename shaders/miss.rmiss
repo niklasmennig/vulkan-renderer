@@ -7,6 +7,7 @@ layout(push_constant) uniform PushConstants {
     int clear_accumulated;
 } push_constants;
 
+~include "shaders/common.glsl"
 ~include "shaders/random.glsl"
 ~include "shaders/payload.glsl"
 ~include "shaders/texture_data.glsl"
@@ -14,6 +15,8 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
+    if (payload.depth == 0) payload.primary_hit_instance = NULL_INSTANCE;
+
     vec3 dir = gl_WorldRayDirectionEXT;
 
     float theta = acos(dir.y);

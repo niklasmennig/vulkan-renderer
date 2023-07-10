@@ -6,6 +6,7 @@
 
 
 #define PI 3.1415926535897932384626433832795
+#define NULL_INSTANCE 999999
 
 float epsilon = 0.0001f;
 float ray_max = 1000.0f;
@@ -49,6 +50,8 @@ struct RayPayload
 
     uint depth;
     uint seed;
+
+    uint primary_hit_instance;
 };
 #line 8
 
@@ -353,7 +356,7 @@ vec3 sample_ggx(in vec3 V, in vec3 N,
 hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(set = 0, binding = 1) uniform accelerationStructureEXT as;
+layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 
 #define MATERIAL_PARAMETER_METALLIC 0
 #define MATERIAL_PARAMETERS_COUNT 1
@@ -365,6 +368,7 @@ float get_material_parameter(uint instance, uint parameter) {
 
 void main() {
     uint instance = gl_InstanceID;
+    if (payload.depth == 0) payload.primary_hit_instance = instance;
 
     vec3 position = get_vertex_position(instance, barycentrics);
     vec3 normal = get_vertex_normal(instance, barycentrics);

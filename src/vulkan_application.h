@@ -77,7 +77,7 @@ struct VulkanApplication {
     VkQueue graphics_queue;
     VkQueue present_queue;
 
-    Image render_image;
+    Image render_image, aov_indices;
 
     UI ui;
 

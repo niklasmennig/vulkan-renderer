@@ -77,10 +77,10 @@ Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
     return create_buffer(&create_info);
 }
 
-Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage) {
+Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers) {
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = width * height * 4;
+    buffer_info.size = width * height * 4 * array_layers;
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
     Image result;
@@ -89,14 +89,17 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     result.width = width;
     result.height = height;
 
+    VkImageType image_type = VK_IMAGE_TYPE_2D;
+    if (array_layers > 1) image_type = VK_IMAGE_TYPE_3D;
+
     VkImageCreateInfo image_info{};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.imageType = image_type;
     image_info.extent.width = width;
     image_info.extent.height = height;
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
-    image_info.arrayLayers = 1;
+    image_info.arrayLayers = array_layers;
     image_info.format = surface_format.format;
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
@@ -126,16 +129,19 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
 
     vkBindImageMemory(vulkan_device, result.image_handle, result.texture_memory, 0);
 
+    VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
+    if (array_layers > 1) view_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
     VkImageViewCreateInfo image_view_info{};
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_info.image = result.image_handle;
-    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    image_view_info.viewType = view_type;
     image_view_info.format = surface_format.format;
     image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;
     image_view_info.subresourceRange.baseArrayLayer = 0;
-    image_view_info.subresourceRange.layerCount = 1;
+    image_view_info.subresourceRange.layerCount = array_layers;
 
     if (vkCreateImageView(vulkan_device, &image_view_info, nullptr, &result.view_handle) != VK_SUCCESS)
     {

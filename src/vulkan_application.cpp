@@ -315,7 +315,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     VkWriteDescriptorSet descriptor_write_as{};
     descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptor_write_as.dstSet = pipeline.descriptor_sets[0];
-    descriptor_write_as.dstBinding = 1;
+    descriptor_write_as.dstBinding = 0;
     descriptor_write_as.dstArrayElement = 0;
     descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     descriptor_write_as.descriptorCount = 1;
@@ -634,16 +634,20 @@ void VulkanApplication::recreate_swapchain() {
 
 void VulkanApplication::create_render_image() {
     render_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+    aov_indices = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
     submit_immediate([&]() {
         render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
+        aov_indices.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, aov_indices.access);
     });
 
     pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
+    pipeline.set_descriptor_image_binding("aov_indices", aov_indices, ImageType::Storage);
 }
 
 void VulkanApplication::recreate_render_image() {
     render_image.free();
+    aov_indices.free();
     create_render_image();
 }
 
@@ -699,9 +703,20 @@ void VulkanApplication::draw_frame() {
     image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_copy.dstSubresource.baseArrayLayer = 0;
 
-    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, render_image.access);
-    vkCmdCopyImage(command_buffer, render_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
+    // select image to display
+    Image displayed_image;
+    switch(ui.displayed_image_index) {
+        case 0:
+            displayed_image = render_image;
+            break;
+        case 1:
+            displayed_image = aov_indices;
+            break;
+    }
+
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, displayed_image.access);
+    vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, displayed_image.access);
 
     // imgui draw
 
@@ -1363,9 +1378,10 @@ void VulkanApplication::setup() {
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
                    // framework descriptors (set 0)
-                   .add_descriptor("out_image", 0, 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .add_descriptor("acceleration_structure", 0, 1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("camera_parameters", 0, 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+                   .add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
+                   .add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+                   .add_descriptor("out_image", 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+                   .add_descriptor("aov_indices", 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1520,6 +1536,7 @@ void VulkanApplication::cleanup() {
     ImGui::DestroyContext();
     // deinitialization
     render_image.free();
+    aov_indices.free();
     camera_buffer.free();
     for (Image i : loaded_textures) {
         i.free();

@@ -5,4 +5,6 @@ struct RayPayload
 
     uint depth;
     uint seed;
+
+    uint primary_hit_instance;
 };
