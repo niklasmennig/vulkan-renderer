@@ -178,7 +178,8 @@ void main() {
     }
 
     // instance indices AOV
-    vec3 instance_color =  vec3(float(payload.primary_hit_instance) / 4.0);
+    uint i = payload.primary_hit_instance;
+    vec3 instance_color =  vec3(floor(i/(255*255)) / 255.0, floor(i/255) / 255.0, (mod(i,255))/255.0);
     if (payload.primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
     imageStore(images[1], img_coord, vec4(instance_color, 1.0));
 
