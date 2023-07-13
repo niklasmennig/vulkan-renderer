@@ -48,6 +48,22 @@ PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, 
     return *this;
 }
 
+PipelineBuilder PipelineBuilder::add_output_image(std::string name) {
+    output_images.push_back(PipelineBuilderOutputImage {
+        name
+    });
+
+    return *this;
+}
+
+PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding) {
+    output_image_name = name;
+    output_image_set = set;
+    output_image_binding = binding;
+
+    return *this;
+}
+
 Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];
 }
@@ -68,7 +84,7 @@ void Pipeline::set_descriptor_image_binding(std::string name, Image image, Image
     descriptor_write_image.descriptorCount = 1;
     descriptor_write_image.pImageInfo = &image_info;
 
-    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_image, 0, nullptr);
+    vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_image, 0, nullptr);
 }
 
 void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type) {
@@ -88,7 +104,7 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, B
     descriptor_write_buffer.descriptorCount = 1;
     descriptor_write_buffer.pBufferInfo = &buffer_write_info;
 
-    vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_buffer, 0, nullptr);
+    vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_buffer, 0, nullptr);
 }
 
 void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count) {
@@ -116,28 +132,45 @@ void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, s
             descriptor_write_sampler.pImageInfo = &image_info;
         }
 
-        vkUpdateDescriptorSets(device_handle, 1, &descriptor_write_sampler, 0, nullptr);
+        vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_sampler, 0, nullptr);
     }
+}
 
+void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D swap_chain_extent) {
+    for (int i = 0; i < output_images.size(); i++) {
+        if (output_images[i].width > 0) output_images[i].free();
+        output_images[i] = device->create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+        output_images[i].cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, output_images[i].access);
+        set_descriptor_image_binding(output_image_binding_name, output_images[i], ImageType::Storage, i);
+    }
+}
+
+Image Pipeline::get_output_image(std::string name) {
+    uint32_t index = named_output_image_indices[name];
+    return output_images[index];
 }
 
 void Pipeline::free() {
+    for (int i = 0; i < output_images.size(); i++) {
+        output_images[i].free();
+    }
+
     // free sbt
     sbt.buffer.free();
 
-    vkDestroyDescriptorPool(device_handle, descriptor_pool, nullptr);
+    vkDestroyDescriptorPool(device->vulkan_device, descriptor_pool, nullptr);
     for (auto layout : descriptor_set_layouts) {
-        vkDestroyDescriptorSetLayout(device_handle, layout, nullptr);
+        vkDestroyDescriptorSetLayout(device->vulkan_device, layout, nullptr);
     }
 
-    vkDestroyPipeline(device_handle, pipeline_handle, nullptr);
-    vkDestroyPipelineLayout(device_handle, pipeline_layout_handle, nullptr);
-    vkDestroyPipelineCache(device_handle, pipeline_cache_handle, nullptr);
+    vkDestroyPipeline(device->vulkan_device, pipeline_handle, nullptr);
+    vkDestroyPipelineLayout(device->vulkan_device, pipeline_layout_handle, nullptr);
+    vkDestroyPipelineCache(device->vulkan_device, pipeline_cache_handle, nullptr);
 }
 
 Pipeline PipelineBuilder::build() {
     Pipeline result;
-    result.device_handle = device->vulkan_device;
+    result.device = device;
 
     // scan for highest descriptor set number
     uint32_t max_set = 0;
@@ -145,6 +178,20 @@ Pipeline PipelineBuilder::build() {
         if (desc.set > max_set) max_set = desc.set;
     }
     result.max_set = max_set;
+
+    // apply output image descriptor
+    if (output_image_name == "") {
+        // no output image descriptor is set
+        throw std::runtime_error("no output image descriptor is set");
+    } else {
+        add_descriptor(output_image_name, output_image_set, output_image_binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR, output_images.size());
+        result.output_image_binding_name = output_image_name;
+    }
+
+    result.output_images.resize(output_images.size());
+    for (int i = 0; i < output_images.size(); i++) {
+        result.named_output_image_indices[output_images[i].name] = i;
+    }
 
     #pragma region DESCRIPTOR SET LAYOUT
     result.descriptor_set_layouts.resize(max_set + 1);

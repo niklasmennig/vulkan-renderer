@@ -632,23 +632,10 @@ void VulkanApplication::recreate_swapchain() {
     create_framebuffers();
 }
 
-void VulkanApplication::create_render_image() {
-    render_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
-    aov_indices = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
-
-    submit_immediate([&]() {
-        render_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, render_image.access);
-        aov_indices.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, aov_indices.access);
-    });
-
-    pipeline.set_descriptor_image_binding("out_image", render_image, ImageType::Storage);
-    pipeline.set_descriptor_image_binding("aov_indices", aov_indices, ImageType::Storage);
-}
-
 void VulkanApplication::recreate_render_image() {
-    render_image.free();
-    aov_indices.free();
-    create_render_image();
+    submit_immediate([&]() {
+        pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
+    });
 }
 
 void VulkanApplication::draw_frame() {
@@ -707,10 +694,10 @@ void VulkanApplication::draw_frame() {
     Image displayed_image;
     switch(ui.displayed_image_index) {
         case 0:
-            displayed_image = render_image;
+            displayed_image = pipeline.get_output_image("result");
             break;
         case 1:
-            displayed_image = aov_indices;
+            displayed_image = pipeline.get_output_image("instance_indices");
             break;
     }
 
@@ -1380,8 +1367,9 @@ void VulkanApplication::setup() {
                    // framework descriptors (set 0)
                    .add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .add_descriptor("out_image", 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .add_descriptor("aov_indices", 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
+                   .with_output_image_descriptor("images", 0, 2)
+                   .add_output_image("result")
+                   .add_output_image("instance_indices")
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1400,7 +1388,7 @@ void VulkanApplication::setup() {
     pipeline = pipeline_builder.build();
     create_default_descriptor_writes();
 
-    create_render_image();
+    recreate_render_image();
 
     std::cout << "pipeline created" << std::endl;
 
@@ -1535,8 +1523,6 @@ void VulkanApplication::cleanup() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     // deinitialization
-    render_image.free();
-    aov_indices.free();
     camera_buffer.free();
     for (Image i : loaded_textures) {
         i.free();

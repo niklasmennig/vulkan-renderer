@@ -2,8 +2,8 @@
     path = "./hdri/vestibule_4k.hdr"
 
 [objects]
-    [objects.bust]
-    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+    # [objects.bust]
+    # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     #[objects.vase]
     #path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
@@ -11,19 +11,19 @@
     [objects.helmet]
     path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
-    [objects.table]
-    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
+    # [objects.table]
+    # path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
     #[objects.test]
     #path = "./gltf/test/test.gltf"
 
 [instances]
-    [instances.bust]
-    object = "bust"
+    # [instances.bust]
+    # object = "bust"
 
-    [instances.table]
-    object = "table"
-    position = [0.0, -1.0, 0.0]
+    # [instances.table]
+    # object = "table"
+    # position = [0.0, -1.0, 0.0]
 
     [instances.helmet]
     object = "helmet"

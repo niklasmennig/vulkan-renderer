@@ -77,8 +77,6 @@ struct VulkanApplication {
     VkQueue graphics_queue;
     VkQueue present_queue;
 
-    Image render_image, aov_indices;
-
     UI ui;
 
     VkSwapchainKHR swap_chain;
@@ -146,7 +144,6 @@ struct VulkanApplication {
     void create_swapchain_image_views();
     void create_framebuffers();
     void recreate_swapchain();
-    void create_render_image();
     void recreate_render_image();
     void create_default_descriptor_writes();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);

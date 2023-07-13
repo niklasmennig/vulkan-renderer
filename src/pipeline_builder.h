@@ -1,4 +1,5 @@
 #pragma once
+
 #include "device.h"
 #include "loaders/image.h"
 
@@ -28,7 +29,7 @@ struct ShaderBindingTable
 };
 
 struct Pipeline {
-    VkDevice device_handle;
+    Device* device;
     uint32_t max_set;
 
     VkPipeline pipeline_handle;
@@ -46,12 +47,19 @@ struct Pipeline {
         uint32_t binding;
     };
     std::unordered_map<std::string, SetBinding> named_descriptors;
-
+    std::unordered_map<std::string, uint32_t> named_output_image_indices;
+    
+    std::vector<Image> output_images;
+    std::string output_image_binding_name;
 
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
     void set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index = 0);
     void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
     void set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count = 1);
+
+    void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D swap_chain_extent);
+
+    Image get_output_image(std::string name);
 
     void free();
 };
@@ -73,16 +81,28 @@ struct PipelineBuilderShaderStage
     const char *shader_entry_point = "main";
 };
 
+struct PipelineBuilderOutputImage
+{
+    std::string name;
+};
+
 struct PipelineBuilder
 {
     Device* device;
     std::vector<PipelineBuilderShaderStage> shader_stages;
     std::vector<PipelineBuilderDescriptor> descriptors;
+    std::vector<PipelineBuilderOutputImage> output_images;
+
+    std::string output_image_name = "";
+    uint32_t output_image_set, output_image_binding;
 
     VkShaderModule create_shader_module(const std::vector<char>& code);
 
     public:
     PipelineBuilder add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     PipelineBuilder add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
+    PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
+    PipelineBuilder add_output_image(std::string name);
+
     Pipeline build();
 };
