@@ -1,5 +1,7 @@
 #include "image.h"
 
+#include <iostream>
+
 void Image::free()
 {
     vkDestroySampler(device_handle, sampler_handle, nullptr);
@@ -51,4 +53,48 @@ void Image::cmd_setup_texture(VkCommandBuffer cmd_buffer) {
     vkCmdCopyBufferToImage(cmd_buffer, buffer.buffer_handle, image_handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &texture_copy);
 
     cmd_transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);    
+}
+
+void Image::cmd_update_buffer(VkCommandBuffer cmd_buffer) {
+    VkBufferImageCopy texture_copy{};
+    texture_copy.bufferOffset = 0;
+    texture_copy.bufferRowLength = 0;
+    texture_copy.bufferImageHeight = 0;
+    texture_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    texture_copy.imageSubresource.mipLevel = 0;
+    texture_copy.imageSubresource.baseArrayLayer = 0;
+    texture_copy.imageSubresource.layerCount = 1;
+    texture_copy.imageOffset = {0, 0, 0};
+    texture_copy.imageExtent = {
+        width,
+        height,
+        1};
+
+    vkCmdCopyImageToBuffer(cmd_buffer, image_handle, layout, buffer.buffer_handle, 1, &texture_copy);
+}
+
+ivec3 Image::get_pixel(uint32_t x, uint32_t y) {
+    if (x < 0 || x >= width || y < 0 || y >= height) return ivec3(0);
+    ivec3 result;
+
+    void *data;
+    if (vkMapMemory(device_handle, texture_memory, 0, VK_WHOLE_SIZE, 0, &data) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error mapping buffer memory");
+    }
+    vkUnmapMemory(device_handle, texture_memory);
+
+    char* char_data = reinterpret_cast<char*>(data);
+
+    switch(format) {
+        case VK_FORMAT_B8G8R8A8_UNORM:
+            size_t offset = (y * width + x) * 4;
+
+            result.b = (unsigned char)char_data[offset];
+            result.g = (unsigned char)char_data[offset+1];
+            result.r = (unsigned char)char_data[offset+2];
+            break;
+    }
+
+    return result;
 }

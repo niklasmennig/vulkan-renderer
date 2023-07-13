@@ -157,4 +157,5 @@ struct VulkanApplication {
 
     double get_fps();
     uint32_t get_samples();
+    vec2 get_cursor_position();
 };

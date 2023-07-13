@@ -77,11 +77,11 @@ Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
     return create_buffer(&create_info);
 }
 
-Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers) {
+Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties) {
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = width * height * 4 * array_layers;
-    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     Image result;
     result.device_handle = vulkan_device;
@@ -90,7 +90,6 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     result.height = height;
 
     VkImageType image_type = VK_IMAGE_TYPE_2D;
-    if (array_layers > 1) image_type = VK_IMAGE_TYPE_3D;
 
     VkImageCreateInfo image_info{};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -101,10 +100,12 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     image_info.mipLevels = 1;
     image_info.arrayLayers = array_layers;
     image_info.format = surface_format.format;
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.tiling = VK_IMAGE_TILING_LINEAR;
     image_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     image_info.usage = usage;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+
+    result.format = image_info.format;
 
     if (vkCreateImage(vulkan_device, &image_info, nullptr, &result.image_handle) != VK_SUCCESS)
     {
@@ -120,7 +121,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = memory_requirements.size;
-    alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, memory_properties);
 
     if (vkAllocateMemory(vulkan_device, &alloc_info, nullptr, &result.texture_memory) != VK_SUCCESS)
     {

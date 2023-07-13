@@ -704,6 +704,8 @@ void VulkanApplication::draw_frame() {
             break;
     }
 
+    ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
+
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, displayed_image.access);
     vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, displayed_image.access);
@@ -1575,4 +1577,10 @@ double VulkanApplication::get_fps() {
 
 uint32_t VulkanApplication::get_samples() {
     return render_clear_accumulated;
+}
+
+vec2 VulkanApplication::get_cursor_position() {
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    return vec2(x, y);
 }

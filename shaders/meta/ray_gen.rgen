@@ -129,7 +129,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    int frame_samples = 4;
+    int frame_samples = 1;
     vec3 sample_sum = vec3(0);
     for (int s = 0; s < frame_samples; s++) {
         uint seed = gl_LaunchIDEXT.x * 313 + gl_LaunchIDEXT.y * 12 + uint(push_constants.time) * 543 + push_constants.clear_accumulated * 78 + s * 234;
