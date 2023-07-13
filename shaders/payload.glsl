@@ -7,4 +7,5 @@ struct RayPayload
     uint seed;
 
     uint primary_hit_instance;
+    vec3 primary_hit_albedo;
 };

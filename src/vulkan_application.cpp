@@ -699,6 +699,9 @@ void VulkanApplication::draw_frame() {
         case 1:
             displayed_image = pipeline.get_output_image("instance_indices");
             break;
+        case 2:
+            displayed_image = pipeline.get_output_image("albedo");
+            break;
     }
 
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, displayed_image.access);
@@ -1370,6 +1373,7 @@ void VulkanApplication::setup() {
                    .with_output_image_descriptor("images", 0, 2)
                    .add_output_image("result")
                    .add_output_image("instance_indices")
+                   .add_output_image("albedo")
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)

@@ -52,6 +52,7 @@ struct RayPayload
     uint seed;
 
     uint primary_hit_instance;
+    vec3 primary_hit_albedo;
 };
 #line 8
 
@@ -367,8 +368,7 @@ float get_material_parameter(uint instance, uint parameter) {
 }
 
 void main() {
-    uint instance = gl_InstanceID;
-    if (payload.depth == 0) payload.primary_hit_instance = instance;
+    uint instance = gl_InstanceID; 
 
     vec3 position = get_vertex_position(instance, barycentrics);
     vec3 normal = get_vertex_normal(instance, barycentrics);
@@ -418,7 +418,11 @@ void main() {
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
 
-    
+    if (payload.depth == 0) {
+        payload.primary_hit_instance = instance;
+        payload.primary_hit_albedo = base_color;
+    }
+
     if (payload.depth < max_depth) {
         payload.depth += 1;
         traceRayEXT(

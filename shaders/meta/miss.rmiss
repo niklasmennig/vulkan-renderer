@@ -88,6 +88,7 @@ struct RayPayload
     uint seed;
 
     uint primary_hit_instance;
+    vec3 primary_hit_albedo;
 };
 #line 12
 
@@ -110,7 +111,6 @@ vec3 sample_texture(uint instance, vec2 uv, uint offset) {
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
-    if (payload.depth == 0) payload.primary_hit_instance = NULL_INSTANCE;
 
     vec3 dir = gl_WorldRayDirectionEXT;
 
@@ -120,5 +120,12 @@ void main() {
     float u = phi / (2.0 * PI);
     float v = theta / PI;
 
-    payload.color += payload.contribution * sample_texture(0, vec2(u, v));
+    vec3 base_color = sample_texture(0, vec2(u, v));
+
+    payload.color += payload.contribution * base_color;
+
+    if (payload.depth == 0) {
+        payload.primary_hit_instance = NULL_INSTANCE;
+        payload.primary_hit_albedo = base_color;
+    }
 }

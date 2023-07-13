@@ -11,8 +11,8 @@ void UI::draw() {
     ImGui::Begin("Scene Inspector");
 
     ImGui::Text("Display");
-    static const char* items[]{"Result Image", "Instance Indices"};
-    ImGui::Combo("display_selector", &displayed_image_index, items, 2);
+    static const char* items[]{"Result Image", "Instance Indices", "Albedo"};
+    ImGui::Combo("display_selector", &displayed_image_index, items, 3);
 
     ImGui::Text("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
