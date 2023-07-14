@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <unordered_set>
+#include <sstream>
+#include <filesystem>
 
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
 {
@@ -278,7 +280,18 @@ Pipeline PipelineBuilder::build() {
 
     for (auto stage : shader_stages)
     {
-        auto code = loaders::read_spirv(stage.shader_code_path);
+        // compile shader
+        std::filesystem::path shader_path(stage.shader_code_path);
+        std::filesystem::path shader_out_path(stage.shader_code_path);
+        shader_path.make_preferred();
+        shader_out_path.replace_extension(".spv");
+        shader_out_path.make_preferred();
+        std::stringstream compile_command;
+        compile_command << GLSLC_EXE << " --target-env=vulkan1.3 -O -o " << std::filesystem::absolute(shader_out_path) << " " << std::filesystem::absolute(shader_path);
+        std::cout << "COMPILE SHADERS: " << compile_command.str() << std::endl;
+        system(compile_command.str().c_str());
+
+        auto code = loaders::read_spirv(shader_out_path.string());
         VkShaderModule module = create_shader_module(code);
         generated_shader_modules.push_back(module);
 
@@ -292,7 +305,7 @@ Pipeline PipelineBuilder::build() {
         stage_create_info.pNext = nullptr;
 
         uint32_t stage_index = (uint32_t)stage_create_infos.size();
-        std::cout << "Stage " << stage_index << ": " << stage.stage << " with code at " << stage.shader_code_path << ". Entry point: " << stage.shader_entry_point << std::endl;
+        std::cout << "Stage " << stage_index << ": " << stage.stage << " with code at " << shader_out_path.string() << ". Entry point: " << stage.shader_entry_point << std::endl;
         stage_create_infos.push_back(stage_create_info);
 
         VkRayTracingShaderGroupCreateInfoKHR group_create_info{};

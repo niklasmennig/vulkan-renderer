@@ -28,4 +28,4 @@ message(TEST:"${Vulkan_glslang_LIBRARY}")
 
 target_compile_definitions(renderer PRIVATE GLSLC_EXE="${GLSLC_EXE}" SHADER_DIR="${SHADER_DIR}")
 
-target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan Vulkan::glslang imgui)
+target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan imgui)

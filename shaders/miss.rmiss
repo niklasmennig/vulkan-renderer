@@ -7,10 +7,10 @@ layout(push_constant) uniform PushConstants {
     int clear_accumulated;
 } push_constants;
 
-~include "shaders/common.glsl"
-~include "shaders/random.glsl"
-~include "shaders/payload.glsl"
-~include "shaders/texture_data.glsl"
+#include "common.glsl"
+#include "random.glsl"
+#include "payload.glsl"
+#include "texture_data.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 

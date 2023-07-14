@@ -1,9 +1,10 @@
 #version 460 core
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_flags_primitive_culling : enable
+#extension GL_GOOGLE_include_directive : enable
 
-~include "shaders/common.glsl"
-~include "shaders/camera.glsl"
+#include "common.glsl"
+#include "camera.glsl"
 
 
 layout(push_constant) uniform PushConstants {
@@ -11,8 +12,8 @@ layout(push_constant) uniform PushConstants {
     uint clear_accumulated;
 } push_constants;
 
-~include "shaders/random.glsl"
-~include "shaders/payload.glsl"
+#include "random.glsl"
+#include "payload.glsl"
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
@@ -88,7 +89,7 @@ void main() {
 
     // instance indices AOV
     uint i = payload.primary_hit_instance;
-    vec3 instance_color =  vec3(floor(i/(255*255)) / 255.0, floor(i/255) / 255.0, (mod(i,255))/255.0);
+    vec3 instance_color =  vec3(floor(i/(255*255))/255.0, floor(i/255)/255.0, (mod(i,255))/255.0);
     if (payload.primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
     imageStore(images[1], img_coord, vec4(instance_color, 1.0));
 

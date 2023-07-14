@@ -1364,9 +1364,6 @@ void VulkanApplication::setup() {
 
     std::cout << "TLAS CREATED" << std::endl;
 
-    // compile shaders
-    glsl_compiler.initialize();
-
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
                    // framework descriptors (set 0)
@@ -1387,9 +1384,9 @@ void VulkanApplication::setup() {
                    .add_descriptor("texture_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("material_parameters", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
-                   .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/spirv/ray_gen.spv")
-                   .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/spirv/closest_hit.spv")
-                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/spirv/miss.spv");
+                   .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")
+                   .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")
+                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
 
     pipeline = pipeline_builder.build();
     create_default_descriptor_writes();

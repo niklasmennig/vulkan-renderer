@@ -4,13 +4,13 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : enable
 
-~include "shaders/common.glsl"
-~include "shaders/payload.glsl"
-~include "shaders/mesh_data.glsl"
-~include "shaders/texture_data.glsl"
-~include "shaders/random.glsl"
-~include "shaders/sampling.glsl"
-~include "shaders/ggx.glsl"
+#include "common.glsl"
+#include "payload.glsl"
+#include "mesh_data.glsl"
+#include "texture_data.glsl"
+#include "random.glsl"
+#include "sampling.glsl"
+#include "ggx.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 

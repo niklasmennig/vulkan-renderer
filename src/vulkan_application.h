@@ -6,7 +6,6 @@
 #include "loaders/geometry_obj.h"
 #include "loaders/geometry_gltf.h"
 #include "pipeline_builder.h"
-#include "glsl_compiler.h"
 #include "ui.h"
 
 #include <vector>
@@ -62,8 +61,6 @@ struct VulkanApplication {
     GLFWwindow* window;
     std::chrono::time_point<std::chrono::high_resolution_clock> startup_time, last_frame_time;
     std::chrono::duration<double> frame_delta;
-
-    GLSLCompiler glsl_compiler;
 
     VkInstance vulkan_instance;
     VkSurfaceKHR surface;

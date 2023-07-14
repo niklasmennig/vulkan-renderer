@@ -3,7 +3,6 @@ add_subdirectory(imgui)
 set(SRC_RENDERER
     ${SRC_IMGUI}
     src/mikktspace/mikktspace.c
-    src/glsl_compiler.cpp
     src/image.cpp
     src/loaders/geometry.cpp
     #src/loaders/geometry_obj.cpp -- deprecated
