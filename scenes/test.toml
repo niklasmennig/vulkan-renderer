@@ -8,11 +8,11 @@
     #[objects.vase]
     #path = "./gltf/brass_vase/brass_vase_03_4k.gltf"
 
+    [objects.table]
+    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
+
     [objects.helmet]
     path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
-
-    # [objects.table]
-    # path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
     #[objects.test]
     #path = "./gltf/test/test.gltf"
@@ -21,9 +21,9 @@
     # [instances.bust]
     # object = "bust"
 
-    # [instances.table]
-    # object = "table"
-    # position = [0.0, -1.0, 0.0]
+    [instances.table]
+    object = "table"
+    position = [0.0, -1.0, 0.0]
 
     [instances.helmet1]
     object = "helmet"

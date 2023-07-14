@@ -4,11 +4,24 @@
 #include <string>
 #include "glm/vec3.hpp"
 using vec3 = glm::vec3;
+#include "glm/vec4.hpp"
+using vec4 = glm::vec4;
 #include "glm/mat4x4.hpp"
 using mat4 = glm::mat4;
 
 struct InstanceData
 {
+    struct TextureIndices {
+        uint32_t diffuse, normal, roughness, emissive;
+    } texture_indices;
+
+    struct MaterialParameters {
+        // diffuse rgba
+        vec4 diffuse_factor;
+        // emissive rgb, metallic a
+        vec4 emissive_metallic_factor;
+    } material_parameters;
+
     std::string object_name;
     mat4 transformation;
 };

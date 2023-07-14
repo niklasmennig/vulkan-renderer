@@ -17,12 +17,16 @@ hitAttributeEXT vec2 barycentrics;
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 
-#define MATERIAL_PARAMETER_METALLIC 0
-#define MATERIAL_PARAMETERS_COUNT 1
-layout(set = 1, binding = 8) readonly buffer MaterialParameters {float[] data;} material_parameters;
+struct MaterialParameters {
+    // diffuse rgba
+    vec4 diffuse_factor;
+    // emissive rgb, metallic a
+    vec4 emissive_metallic_factor;
+};
+layout(std430, set = 1, binding = 8) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
-float get_material_parameter(uint instance, uint parameter) {
-    return material_parameters.data[instance * MATERIAL_PARAMETERS_COUNT + parameter];
+MaterialParameters get_material_parameters(uint instance) {
+    return material_parameters.data[instance];
 }
 
 void main() {
@@ -35,6 +39,8 @@ void main() {
     vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
 
+    MaterialParameters parameters = get_material_parameters(instance);
+
     //normal mapping
     vec3 tangent, bitangent;
     calculate_tangents(instance, barycentrics, tangent, bitangent);
@@ -45,10 +51,10 @@ void main() {
     vec3 mapped_normal = (tbn * normalize(sampled_normal));
     normal = normalize(mapped_normal);
 
-    vec3 base_color = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
+    vec3 base_color = parameters.diffuse_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
     float roughness = arm.y;
-    float metallic = arm.z;
+    float metallic = parameters.emissive_metallic_factor.a * arm.z;
 
     float fresnel_reflect = 0.5;
 
@@ -75,6 +81,10 @@ void main() {
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
+
+    // emission
+    vec3 emission = parameters.emissive_metallic_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE);
+    payload.contribution += emission;
 
     if (payload.depth == 0) {
         payload.primary_hit_instance = instance;

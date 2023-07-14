@@ -19,6 +19,15 @@ void UI::draw() {
     ImGui::Text("%d Samples", application->get_samples());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
+    ImGui::Text("Selected Instance: %d", selected_instance);
+    if (selected_instance_parameters != nullptr) {
+        ImGui::Text("Diffuse");
+        ImGui::SliderFloat3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_factor, 0.0, 1.0);
+        ImGui::Text("Metallic");
+        ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
+        ImGui::Text("Emission");
+        ImGui::SliderFloat3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r, 0.0, 10.0);
+    }
 
     ImGui::End();
 }

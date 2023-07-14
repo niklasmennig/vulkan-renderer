@@ -12,11 +12,14 @@
 #include <optional>
 #include <chrono>
 #include <functional>
+#include <iostream>
 
 #include "glm/glm.hpp"
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
+
+#define NULL_TEXTURE_INDEX 10000 // needs to match index in texture_data.glsl
 
 namespace Shaders
 {
@@ -110,16 +113,27 @@ struct VulkanApplication {
     SceneData loaded_scene_data;
     std::vector<LoadedMeshData> loaded_mesh_data;
     std::unordered_map<std::string, uint32_t> loaded_mesh_index;
-    std::unordered_map<std::string, GLTFData> loaded_objects;
+
     std::vector<MeshData> created_meshes;
     std::vector<Image> loaded_textures;
+
+    // mapping object name -> GLTF data
+    std::unordered_map<std::string, GLTFData> loaded_objects;
+    // mapping from file path -> texture index
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
+    uint32_t get_loaded_texture_index(std::string path) {
+        if (loaded_texture_index.find(path) != loaded_texture_index.end()) {
+            return loaded_texture_index[path];
+        } else {
+            return NULL_TEXTURE_INDEX;
+        }
+    }
 
     std::unordered_map<std::string, BLAS> loaded_blas;
     TLAS scene_tlas;
 
     Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
-    std::vector<float> material_parameters;
+    std::vector<InstanceData::MaterialParameters> material_parameters;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);

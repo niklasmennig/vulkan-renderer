@@ -37,12 +37,6 @@ SceneData loaders::load_scene_description(std::string path) {
 
 
         auto data_table = data.as_table();
-        // if(data_table->contains("texture")) {
-        //     instance_data.texture_name = data["texture"].as_string()->get();
-        // }
-        // if (data_table->contains("material")) {
-        //     instance_data.material_name = data["material"].as_string()->get();
-        // }
 
         mat4 transformation = glm::mat4(1.0);
         if(data_table->contains("position")) {

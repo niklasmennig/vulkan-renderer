@@ -19,8 +19,11 @@ struct GLTFData {
     std::string texture_diffuse_path = "";
     std::string texture_normal_path = "";
     std::string texture_roughness_path = "";
+    std::string texture_emissive_path = "";
 
+    vec4 diffuse_factor = vec4(0);
     float metallic_factor = 0;
+    vec3 emissive_factor = vec3(0);
 
     LoadedMeshData get_loaded_mesh_data();
 };

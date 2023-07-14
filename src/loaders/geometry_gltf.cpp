@@ -96,10 +96,21 @@ GLTFData loaders::load_gltf(const std::string path) {
                 const auto material = model.materials[primitive.material];
                 const auto textures = model.textures;
                 const auto images = model.images;
-                result.texture_diffuse_path = images[textures[material.pbrMetallicRoughness.baseColorTexture.index].source].uri;
-                result.texture_normal_path = images[textures[material.normalTexture.index].source].uri;
-                result.texture_roughness_path = images[textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source].uri;
+                if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) result.texture_diffuse_path = images[textures[material.pbrMetallicRoughness.baseColorTexture.index].source].uri;
+                if (material.normalTexture.index >= 0) result.texture_normal_path = images[textures[material.normalTexture.index].source].uri;
+                if (material.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) result.texture_roughness_path = images[textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source].uri;
+                if (material.emissiveTexture.index >= 0) result.texture_emissive_path = images[textures[material.emissiveTexture.index].source].uri;
+
+                result.diffuse_factor.r = material.pbrMetallicRoughness.baseColorFactor[0];
+                result.diffuse_factor.g = material.pbrMetallicRoughness.baseColorFactor[1];
+                result.diffuse_factor.b = material.pbrMetallicRoughness.baseColorFactor[2];
+                result.diffuse_factor.a = material.pbrMetallicRoughness.baseColorFactor[3];
+
                 result.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
+
+                result.emissive_factor.r = material.emissiveFactor[0];
+                result.emissive_factor.g = material.emissiveFactor[1];
+                result.emissive_factor.b = material.emissiveFactor[2];
             }
 
         }

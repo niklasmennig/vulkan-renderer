@@ -362,11 +362,24 @@ void VulkanApplication::create_default_descriptor_writes() {
     for (auto instance : loaded_scene_data.instances) {
         mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name]);
 
-        // pairs of 3 textures: diffuse, normal, roughness
-        auto tex_id = loaded_texture_index[instance.object_name];
-        texture_indices.push_back(tex_id + 0);
-        texture_indices.push_back(tex_id + 1);
-        texture_indices.push_back(tex_id + 2);
+        // set default instance data
+        auto data = &loaded_objects[instance.object_name];
+        instance.texture_indices.diffuse = get_loaded_texture_index(data->texture_diffuse_path);
+        instance.texture_indices.normal = get_loaded_texture_index(data->texture_normal_path);
+        instance.texture_indices.roughness = get_loaded_texture_index(data->texture_roughness_path);
+        instance.texture_indices.emissive = get_loaded_texture_index(data->texture_emissive_path);
+
+        instance.material_parameters.diffuse_factor = data->diffuse_factor;
+        instance.material_parameters.emissive_metallic_factor = vec4(data->emissive_factor.r, data->emissive_factor.g, data->emissive_factor.b, data->metallic_factor);
+
+        // pairs of 4 textures: diffuse, normal, roughness, emissive
+        texture_indices.push_back(instance.texture_indices.diffuse);
+        texture_indices.push_back(instance.texture_indices.normal);
+        texture_indices.push_back(instance.texture_indices.roughness);
+        texture_indices.push_back(instance.texture_indices.emissive);
+
+        // material parameters
+        material_parameters.push_back(instance.material_parameters);
     }
 
     index_buffer = device.create_buffer(sizeof(uint32_t) * indices.size());
@@ -383,6 +396,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     mesh_offset_index_buffer.set_data(mesh_offset_indices.data());
     texture_index_buffer = device.create_buffer(sizeof(uint32_t) * texture_indices.size());
     texture_index_buffer.set_data(texture_indices.data());
+    material_parameter_buffer = device.create_buffer(sizeof(InstanceData::MaterialParameters) * material_parameters.size());
 
     pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
@@ -657,6 +671,7 @@ void VulkanApplication::draw_frame() {
         throw std::runtime_error("error beginning command buffer");
     }
 
+    material_parameter_buffer.set_data(material_parameters.data());
 
     // raytracer draw
     record_command_buffer(command_buffer, image_index);
@@ -711,7 +726,6 @@ void VulkanApplication::draw_frame() {
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, displayed_image.access);
 
     // imgui draw
-
     VkOffset2D render_area_offset{};
     render_area_offset.x = 0;
     render_area_offset.y = 0;
@@ -744,8 +758,6 @@ void VulkanApplication::draw_frame() {
     ImDrawData* draw_data = ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
     vkCmdEndRenderPass(command_buffer);
-
-    // material_parameter_buffer.set_data(material_parameters.data());
 
     // set current image as output image for raytracing pipeline
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1287,6 +1299,7 @@ void VulkanApplication::setup() {
         auto full_object_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(object_path));
         auto object_name = std::get<0>(object_path);
         GLTFData gltf = loaders::load_gltf(full_object_path.string());
+        loaded_objects[object_name] = gltf;
         LoadedMeshData loaded_mesh = gltf.get_loaded_mesh_data();
         MeshData mesh_data = create_mesh_data(gltf.indices, gltf.vertices, gltf.normals, gltf.uvs);
         loaded_mesh_data.push_back(loaded_mesh);
@@ -1295,12 +1308,19 @@ void VulkanApplication::setup() {
         loaded_blas[object_name] = build_blas(mesh_data);
         
         full_object_path.remove_filename();
-        loaded_texture_index[object_name] = loaded_textures.size();
-        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_diffuse_path).string()));
-        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_normal_path).string()));
-        loaded_textures.push_back(loaders::load_image(&device, (full_object_path / gltf.texture_roughness_path).string()));
+        auto texture_paths = {
+            gltf.texture_diffuse_path,
+            gltf.texture_normal_path,
+            gltf.texture_roughness_path,
+            gltf.texture_emissive_path
+        };
 
-        material_parameters.push_back(gltf.metallic_factor);
+        for (auto path : texture_paths) {
+            if (path != "") {
+                loaded_textures.push_back(loaders::load_image(&device, (full_object_path / path).string()));
+                loaded_texture_index[path] = loaded_textures.size() - 1;
+            }
+        }
     }
 
 
@@ -1309,7 +1329,6 @@ void VulkanApplication::setup() {
     }
 
     vkEndCommandBuffer(command_buffer);
-    material_parameter_buffer = device.create_buffer(sizeof(float) * material_parameters.size());
 
     vkResetFences(logical_device, 1, &immediate_fence);
     
@@ -1512,6 +1531,22 @@ void VulkanApplication::run() {
         camera_data.fov_x = 70.0f;
 
         camera_buffer.set_data(&camera_data);
+
+        int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+        if (state == GLFW_PRESS)
+        {
+            render_clear_accumulated = 0;
+            vec3 hovered_instance_color = pipeline.get_output_image("instance_indices").get_pixel(get_cursor_position().x, get_cursor_position().y);
+            int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
+            if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
+            
+            ui.selected_instance = instance_index;
+            if (instance_index != -1) {
+                ui.selected_instance_parameters = &material_parameters[instance_index];
+            } else {
+                ui.selected_instance_parameters = nullptr;
+            }
+        }
 
         draw_frame();
     }
