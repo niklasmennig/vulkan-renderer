@@ -750,6 +750,7 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
 
+    if (ui.has_changed()) render_clear_accumulated = 0;
     ui.draw();
 
     ImGui::Render();
@@ -913,24 +914,12 @@ void VulkanApplication::init_imgui() {
 
     // clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
-
-    glfwSetMouseButtonCallback(window, ImGui_ImplGlfw_MouseButtonCallback);
 }
 
 void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
-
-    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
-        std::cout << "resized to " << width << "x" << height << std::endl;
-        if (width > 1 && height > 1) {
-            VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
-            app->recreate_swapchain();
-            app->recreate_render_image();
-            app->render_clear_accumulated = 0;
-        }
-    });
 
     startup_time = std::chrono::high_resolution_clock::now();
 
@@ -1415,6 +1404,38 @@ void VulkanApplication::setup() {
     std::cout << "pipeline created" << std::endl;
 
     init_imgui();
+
+    // set glfw callbacks
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+        std::cout << "resized to " << width << "x" << height << std::endl;
+        if (width > 1 && height > 1) {
+            VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+            app->recreate_swapchain();
+            app->recreate_render_image();
+            app->render_clear_accumulated = 0;
+        }
+    });
+
+    glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods) {
+        ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+
+        VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT)
+        {
+            if (!ImGui::IsAnyItemHovered()) {
+                vec3 hovered_instance_color = app->pipeline.get_output_image("instance_indices").get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
+                int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
+                if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
+                
+                app->ui.selected_instance = instance_index;
+                if (instance_index != -1) {
+                    app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
+                } else {
+                    app->ui.selected_instance_parameters = nullptr;
+                }
+            }
+        }
+    });
 }
 
 void VulkanApplication::run() {
@@ -1531,22 +1552,6 @@ void VulkanApplication::run() {
         camera_data.fov_x = 70.0f;
 
         camera_buffer.set_data(&camera_data);
-
-        int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-        if (state == GLFW_PRESS)
-        {
-            render_clear_accumulated = 0;
-            vec3 hovered_instance_color = pipeline.get_output_image("instance_indices").get_pixel(get_cursor_position().x, get_cursor_position().y);
-            int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
-            if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
-            
-            ui.selected_instance = instance_index;
-            if (instance_index != -1) {
-                ui.selected_instance_parameters = &material_parameters[instance_index];
-            } else {
-                ui.selected_instance_parameters = nullptr;
-            }
-        }
 
         draw_frame();
     }

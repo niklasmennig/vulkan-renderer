@@ -10,6 +10,7 @@ struct VulkanApplication;
 
 struct UI {
 private:
+    bool changed = false;
     VulkanApplication* application;
 
 public:
@@ -21,4 +22,5 @@ public:
 
     void init(VulkanApplication* application);
     void draw();
+    bool has_changed();
 };

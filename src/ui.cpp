@@ -8,11 +8,12 @@ void UI::init(VulkanApplication* app) {
 }
 
 void UI::draw() {
+    changed = false;
     ImGui::Begin("Scene Inspector");
 
     ImGui::Text("Display");
     static const char* items[]{"Result Image", "Instance Indices", "Albedo"};
-    ImGui::Combo("##display_selector", &displayed_image_index, items, 3);
+    changed |= ImGui::Combo("##display_selector", &displayed_image_index, items, 3);
 
     ImGui::Text("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
@@ -22,12 +23,16 @@ void UI::draw() {
     ImGui::Text("Selected Instance: %d", selected_instance);
     if (selected_instance_parameters != nullptr) {
         ImGui::Text("Diffuse");
-        ImGui::SliderFloat3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_factor, 0.0, 1.0);
+        changed |= ImGui::SliderFloat3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_factor, 0.0, 1.0);
         ImGui::Text("Metallic");
-        ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
+        changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
         ImGui::Text("Emission");
-        ImGui::SliderFloat3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r, 0.0, 10.0);
+        changed |= ImGui::SliderFloat3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r, 0.0, 10.0);
     }
 
     ImGui::End();
+}
+
+bool UI::has_changed() {
+    return changed;
 }
