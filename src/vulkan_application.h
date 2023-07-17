@@ -65,6 +65,8 @@ struct VulkanApplication {
     std::chrono::time_point<std::chrono::high_resolution_clock> startup_time, last_frame_time;
     std::chrono::duration<double> frame_delta;
 
+    float last_cursor_x, last_cursor_y, delta_cursor_x, delta_cursor_y;
+
     VkInstance vulkan_instance;
     VkSurfaceKHR surface;
 
@@ -102,6 +104,8 @@ struct VulkanApplication {
 
     VkDebugUtilsMessengerEXT debug_messenger;
 
+    float camera_look_x, camera_look_y;
+    bool mouse_look_active = false;
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 

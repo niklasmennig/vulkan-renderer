@@ -11,6 +11,7 @@ struct VulkanApplication;
 struct UI {
 private:
     bool changed = false;
+    bool hovered = false;
     VulkanApplication* application;
 
 public:
@@ -23,4 +24,5 @@ public:
     void init(VulkanApplication* application);
     void draw();
     bool has_changed();
+    bool is_hovered();
 };

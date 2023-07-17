@@ -1420,20 +1420,42 @@ void VulkanApplication::setup() {
         ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 
         VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
-        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT)
+        if (button == GLFW_MOUSE_BUTTON_LEFT)
         {
-            if (!ImGui::IsAnyItemHovered()) {
-                vec3 hovered_instance_color = app->pipeline.get_output_image("instance_indices").get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
-                int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
-                if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
-                
-                app->ui.selected_instance = instance_index;
-                if (instance_index != -1) {
-                    app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
-                } else {
-                    app->ui.selected_instance_parameters = nullptr;
+            if (action == GLFW_PRESS) {
+                app->mouse_look_active = true;
+                if (!app->ui.is_hovered()) {
+                    vec3 hovered_instance_color = app->pipeline.get_output_image("instance_indices").get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
+                    int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
+                    if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
+                    
+                    app->ui.selected_instance = instance_index;
+                    if (instance_index != -1) {
+                        app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
+                    } else {
+                        app->ui.selected_instance_parameters = nullptr;
+                    }
                 }
+            } else {
+                app->mouse_look_active = false;
             }
+        }
+    });
+
+    glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x, double y) {
+        ImGui_ImplGlfw_CursorPosCallback(window, x, y);
+
+        VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+
+        app->delta_cursor_x = x - app->last_cursor_x;
+        app->delta_cursor_y = y - app->last_cursor_y;
+
+        app->last_cursor_x = x;
+        app->last_cursor_y = y;
+
+        if (app->mouse_look_active && !app->ui.is_hovered()) {
+            app->camera_look_x = app->delta_cursor_x * 0.01;
+            app->camera_look_y = app->delta_cursor_y * 0.01;
         }
     });
 }
@@ -1496,33 +1518,15 @@ void VulkanApplication::run() {
         float angle = camera_rotation_speed;
         
 
-        if (glfwGetKey(window, GLFW_KEY_RIGHT)) 
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, angle, cam_up);
-            render_clear_accumulated = 0;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT))
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, -angle, cam_up);
-            render_clear_accumulated = 0;
-        }
+        rotation_matrix = glm::rotate(rotation_matrix, camera_look_x, cam_up);
 
         glm::vec3 new_fwd = camera_data.forward * rotation_matrix;
         glm::vec3 new_right = glm::cross(new_fwd, cam_up);
 
         // vertical rotation
-        rotation_matrix = glm::mat4(1.0f);
+        rotation_matrix = glm::rotate(rotation_matrix, camera_look_y, new_right);
 
-        if (glfwGetKey(window, GLFW_KEY_UP))
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, -angle, new_right);
-            render_clear_accumulated = 0;
-        }
-        if (glfwGetKey(window, GLFW_KEY_DOWN))
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, angle, new_right);
-            render_clear_accumulated = 0;
-        }
+        if (camera_look_x != 0 || camera_look_y != 0) render_clear_accumulated = 0;
 
         glm::vec3 new_up = camera_data.up * rotation_matrix;
         new_fwd = glm::cross(new_up, new_right);
@@ -1554,6 +1558,9 @@ void VulkanApplication::run() {
         camera_buffer.set_data(&camera_data);
 
         draw_frame();
+
+        camera_look_x = 0;
+        camera_look_y = 0;
     }
 
     vkDeviceWaitIdle(logical_device);

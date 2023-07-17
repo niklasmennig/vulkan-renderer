@@ -9,7 +9,9 @@ void UI::init(VulkanApplication* app) {
 
 void UI::draw() {
     changed = false;
+    hovered = false;
     ImGui::Begin("Scene Inspector");
+    hovered |= ImGui::IsWindowHovered();
 
     ImGui::Text("Display");
     static const char* items[]{"Result Image", "Instance Indices", "Albedo"};
@@ -31,8 +33,13 @@ void UI::draw() {
     }
 
     ImGui::End();
+    hovered |= ImGui::IsAnyItemHovered() | ImGui::IsAnyItemFocused() | ImGui::IsAnyItemActive();
 }
 
 bool UI::has_changed() {
     return changed;
+}
+
+bool UI::is_hovered() {
+    return hovered;
 }
