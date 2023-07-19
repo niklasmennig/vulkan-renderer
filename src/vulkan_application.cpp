@@ -197,9 +197,7 @@ TLAS VulkanApplication::build_tlas() {
         std::cout << instance.object_name << std::endl;
         int blas_offset = loaded_mesh_index[instance.object_name];
         const auto& object = loaded_objects[instance.object_name];
-        std::cout << "TETSTSTSTST" << object.nodes.size() << std::endl;
         for (const auto& node : object.nodes) {
-            std::cout << "BLAS " << blas_offset + node.mesh_index << std::endl;
             BLAS& as = created_blas[blas_offset + node.mesh_index];
 
             VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
@@ -371,12 +369,15 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // index of mesh and texture used by instance
     for (auto instance : loaded_scene_data.instances) {
-        mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name]);
 
         // set default instance data
         const auto& data = loaded_objects[instance.object_name];
-        for (const auto& material : data.materials) {
+        for (const auto& node : data.nodes) {
+             mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index);
+            int material_index = data.meshes[node.mesh_index].material_index;
             auto texture_index_offset = loaded_texture_index[instance.object_name];
+            const auto& material = data.materials[material_index];
+
             instance.texture_indices.diffuse = material.diffuse_texture == -1 ? NULL_TEXTURE_INDEX : material.diffuse_texture + texture_index_offset;
             instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
             instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
@@ -395,6 +396,8 @@ void VulkanApplication::create_default_descriptor_writes() {
             material_parameters.push_back(instance.material_parameters);
         }
     }
+
+    std::cout << texture_indices.size() << "TEXTURE INDICES" << std::endl;
 
     index_buffer = device.create_buffer(sizeof(uint32_t) * indices.size());
     index_buffer.set_data(indices.data());
@@ -664,12 +667,11 @@ void VulkanApplication::recreate_render_image() {
     submit_immediate([&]() {
         pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
     });
+
+    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
 }
 
 void VulkanApplication::draw_frame() {
-    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
-    vkResetFences(logical_device, 1, &in_flight_fence);
-
     uint32_t image_index;
     vkAcquireNextImageKHR(logical_device, swap_chain, UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
 
@@ -726,7 +728,7 @@ void VulkanApplication::draw_frame() {
             displayed_image = pipeline.get_output_image("result");
             break;
         case 1:
-            displayed_image = pipeline.get_output_image("instance_indices");
+            displayed_image = pipeline.get_output_image("instance_indices_colored");
             break;
         case 2:
             displayed_image = pipeline.get_output_image("albedo");
@@ -774,11 +776,6 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
     vkCmdEndRenderPass(command_buffer);
 
-    // set current image as output image for raytracing pipeline
-    image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    image_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    //vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
-
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
         throw std::runtime_error("encountered an error when ending command buffer");
     }
@@ -821,6 +818,9 @@ void VulkanApplication::draw_frame() {
     last_frame_time = time;
 
     glfwSetWindowTitle(window, ("Vulkan Renderer | FPS: " + std::to_string(1.0 / frame_delta.count())).c_str());
+
+    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(logical_device, 1, &in_flight_fence);
 }
 
 void VulkanApplication::setup_device() {
@@ -853,7 +853,6 @@ void VulkanApplication::submit_immediate(std::function<void()> lambda) {
 
     vkEndCommandBuffer(command_buffer);
 
-    vkResetFences(logical_device, 1, &immediate_fence);
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -863,8 +862,9 @@ void VulkanApplication::submit_immediate(std::function<void()> lambda) {
     submit_info.pCommandBuffers = &command_buffer;
 
     vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
-
+    
     vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(logical_device, 1, &immediate_fence);
 }
 
 void check_vk_result(VkResult r) {
@@ -1228,6 +1228,8 @@ void VulkanApplication::setup() {
     }
 
     create_synchronization();
+    vkResetFences(logical_device, 1, &immediate_fence);
+    vkResetFences(logical_device, 1, &in_flight_fence);
 
     create_swapchain();
     create_swapchain_image_views();
@@ -1286,7 +1288,7 @@ void VulkanApplication::setup() {
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = 0;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     begin_info.pInheritanceInfo = nullptr;
 
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
@@ -1323,10 +1325,9 @@ void VulkanApplication::setup() {
     for (Image i : loaded_textures) {
         i.cmd_setup_texture(command_buffer);
     }
+    std::cout << "Set up " << loaded_textures.size() << " textures" << std::endl;
 
-    vkEndCommandBuffer(command_buffer);
-
-    vkResetFences(logical_device, 1, &immediate_fence);
+    // vkEndCommandBuffer(command_buffer);
     
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1335,17 +1336,18 @@ void VulkanApplication::setup() {
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
 
-    vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
+    // vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
 
-    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
+    // vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
+    // vkResetFences(logical_device, 1, &immediate_fence);
 
-    // BUILD TLAS
-    vkResetCommandBuffer(command_buffer, 0);
+    // // BUILD TLAS
+    // vkResetCommandBuffer(command_buffer, 0);
 
-    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error beginning command buffer");
-    }
+    // if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
+    // {
+    //     throw std::runtime_error("error beginning command buffer");
+    // }
 
     scene_tlas = build_tlas();
 
@@ -1373,13 +1375,10 @@ void VulkanApplication::setup() {
 
     vkEndCommandBuffer(command_buffer);
 
-    vkResetFences(logical_device, 1, &immediate_fence);
-
     vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
 
     vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
-
-    std::cout << "TLAS CREATED" << std::endl;
+    vkResetFences(logical_device, 1, &immediate_fence);
 
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
@@ -1389,6 +1388,7 @@ void VulkanApplication::setup() {
                    .with_output_image_descriptor("images", 0, 2)
                    .add_output_image("result")
                    .add_output_image("instance_indices")
+                   .add_output_image("instance_indices_colored")
                    .add_output_image("albedo")
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1408,7 +1408,9 @@ void VulkanApplication::setup() {
     pipeline = pipeline_builder.build();
     create_default_descriptor_writes();
 
-    recreate_render_image();
+    submit_immediate([&]() {
+        pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
+    });
 
     std::cout << "pipeline created" << std::endl;
 

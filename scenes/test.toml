@@ -11,3 +11,4 @@
 [instances]
     [instances.test]
     object = "test"
+    position = [0.0, 0.0, 0.0]

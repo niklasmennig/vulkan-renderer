@@ -140,7 +140,7 @@ void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, s
 
 void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D swap_chain_extent) {
     for (int i = 0; i < output_images.size(); i++) {
-        if (output_images[i].width > 0) output_images[i].free();
+        if (output_images[i].width > 0 && output_images[i].height > 0) output_images[i].free();
         output_images[i] = device->create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         output_images[i].cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, output_images[i].access);
