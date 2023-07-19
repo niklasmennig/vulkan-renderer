@@ -194,9 +194,10 @@ TLAS VulkanApplication::build_tlas() {
     int count = 0;
     std::cout << "Building TLAS for " << loaded_scene_data.instances.size() << " instances" << std::endl;
     for (InstanceData instance : loaded_scene_data.instances) {
-        std::cout << object << std::endl;
+        std::cout << instance.object_name << std::endl;
         int blas_offset = loaded_mesh_index[instance.object_name];
         const auto& object = loaded_objects[instance.object_name];
+        std::cout << "TETSTSTSTST" << object.nodes.size() << std::endl;
         for (const auto& node : object.nodes) {
             std::cout << "BLAS " << blas_offset + node.mesh_index << std::endl;
             BLAS& as = created_blas[blas_offset + node.mesh_index];

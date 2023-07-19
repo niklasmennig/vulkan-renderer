@@ -126,7 +126,7 @@ GLTFData loaders::load_gltf(const std::string path) {
     // Nodes
     for (const auto &node : model.nodes) {
         GLTFNode result_node;
-        if (node.mesh <= 0) continue;
+        if (node.mesh < 0) continue;
 
         result_node.mesh_index = node.mesh;
         if (node.matrix.size() > 0) result_node.matrix = glm::make_mat4(node.matrix.data());
