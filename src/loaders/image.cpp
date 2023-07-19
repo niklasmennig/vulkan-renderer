@@ -27,6 +27,9 @@ Image loaders::load_image(Device* device, std::string path) {
     case 3:
         format = VK_FORMAT_R32G32B32_SFLOAT;
         break;
+    case 4:
+        format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        break;
     }
 
     VkBufferCreateInfo buffer_info{};

@@ -115,7 +115,6 @@ struct VulkanApplication {
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
 
     SceneData loaded_scene_data;
-    std::vector<LoadedMeshData> loaded_mesh_data;
     std::unordered_map<std::string, uint32_t> loaded_mesh_index;
 
     std::vector<MeshData> created_meshes;
@@ -123,17 +122,10 @@ struct VulkanApplication {
 
     // mapping object name -> GLTF data
     std::unordered_map<std::string, GLTFData> loaded_objects;
-    // mapping from file path -> texture index
+    // mapping object name -> texture index offset
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
-    uint32_t get_loaded_texture_index(std::string path) {
-        if (loaded_texture_index.find(path) != loaded_texture_index.end()) {
-            return loaded_texture_index[path];
-        } else {
-            return NULL_TEXTURE_INDEX;
-        }
-    }
 
-    std::unordered_map<std::string, BLAS> loaded_blas;
+    std::vector<BLAS> created_blas;
     TLAS scene_tlas;
 
     Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;

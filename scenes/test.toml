@@ -3,7 +3,10 @@
 
 [objects]
     [objects.test]
-    path = "./gltf/transmission_small/untitled.gltf"
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+
+    # [objects.test]
+    # path = "./gltf/transmission_test/TransmissionTest.gltf"
 
 [instances]
     [instances.test]

@@ -192,35 +192,42 @@ TLAS VulkanApplication::build_tlas() {
     std::vector<VkAccelerationStructureInstanceKHR> instances;
 
     int count = 0;
+    std::cout << "Building TLAS for " << loaded_scene_data.instances.size() << " instances" << std::endl;
     for (InstanceData instance : loaded_scene_data.instances) {
-        BLAS& as = loaded_blas[instance.object_name];
+        std::cout << object << std::endl;
+        int blas_offset = loaded_mesh_index[instance.object_name];
+        const auto& object = loaded_objects[instance.object_name];
+        for (const auto& node : object.nodes) {
+            std::cout << "BLAS " << blas_offset + node.mesh_index << std::endl;
+            BLAS& as = created_blas[blas_offset + node.mesh_index];
 
-        VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
-        blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-        blas_address_info.accelerationStructure = as.acceleration_structure;
+            VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
+            blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+            blas_address_info.accelerationStructure = as.acceleration_structure;
 
-        VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
+            VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
 
-        VkAccelerationStructureInstanceKHR structure{};
-        structure.transform.matrix[0][0] = instance.transformation[0][0];
-        structure.transform.matrix[0][1] = instance.transformation[1][0];
-        structure.transform.matrix[0][2] = instance.transformation[2][0];
-        structure.transform.matrix[0][3] = instance.transformation[3][0];
-        structure.transform.matrix[1][0] = instance.transformation[0][1];
-        structure.transform.matrix[1][1] = instance.transformation[1][1];
-        structure.transform.matrix[1][2] = instance.transformation[2][1];
-        structure.transform.matrix[1][3] = instance.transformation[3][1];
-        structure.transform.matrix[2][0] = instance.transformation[0][2];
-        structure.transform.matrix[2][1] = instance.transformation[1][2];
-        structure.transform.matrix[2][2] = instance.transformation[2][2];
-        structure.transform.matrix[2][3] = instance.transformation[3][2];
+            VkAccelerationStructureInstanceKHR structure{};
+            structure.transform.matrix[0][0] = instance.transformation[0][0];
+            structure.transform.matrix[0][1] = instance.transformation[1][0];
+            structure.transform.matrix[0][2] = instance.transformation[2][0];
+            structure.transform.matrix[0][3] = instance.transformation[3][0];
+            structure.transform.matrix[1][0] = instance.transformation[0][1];
+            structure.transform.matrix[1][1] = instance.transformation[1][1];
+            structure.transform.matrix[1][2] = instance.transformation[2][1];
+            structure.transform.matrix[1][3] = instance.transformation[3][1];
+            structure.transform.matrix[2][0] = instance.transformation[0][2];
+            structure.transform.matrix[2][1] = instance.transformation[1][2];
+            structure.transform.matrix[2][2] = instance.transformation[2][2];
+            structure.transform.matrix[2][3] = instance.transformation[3][2];
 
-        structure.mask = 0xff;
-        structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        structure.accelerationStructureReference = blas_address;
+            structure.mask = 0xff;
+            structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            structure.accelerationStructureReference = blas_address;
 
-        instances.push_back(structure);
-        count++;
+            instances.push_back(structure);
+            count++;
+        }
     }
 
     std::cout << "TLAS instances: " << instances.size() << std::endl;
@@ -345,17 +352,20 @@ void VulkanApplication::create_default_descriptor_writes() {
     mesh_data_offsets.push_back(normals.size());
     mesh_data_offsets.push_back(texcoords.size());
 
-    for (int i = 0; i < loaded_mesh_data.size(); i++) {
-        indices.insert(indices.end(), loaded_mesh_data[i].indices.begin(), loaded_mesh_data[i].indices.end());
-        vertices.insert(vertices.end(), loaded_mesh_data[i].vertices.begin(), loaded_mesh_data[i].vertices.end());
-        normals.insert(normals.end(), loaded_mesh_data[i].normals.begin(), loaded_mesh_data[i].normals.end());
-        texcoords.insert(texcoords.end(), loaded_mesh_data[i].texcoords.begin(), loaded_mesh_data[i].texcoords.end());
+    for (const auto& object_path : loaded_scene_data.object_paths) {
+        const auto& object = loaded_objects[std::get<0>(object_path)];
+        for (const auto& mesh : object.meshes) {
+            indices.insert(indices.end(), mesh.indices.begin(), mesh.indices.end());
+            vertices.insert(vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+            normals.insert(normals.end(), mesh.normals.begin(), mesh.normals.end());
+            texcoords.insert(texcoords.end(), mesh.uvs.begin(), mesh.uvs.end());
 
-        // add all 4 offsets contiguously
-        mesh_data_offsets.push_back(indices.size());
-        mesh_data_offsets.push_back(vertices.size());
-        mesh_data_offsets.push_back(normals.size());
-        mesh_data_offsets.push_back(texcoords.size());
+            // add all 4 offsets contiguously
+            mesh_data_offsets.push_back(indices.size());
+            mesh_data_offsets.push_back(vertices.size());
+            mesh_data_offsets.push_back(normals.size());
+            mesh_data_offsets.push_back(texcoords.size());
+        }
     }
 
     // index of mesh and texture used by instance
@@ -363,23 +373,26 @@ void VulkanApplication::create_default_descriptor_writes() {
         mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name]);
 
         // set default instance data
-        auto data = &loaded_objects[instance.object_name];
-        instance.texture_indices.diffuse = get_loaded_texture_index(data->texture_diffuse_path);
-        instance.texture_indices.normal = get_loaded_texture_index(data->texture_normal_path);
-        instance.texture_indices.roughness = get_loaded_texture_index(data->texture_roughness_path);
-        instance.texture_indices.emissive = get_loaded_texture_index(data->texture_emissive_path);
+        const auto& data = loaded_objects[instance.object_name];
+        for (const auto& material : data.materials) {
+            auto texture_index_offset = loaded_texture_index[instance.object_name];
+            instance.texture_indices.diffuse = material.diffuse_texture == -1 ? NULL_TEXTURE_INDEX : material.diffuse_texture + texture_index_offset;
+            instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
+            instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
+            instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
 
-        instance.material_parameters.diffuse_factor = data->diffuse_factor;
-        instance.material_parameters.emissive_metallic_factor = vec4(data->emissive_factor.r, data->emissive_factor.g, data->emissive_factor.b, data->metallic_factor);
+            instance.material_parameters.diffuse_factor = material.diffuse_factor;
+            instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
 
-        // pairs of 4 textures: diffuse, normal, roughness, emissive
-        texture_indices.push_back(instance.texture_indices.diffuse);
-        texture_indices.push_back(instance.texture_indices.normal);
-        texture_indices.push_back(instance.texture_indices.roughness);
-        texture_indices.push_back(instance.texture_indices.emissive);
+            // pairs of 4 textures: diffuse, normal, roughness, emissive
+            texture_indices.push_back(instance.texture_indices.diffuse);
+            texture_indices.push_back(instance.texture_indices.normal);
+            texture_indices.push_back(instance.texture_indices.roughness);
+            texture_indices.push_back(instance.texture_indices.emissive);
 
-        // material parameters
-        material_parameters.push_back(instance.material_parameters);
+            // material parameters
+            material_parameters.push_back(instance.material_parameters);
+        }
     }
 
     index_buffer = device.create_buffer(sizeof(uint32_t) * indices.size());
@@ -1289,28 +1302,21 @@ void VulkanApplication::setup() {
         auto object_name = std::get<0>(object_path);
         GLTFData gltf = loaders::load_gltf(full_object_path.string());
         loaded_objects[object_name] = gltf;
-        LoadedMeshData loaded_mesh = gltf.get_loaded_mesh_data();
-        MeshData mesh_data = create_mesh_data(gltf.indices, gltf.vertices, gltf.normals, gltf.uvs);
-        loaded_mesh_data.push_back(loaded_mesh);
-        loaded_mesh_index[object_name] = loaded_mesh_data.size() - 1;
-        created_meshes.push_back(mesh_data);
-        loaded_blas[object_name] = build_blas(mesh_data);
+        loaded_mesh_index[object_name] = created_meshes.size();
+        for (auto &mesh : gltf.meshes) {
+            MeshData mesh_data = create_mesh_data(mesh.indices, mesh.vertices, mesh.normals, mesh.uvs);
+            created_meshes.push_back(mesh_data);
+            created_blas.push_back(build_blas(mesh_data));
+        }
         
         full_object_path.remove_filename();
-        auto texture_paths = {
-            gltf.texture_diffuse_path,
-            gltf.texture_normal_path,
-            gltf.texture_roughness_path,
-            gltf.texture_emissive_path
-        };
-
-        for (auto path : texture_paths) {
-            if (path != "") {
-                loaded_textures.push_back(loaders::load_image(&device, (full_object_path / path).string()));
-                loaded_texture_index[path] = loaded_textures.size() - 1;
-            }
+        loaded_texture_index[object_name] = loaded_textures.size();
+        for (const auto &texture : gltf.textures) {
+            auto full_path = full_object_path / texture.path;
+            loaded_textures.push_back(loaders::load_image(&device, full_path.string()));
         }
     }
+    std::cout << "Created " << created_blas.size() << " Mesh BLASes" << std::endl;
 
 
     for (Image i : loaded_textures) {
@@ -1341,6 +1347,8 @@ void VulkanApplication::setup() {
     }
 
     scene_tlas = build_tlas();
+
+    std::cout << "Scene TLAS constructed" << std::endl;
 
     // transfer framebuffer images to correct format
     for (int i = 0; i < swap_chain_images.size(); i++) {
@@ -1458,6 +1466,8 @@ void VulkanApplication::setup() {
             app->camera_look_y = app->delta_cursor_y * 0.01;
         }
     });
+
+    std::cout << "Setup completed" << std::endl;
 }
 
 void VulkanApplication::run() {
@@ -1578,8 +1588,8 @@ void VulkanApplication::cleanup() {
         i.free();
     }
     free_tlas(scene_tlas);
-    for (auto blas = loaded_blas.begin(); blas != loaded_blas.end(); blas++) {
-        free_blas(blas->second);
+    for (auto& blas : created_blas) {
+        free_blas(blas);
     };
     for (auto mesh = created_meshes.begin(); mesh != created_meshes.end(); mesh++) {
         mesh->free();

@@ -2,21 +2,12 @@
 
 #include <iostream>
 
+#include "glm/gtc/type_ptr.hpp"
+
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "tiny_gltf.h"
 
-
-LoadedMeshData GLTFData::get_loaded_mesh_data() {
-    LoadedMeshData result;
-    result.vertices = this->vertices;
-    result.normals = this->normals;
-    result.texcoords = this->uvs;
-
-    result.indices = this->indices;
-
-    return result;
-}
 
 GLTFData loaders::load_gltf(const std::string path) {
     tinygltf::TinyGLTF loader;
@@ -39,6 +30,7 @@ GLTFData loaders::load_gltf(const std::string path) {
     GLTFData result;
 
     for (const auto &mesh : model.meshes) {
+        GLTFMesh result_mesh;
         for (const auto &primitive : mesh.primitives) {
             // Indices
             {
@@ -51,7 +43,7 @@ GLTFData loaders::load_gltf(const std::string path) {
 
                 for (int i = 0; i < count; i++) {
                     uint16_t val = *(reinterpret_cast<const uint16_t*>(data_address + byte_stride * i));
-                    result.indices.push_back(val);
+                    result_mesh.indices.push_back(val);
                 }
             }
 
@@ -70,7 +62,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result.vertices.push_back(vec4(x,y,z,1.0));
+                        result_mesh.vertices.push_back(vec4(x,y,z,1.0));
                     }
                 } else if (attribute.first == "NORMAL") {
                     for (int i = 0; i < count; i++) {
@@ -78,42 +70,68 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result.normals.push_back(vec4(x, y, z, 0.0));
+                        result_mesh.normals.push_back(vec4(x, y, z, 0.0));
                     }
                 } else if (attribute.first == "TEXCOORD_0") {
                     for (int i = 0; i < count; i++) {
                         float x = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 0);
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
 
-                        result.uvs.push_back(vec2(x, y));
+                        result_mesh.uvs.push_back(vec2(x, y));
                     }
                 }
             }
-
-
-            // Material, Textures
-            {
-                const auto material = model.materials[primitive.material];
-                const auto textures = model.textures;
-                const auto images = model.images;
-                if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) result.texture_diffuse_path = images[textures[material.pbrMetallicRoughness.baseColorTexture.index].source].uri;
-                if (material.normalTexture.index >= 0) result.texture_normal_path = images[textures[material.normalTexture.index].source].uri;
-                if (material.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) result.texture_roughness_path = images[textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source].uri;
-                if (material.emissiveTexture.index >= 0) result.texture_emissive_path = images[textures[material.emissiveTexture.index].source].uri;
-
-                result.diffuse_factor.r = material.pbrMetallicRoughness.baseColorFactor[0];
-                result.diffuse_factor.g = material.pbrMetallicRoughness.baseColorFactor[1];
-                result.diffuse_factor.b = material.pbrMetallicRoughness.baseColorFactor[2];
-                result.diffuse_factor.a = material.pbrMetallicRoughness.baseColorFactor[3];
-
-                result.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
-
-                result.emissive_factor.r = material.emissiveFactor[0];
-                result.emissive_factor.g = material.emissiveFactor[1];
-                result.emissive_factor.b = material.emissiveFactor[2];
-            }
-
+            
+            // only support meshes with one primitive
+            result_mesh.material_index = primitive.material;
         }
+
+        result.meshes.push_back(result_mesh);
+    }
+
+    // Textures
+    for (const auto &texture : model.textures) {
+        GLTFTexture result_texture;
+
+        result_texture.path = model.images[texture.source].uri;
+
+        result.textures.push_back(result_texture);
+    }
+
+    // Materials
+    for (const auto &material : model.materials) {
+        GLTFMaterial result_material;
+
+        const auto textures = model.textures;
+        const auto images = model.images;
+        result_material.diffuse_texture = material.pbrMetallicRoughness.baseColorTexture.index;
+        result_material.normal_texture = material.normalTexture.index;
+        result_material.roughness_texture = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+        result_material.emission_texture = material.emissiveTexture.index;
+
+        result_material.diffuse_factor.r = material.pbrMetallicRoughness.baseColorFactor[0];
+        result_material.diffuse_factor.g = material.pbrMetallicRoughness.baseColorFactor[1];
+        result_material.diffuse_factor.b = material.pbrMetallicRoughness.baseColorFactor[2];
+        result_material.diffuse_factor.a = material.pbrMetallicRoughness.baseColorFactor[3];
+
+        result_material.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
+
+        result_material.emissive_factor.r = material.emissiveFactor[0];
+        result_material.emissive_factor.g = material.emissiveFactor[1];
+        result_material.emissive_factor.b = material.emissiveFactor[2];
+
+        result.materials.push_back(result_material);
+    }
+
+    // Nodes
+    for (const auto &node : model.nodes) {
+        GLTFNode result_node;
+        if (node.mesh <= 0) continue;
+
+        result_node.mesh_index = node.mesh;
+        if (node.matrix.size() > 0) result_node.matrix = glm::make_mat4(node.matrix.data());
+
+        result.nodes.push_back(result_node);
     }
 
     return result;
