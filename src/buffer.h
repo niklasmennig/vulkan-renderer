@@ -7,6 +7,7 @@ struct Buffer
     VkBuffer buffer_handle;
     VkDevice device_handle;
     VkDeviceMemory device_memory;
+    VkDeviceSize device_memory_offset;
     VkDeviceAddress device_address;
 
     void set_data(void *data, size_t offset = 0, size_t size = VK_WHOLE_SIZE);

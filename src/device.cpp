@@ -1,5 +1,7 @@
 #include "device.h"
 
+#include <iostream>
+
 #include "pipeline_builder.h"
 
 #include <stdexcept>
@@ -49,12 +51,30 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info)
 
     alloc_info.pNext = &alloc_flags;
 
-    if (vkAllocateMemory(vulkan_device, &alloc_info, nullptr, &result.device_memory) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error allocating buffer memory");
-    }
+    // if (alloc_info.allocationSize < 2000000) {
+    //     if (small_buffer_memory == VK_NULL_HANDLE) {
+    //         // allocate shared memory
+    //         VkMemoryAllocateInfo shared_alloc_info = alloc_info;
+    //         shared_alloc_info.allocationSize = 100000000;
+    //         std::cout << "allocating shared buffer memory" << std::endl;
+    //         if (vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &small_buffer_memory) != VK_SUCCESS) {
+    //             throw std::runtime_error("error allocating shared small buffer memory");
+    //         }
+    //         small_buffer_memory_offset = 0;
+    //     }
+    //     std::cout << "BINDING BUFFER" << std::endl;
+    //     vkBindBufferMemory(vulkan_device, result.buffer_handle, small_buffer_memory, small_buffer_memory_offset);
+    //     result.device_memory_offset = small_buffer_memory_offset;
+    //     small_buffer_memory_offset += alloc_info.allocationSize;
+    // } else {
+        if (vkAllocateMemory(vulkan_device, &alloc_info, nullptr, &result.device_memory) != VK_SUCCESS)
+        {
+            throw std::runtime_error("error allocating buffer memory");
+        }
 
-    vkBindBufferMemory(vulkan_device, result.buffer_handle, result.device_memory, 0);
+        vkBindBufferMemory(vulkan_device, result.buffer_handle, result.device_memory, 0);
+        result.device_memory_offset = 0;
+    // }
 
     result.buffer_size = create_info->size;
 
@@ -104,6 +124,8 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     image_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     image_info.usage = usage;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.queueFamilyIndexCount = 1;
+    image_info.pQueueFamilyIndices = &graphics_queue_family_index;
 
     result.format = image_info.format;
 

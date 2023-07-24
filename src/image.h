@@ -20,6 +20,7 @@ struct Image
     VkSampler sampler_handle;
 
     void free();
+    VkImageMemoryBarrier get_layout_transition(VkImageLayout target_layout, VkAccessFlags target_access);
     void cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access);
     void cmd_setup_texture(VkCommandBuffer cmd_buffer);
     void cmd_update_buffer(VkCommandBuffer cmd_buffer);

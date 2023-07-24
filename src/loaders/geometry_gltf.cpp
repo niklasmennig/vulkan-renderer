@@ -32,6 +32,7 @@ GLTFData loaders::load_gltf(const std::string path) {
     for (const auto &mesh : model.meshes) {
         GLTFMesh result_mesh;
         for (const auto &primitive : mesh.primitives) {
+            GLTFPrimitive result_primitive;
             // Indices
             {
                 const auto &index_accessor = model.accessors[primitive.indices];
@@ -43,7 +44,7 @@ GLTFData loaders::load_gltf(const std::string path) {
 
                 for (int i = 0; i < count; i++) {
                     uint16_t val = *(reinterpret_cast<const uint16_t*>(data_address + byte_stride * i));
-                    result_mesh.indices.push_back(val);
+                    result_primitive.indices.push_back(val);
                 }
             }
 
@@ -62,7 +63,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result_mesh.vertices.push_back(vec4(x,y,z,1.0));
+                        result_primitive.vertices.push_back(vec4(x,y,z,1.0));
                     }
                 } else if (attribute.first == "NORMAL") {
                     for (int i = 0; i < count; i++) {
@@ -70,20 +71,22 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result_mesh.normals.push_back(vec4(x, y, z, 0.0));
+                        result_primitive.normals.push_back(vec4(x, y, z, 0.0));
                     }
                 } else if (attribute.first == "TEXCOORD_0") {
                     for (int i = 0; i < count; i++) {
                         float x = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 0);
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
 
-                        result_mesh.uvs.push_back(vec2(x, y));
+                        result_primitive.uvs.push_back(vec2(x, y));
                     }
                 }
             }
             
             // only support meshes with one primitive
-            result_mesh.material_index = primitive.material;
+            result_primitive.material_index = primitive.material;
+
+            result_mesh.primitives.push_back(result_primitive);
         }
 
         result.meshes.push_back(result_mesh);

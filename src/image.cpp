@@ -5,13 +5,13 @@
 void Image::free()
 {
     vkDestroySampler(device_handle, sampler_handle, nullptr);
-    vkFreeMemory(device_handle, texture_memory, nullptr);
-    vkDestroyImageView(device_handle, view_handle, nullptr);
+    vkDestroyImageView(device_handle, view_handle, nullptr); 
     vkDestroyImage(device_handle, image_handle, nullptr);
+    vkFreeMemory(device_handle, texture_memory, nullptr);
     buffer.free();
 }
 
-void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access) {
+VkImageMemoryBarrier Image::get_layout_transition(VkImageLayout target_layout, VkAccessFlags target_access) {
     VkImageMemoryBarrier texture_barrier = {};
     texture_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     texture_barrier.oldLayout = layout;
@@ -26,6 +26,12 @@ void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout targ
     texture_barrier.subresourceRange.layerCount = 1;
     texture_barrier.srcAccessMask = access;
     texture_barrier.dstAccessMask = target_access;
+
+    return texture_barrier;
+}
+
+void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access) {
+    auto texture_barrier = get_layout_transition(target_layout, target_access);
 
     layout = target_layout;
     access = target_access;

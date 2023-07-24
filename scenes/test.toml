@@ -2,13 +2,42 @@
     path = "./hdri/vestibule_4k.hdr"
 
 [objects]
+    # [objects.test]
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+
+    # [objects.test]
+    # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
+
     [objects.test]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
+
+    # [objects.test2]
+    # path = "./gltf/transmission_small/untitled.gltf"
 
 [instances]
     [instances.test]
     object = "test"
     position = [0.0, 0.0, 0.0]
+
+    # [instances.test1]
+    # object = "test"
+    # position = [2.0, 0.0, 0.0]
+
+    # [instances.test2]
+    # object = "test"
+    # position = [4.0, 0.0, 0.0]
+
+    # [instances.test3]
+    # object = "test2"
+    # position = [0.0, 2.0, 0.0]
+
+    # [instances.test4]
+    # object = "test2"
+    # position = [2.0, 2.0, 0.0]
+
+    # [instances.test5]
+    # object = "test2"
+    # position = [4.0, 2.0, 0.0]

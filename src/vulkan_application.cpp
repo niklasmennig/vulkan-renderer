@@ -6,7 +6,6 @@
 #include <filesystem>
 
 #include "loaders/shader_spirv.h"
-#include "loaders/geometry_obj.h"
 #include "loaders/geometry_gltf.h"
 #include "loaders/json.hpp"
 using json = nlohmann::json;
@@ -139,8 +138,8 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     as_info.geometryCount = 1;
     as_info.pGeometries = &geometry;
 
+    VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
     acceleration_structure_size_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-
     uint32_t prim_count = build_range_info.primitiveCount;
 
     device.vkGetAccelerationStructureBuildSizesKHR(logical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &as_info, &prim_count, &acceleration_structure_size_info);
@@ -191,41 +190,43 @@ void VulkanApplication::free_blas(BLAS &blas) {
 TLAS VulkanApplication::build_tlas() {
     std::vector<VkAccelerationStructureInstanceKHR> instances;
 
-    int count = 0;
     std::cout << "Building TLAS for " << loaded_scene_data.instances.size() << " instances" << std::endl;
     for (InstanceData instance : loaded_scene_data.instances) {
         std::cout << instance.object_name << std::endl;
         int blas_offset = loaded_mesh_index[instance.object_name];
         const auto& object = loaded_objects[instance.object_name];
         for (const auto& node : object.nodes) {
-            BLAS& as = created_blas[blas_offset + node.mesh_index];
+                const auto& mesh = object.meshes[node.mesh_index];
+                for (int i = 0; i < mesh.primitives.size(); i++) {
 
-            VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
-            blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-            blas_address_info.accelerationStructure = as.acceleration_structure;
+                BLAS& as = created_blas[blas_offset + node.mesh_index + i];
 
-            VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
+                VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
+                blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+                blas_address_info.accelerationStructure = as.acceleration_structure;
 
-            VkAccelerationStructureInstanceKHR structure{};
-            structure.transform.matrix[0][0] = instance.transformation[0][0];
-            structure.transform.matrix[0][1] = instance.transformation[1][0];
-            structure.transform.matrix[0][2] = instance.transformation[2][0];
-            structure.transform.matrix[0][3] = instance.transformation[3][0];
-            structure.transform.matrix[1][0] = instance.transformation[0][1];
-            structure.transform.matrix[1][1] = instance.transformation[1][1];
-            structure.transform.matrix[1][2] = instance.transformation[2][1];
-            structure.transform.matrix[1][3] = instance.transformation[3][1];
-            structure.transform.matrix[2][0] = instance.transformation[0][2];
-            structure.transform.matrix[2][1] = instance.transformation[1][2];
-            structure.transform.matrix[2][2] = instance.transformation[2][2];
-            structure.transform.matrix[2][3] = instance.transformation[3][2];
+                VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
 
-            structure.mask = 0xff;
-            structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-            structure.accelerationStructureReference = blas_address;
+                VkAccelerationStructureInstanceKHR structure{};
+                structure.transform.matrix[0][0] = instance.transformation[0][0];
+                structure.transform.matrix[0][1] = instance.transformation[1][0];
+                structure.transform.matrix[0][2] = instance.transformation[2][0];
+                structure.transform.matrix[0][3] = instance.transformation[3][0];
+                structure.transform.matrix[1][0] = instance.transformation[0][1];
+                structure.transform.matrix[1][1] = instance.transformation[1][1];
+                structure.transform.matrix[1][2] = instance.transformation[2][1];
+                structure.transform.matrix[1][3] = instance.transformation[3][1];
+                structure.transform.matrix[2][0] = instance.transformation[0][2];
+                structure.transform.matrix[2][1] = instance.transformation[1][2];
+                structure.transform.matrix[2][2] = instance.transformation[2][2];
+                structure.transform.matrix[2][3] = instance.transformation[3][2];
 
-            instances.push_back(structure);
-            count++;
+                structure.mask = 0xff;
+                structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+                structure.accelerationStructureReference = blas_address;
+
+                instances.push_back(structure);
+            }
         }
     }
 
@@ -251,10 +252,15 @@ TLAS VulkanApplication::build_tlas() {
     as_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
     as_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     as_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-    as_info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+    as_info.flags = 0;
     as_info.geometryCount = 1;
     as_info.pGeometries = &geometry;
 
+    VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
+    uint32_t sizes = {
+        (uint32_t)instances.size()
+    };
+    device.vkGetAccelerationStructureBuildSizesKHR(logical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &as_info, &sizes, &acceleration_structure_size_info);
 
     VkBufferCreateInfo as_buffer_info{};
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -354,18 +360,22 @@ void VulkanApplication::create_default_descriptor_writes() {
     for (const auto& object_path : loaded_scene_data.object_paths) {
         const auto& object = loaded_objects[std::get<0>(object_path)];
         for (const auto& mesh : object.meshes) {
-            indices.insert(indices.end(), mesh.indices.begin(), mesh.indices.end());
-            vertices.insert(vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
-            normals.insert(normals.end(), mesh.normals.begin(), mesh.normals.end());
-            texcoords.insert(texcoords.end(), mesh.uvs.begin(), mesh.uvs.end());
+            for (const auto& primitive : mesh.primitives) {
+                indices.insert(indices.end(), primitive.indices.begin(), primitive.indices.end());
+                vertices.insert(vertices.end(), primitive.vertices.begin(), primitive.vertices.end());
+                normals.insert(normals.end(), primitive.normals.begin(), primitive.normals.end());
+                texcoords.insert(texcoords.end(), primitive.uvs.begin(), primitive.uvs.end());
 
-            // add all 4 offsets contiguously
-            mesh_data_offsets.push_back(indices.size());
-            mesh_data_offsets.push_back(vertices.size());
-            mesh_data_offsets.push_back(normals.size());
-            mesh_data_offsets.push_back(texcoords.size());
+                // add all 4 offsets contiguously
+                mesh_data_offsets.push_back(indices.size());
+                mesh_data_offsets.push_back(vertices.size());
+                mesh_data_offsets.push_back(normals.size());
+                mesh_data_offsets.push_back(texcoords.size());
+            }
         }
     }
+
+    std::cout << "INSTANCE DATA" << std::endl;
 
     // index of mesh and texture used by instance
     for (auto instance : loaded_scene_data.instances) {
@@ -373,27 +383,30 @@ void VulkanApplication::create_default_descriptor_writes() {
         // set default instance data
         const auto& data = loaded_objects[instance.object_name];
         for (const auto& node : data.nodes) {
-             mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index);
-            int material_index = data.meshes[node.mesh_index].material_index;
-            auto texture_index_offset = loaded_texture_index[instance.object_name];
-            const auto& material = data.materials[material_index];
+            const auto& mesh = data.meshes[node.mesh_index];
+            for (const auto& primitive : mesh.primitives) {
+                mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index);
+                int material_index = primitive.material_index;
+                auto texture_index_offset = loaded_texture_index[instance.object_name];
+                const auto& material = data.materials[material_index];
 
-            instance.texture_indices.diffuse = material.diffuse_texture == -1 ? NULL_TEXTURE_INDEX : material.diffuse_texture + texture_index_offset;
-            instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
-            instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
-            instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
+                instance.texture_indices.diffuse = material.diffuse_texture == -1 ? NULL_TEXTURE_INDEX : material.diffuse_texture + texture_index_offset;
+                instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
+                instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
+                instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
 
-            instance.material_parameters.diffuse_factor = material.diffuse_factor;
-            instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
+                instance.material_parameters.diffuse_factor = material.diffuse_factor;
+                instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
 
-            // pairs of 4 textures: diffuse, normal, roughness, emissive
-            texture_indices.push_back(instance.texture_indices.diffuse);
-            texture_indices.push_back(instance.texture_indices.normal);
-            texture_indices.push_back(instance.texture_indices.roughness);
-            texture_indices.push_back(instance.texture_indices.emissive);
+                // pairs of 4 textures: diffuse, normal, roughness, emissive
+                texture_indices.push_back(instance.texture_indices.diffuse);
+                texture_indices.push_back(instance.texture_indices.normal);
+                texture_indices.push_back(instance.texture_indices.roughness);
+                texture_indices.push_back(instance.texture_indices.emissive);
 
-            // material parameters
-            material_parameters.push_back(instance.material_parameters);
+                // material parameters
+                material_parameters.push_back(instance.material_parameters);
+            }
         }
     }
 
@@ -451,6 +464,7 @@ void VulkanApplication::create_synchronization() {
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     vkCreateFence(logical_device, &fence_info, nullptr, &immediate_fence);
+    vkCreateFence(logical_device, &fence_info, nullptr, &tlas_fence);
 
     if (vkCreateSemaphore(logical_device, &semaphore_info, nullptr, &image_available_semaphore) != VK_SUCCESS ||
         vkCreateSemaphore(logical_device, &semaphore_info, nullptr, &render_finished_semaphore) != VK_SUCCESS ||
@@ -638,6 +652,7 @@ void VulkanApplication::recreate_swapchain() {
     create_swapchain();
     create_swapchain_image_views();
 
+    std::cout << "SWAPCHAIN" << std::endl;
     submit_immediate([&]() {
         for (int i = 0; i < this->swap_chain_images.size(); i++) {
             // transition output image to writeable format
@@ -664,11 +679,17 @@ void VulkanApplication::recreate_swapchain() {
 }
 
 void VulkanApplication::recreate_render_image() {
-    submit_immediate([&]() {
-        pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
-    });
+    pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
 
-    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
+    std::vector<VkImageMemoryBarrier> transitions;
+    for (Image& i : pipeline.output_images) {
+        transitions.push_back(i.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, i.access));
+        i.layout = VK_IMAGE_LAYOUT_GENERAL;
+    }
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
+    for(int i = 0; i < pipeline.output_images.size(); i++) {
+        pipeline.set_descriptor_image_binding("images", pipeline.output_images[i], ImageType::Storage, i);
+    }
 }
 
 void VulkanApplication::draw_frame() {
@@ -677,10 +698,11 @@ void VulkanApplication::draw_frame() {
 
     vkResetCommandBuffer(command_buffer, 0);
 
+
     // command buffer begin
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = 0;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     begin_info.pInheritanceInfo = nullptr;
 
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
@@ -737,9 +759,9 @@ void VulkanApplication::draw_frame() {
 
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, displayed_image.access);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT);
     vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, displayed_image.access);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_READ_BIT);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -827,6 +849,8 @@ void VulkanApplication::setup_device() {
     device.vulkan_instance = vulkan_instance;
     device.vulkan_device = logical_device;
 
+    device.graphics_queue_family_index = queue_family_indices.graphics.value();
+
     // load function pointers
     device.vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureBuildSizesKHR");
     device.vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateAccelerationStructureKHR");
@@ -839,19 +863,25 @@ void VulkanApplication::setup_device() {
 }
 
 void VulkanApplication::submit_immediate(std::function<void()> lambda) {
+    if (vkResetFences(logical_device, 1, &immediate_fence) != VK_SUCCESS) {
+        throw std::runtime_error("error resetting immediate fence");
+    };
+
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = 0;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     begin_info.pInheritanceInfo = nullptr;
 
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
     {
-        throw std::runtime_error("error beginning command buffer");
+        throw std::runtime_error("error beginning command buffer in submit_immediate");
     }
 
     lambda();
 
-    vkEndCommandBuffer(command_buffer);
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("error ending command buffer in submit_immediate");
+    };
 
 
     VkSubmitInfo submit_info{};
@@ -861,10 +891,15 @@ void VulkanApplication::submit_immediate(std::function<void()> lambda) {
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
 
-    vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
-    
-    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
-    vkResetFences(logical_device, 1, &immediate_fence);
+    auto e = vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
+    if (e != VK_SUCCESS) {
+        std::cout << "ERROR: " << e << std::endl;
+        throw std::runtime_error("error submitting command buffer in submit_immediate");
+    }
+
+    while(true) {
+        if (vkWaitForFences(logical_device, 1, &immediate_fence, VK_FALSE, 10000) == VK_SUCCESS) break;
+    }
 }
 
 void check_vk_result(VkResult r) {
@@ -924,10 +959,11 @@ void VulkanApplication::init_imgui() {
     ImGui_ImplVulkan_Init(&init_info, render_pass);
 
     // execute a gpu command to upload imgui font textures
-    submit_immediate([&]() {ImGui_ImplVulkan_CreateFontsTexture(command_buffer);});
+    std::cout << "IMGUI upload" << std::endl;
+    ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
 
     // clear font textures from cpu data
-    ImGui_ImplVulkan_DestroyFontUploadObjects();
+    //ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
 void VulkanApplication::setup() {
@@ -1034,9 +1070,16 @@ void VulkanApplication::setup() {
         
         device.ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
         device.ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
+        VkPhysicalDeviceAccelerationStructurePropertiesKHR as_properties = {};
+        as_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+        device.ray_tracing_pipeline_properties.pNext = &as_properties;
+
         dev_properties.pNext = &device.ray_tracing_pipeline_properties;
 
         vkGetPhysicalDeviceProperties2(dev, &dev_properties);
+
+        std::cout << "MAX INSTANCES " << as_properties.maxInstanceCount << " | MAX PRIMITIVES " << as_properties.maxPrimitiveCount << std::endl;
 
         VkPhysicalDeviceFeatures dev_features;
         vkGetPhysicalDeviceFeatures(dev, &dev_features);
@@ -1111,10 +1154,6 @@ void VulkanApplication::setup() {
             VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
             VK_KHR_RAY_QUERY_EXTENSION_NAME,
             // dependencies for raytracing functionality
-            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-            VK_KHR_SPIRV_1_4_EXTENSION_NAME,
-            VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
-            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
             VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
         };
 
@@ -1285,6 +1324,7 @@ void VulkanApplication::setup() {
 
     // BUILD BLAS
     vkResetCommandBuffer(command_buffer, 0);
+    vkResetFences(logical_device, 1, &tlas_fence);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1307,9 +1347,11 @@ void VulkanApplication::setup() {
         loaded_objects[object_name] = gltf;
         loaded_mesh_index[object_name] = created_meshes.size();
         for (auto &mesh : gltf.meshes) {
-            MeshData mesh_data = create_mesh_data(mesh.indices, mesh.vertices, mesh.normals, mesh.uvs);
-            created_meshes.push_back(mesh_data);
-            created_blas.push_back(build_blas(mesh_data));
+            for (auto &primitive : mesh.primitives) {
+                MeshData mesh_data = create_mesh_data(primitive.indices, primitive.vertices, primitive.normals, primitive.uvs);
+                created_meshes.push_back(mesh_data);
+                created_blas.push_back(build_blas(mesh_data));
+            }
         }
         
         full_object_path.remove_filename();
@@ -1373,12 +1415,6 @@ void VulkanApplication::setup() {
         vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
     }
 
-    vkEndCommandBuffer(command_buffer);
-
-    vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
-
-    vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
-    vkResetFences(logical_device, 1, &immediate_fence);
 
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
@@ -1397,7 +1433,7 @@ void VulkanApplication::setup() {
                    .add_descriptor("mesh_texcoords", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_data_offsets", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_offset_indices", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 16)
+                   .add_descriptor("textures", 1, 6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 128)
                    .add_descriptor("texture_indices", 1, 7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("material_parameters", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    // shader stages
@@ -1406,15 +1442,23 @@ void VulkanApplication::setup() {
                    .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
 
     pipeline = pipeline_builder.build();
+
+    std::cout << "RENDER IMAGE" << std::endl;
+    recreate_render_image();
+
+    init_imgui();
+
+    vkEndCommandBuffer(command_buffer);
+
+    std::cout << "SUBMIT" << vkQueueSubmit(graphics_queue, 1, &submit_info, tlas_fence) << std::endl;
+
+    while(vkWaitForFences(logical_device, 1, &tlas_fence, VK_FALSE, UINT64_MAX) != VK_SUCCESS);
     create_default_descriptor_writes();
 
-    submit_immediate([&]() {
-        pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
-    });
+    
 
     std::cout << "pipeline created" << std::endl;
 
-    init_imgui();
 
     // set glfw callbacks
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
@@ -1520,7 +1564,7 @@ void VulkanApplication::run() {
 
         float camera_speed = frame_delta.count();
         if (fabsf(camera_speed) > 1) camera_speed = 0;
-        glm::vec3 cam_delta = camera_movement * camera_speed;
+        glm::vec3 cam_delta = camera_movement * camera_speed * ui.camera_speed;
         camera_data.origin += glm::vec4(cam_delta.x, cam_delta.y, cam_delta.z, 0.0f);
 
         // camera rotation
@@ -1610,6 +1654,7 @@ void VulkanApplication::cleanup() {
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);
     vkDestroyFence(logical_device, immediate_fence, nullptr);
+    vkDestroyFence(logical_device, tlas_fence, nullptr);
     vkDestroyCommandPool(logical_device, command_pool, nullptr);
     for (auto framebuffer : framebuffers)
         vkDestroyFramebuffer(logical_device, framebuffer, nullptr);

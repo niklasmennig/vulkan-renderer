@@ -3,7 +3,6 @@
 #include "buffer.h"
 #include "loaders/image.h"
 #include "loaders/scene.h"
-#include "loaders/geometry_obj.h"
 #include "loaders/geometry_gltf.h"
 #include "pipeline_builder.h"
 #include "ui.h"
@@ -100,7 +99,7 @@ struct VulkanApplication {
     VkSemaphore render_finished_semaphore;
     VkFence in_flight_fence;
 
-    VkFence immediate_fence;
+    VkFence immediate_fence, tlas_fence;
 
     VkDebugUtilsMessengerEXT debug_messenger;
 
@@ -111,21 +110,22 @@ struct VulkanApplication {
 
     uint32_t render_clear_accumulated = 4;
 
-
-    VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
-
     SceneData loaded_scene_data;
-    std::unordered_map<std::string, uint32_t> loaded_mesh_index;
 
+    // these use loaded_mesh_index
     std::vector<MeshData> created_meshes;
+    std::vector<BLAS> created_blas;
+
+    // this uses loaded_texture_index
     std::vector<Image> loaded_textures;
 
     // mapping object name -> GLTF data
     std::unordered_map<std::string, GLTFData> loaded_objects;
+    // mapping object name -> mesh index offset
+    std::unordered_map<std::string, uint32_t> loaded_mesh_index;
     // mapping object name -> texture index offset
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
 
-    std::vector<BLAS> created_blas;
     TLAS scene_tlas;
 
     Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;

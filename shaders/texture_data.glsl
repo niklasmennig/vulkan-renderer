@@ -15,6 +15,14 @@ vec3 sample_texture(uint id, vec2 uv) {
 
 vec3 sample_texture(uint instance, vec2 uv, uint offset) {
     uint texture_index = texture_indices.data[instance * TEXTURE_OFFSETS_COUNT + offset];
-    if (texture_index == NULL_TEXTURE_INDEX) return vec3(0);
+    if (texture_index == NULL_TEXTURE_INDEX) {
+        if (offset == TEXTURE_OFFSET_DIFFUSE) {
+            return vec3(1);
+        } else if (offset == TEXTURE_OFFSET_NORMAL) {
+            return vec3(0,0,1);
+        } else {
+            return vec3(0);
+        }
+    }
     return sample_texture(texture_index, uv);
 }

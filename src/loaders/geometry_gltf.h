@@ -26,13 +26,17 @@ struct GLTFMaterial {
     vec3 emissive_factor = vec3(0);
 };
 
-struct GLTFMesh {
+struct GLTFPrimitive {
     std::vector<vec4> vertices;
     std::vector<vec4> normals;
     std::vector<vec2> uvs;
     std::vector<uint32_t> indices;
 
     int material_index;
+};
+
+struct GLTFMesh {
+    std::vector<GLTFPrimitive> primitives;
 };
 
 struct GLTFNode {

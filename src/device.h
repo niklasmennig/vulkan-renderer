@@ -15,8 +15,13 @@ struct Device
     uint32_t image_count;
     VkSurfaceFormatKHR surface_format;
 
+    uint32_t graphics_queue_family_index;
+
     VkPhysicalDeviceMemoryProperties memory_properties{};
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties{};
+
+    VkDeviceMemory small_buffer_memory = VK_NULL_HANDLE;
+    VkDeviceSize small_buffer_memory_offset = 0;
 
     Buffer create_buffer(VkBufferCreateInfo *create_info);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);

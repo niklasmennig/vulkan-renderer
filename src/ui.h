@@ -21,6 +21,8 @@ public:
     int displayed_image_index = 0;
     ivec3 color_under_cursor = ivec3(0);
 
+    float camera_speed = 1.0f;
+
     void init(VulkanApplication* application);
     void draw();
     bool has_changed();

@@ -2,10 +2,11 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <iostream>
 
 void Buffer::set_data(void* data, size_t offset, size_t size) {
     void *buffer_data;
-    if (vkMapMemory(device_handle, device_memory, offset, size, 0, &buffer_data) != VK_SUCCESS)
+    if (vkMapMemory(device_handle, device_memory, device_memory_offset + offset, size, 0, &buffer_data) != VK_SUCCESS)
     {
         throw std::runtime_error("error mapping buffer memory");
     }
@@ -15,7 +16,7 @@ void Buffer::set_data(void* data, size_t offset, size_t size) {
 
 void Buffer::get_data(void* data, size_t offset, size_t size) {
     void *buffer_data;
-    if (vkMapMemory(device_handle, device_memory, offset, size, 0, &buffer_data) != VK_SUCCESS)
+    if (vkMapMemory(device_handle, device_memory, device_memory_offset + offset, size, 0, &buffer_data) != VK_SUCCESS)
     {
         throw std::runtime_error("error mapping buffer memory");
     }

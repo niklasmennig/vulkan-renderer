@@ -112,7 +112,7 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, B
 void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 128; i++) {
         VkWriteDescriptorSet descriptor_write_sampler{};
         descriptor_write_sampler.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptor_write_sampler.dstSet = descriptor_sets[set_binding.set];
@@ -143,8 +143,6 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
         if (output_images[i].width > 0 && output_images[i].height > 0) output_images[i].free();
         output_images[i] = device->create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        output_images[i].cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, output_images[i].access);
-        set_descriptor_image_binding(output_image_binding_name, output_images[i], ImageType::Storage, i);
     }
 }
 
@@ -402,11 +400,11 @@ Pipeline PipelineBuilder::build() {
     result.sbt.region_miss.size = align_up(group_handle_size_aligned, base_alignment);
 
     result.sbt.region_callable.stride = group_handle_size_aligned;
-    result.sbt.region_callable.size = align_up(group_handle_size_aligned /* multiply with number of callable shaders */, base_alignment);
+    result.sbt.region_callable.size = align_up(group_handle_size_aligned  * 0/* multiply with number of callable shaders */, base_alignment);
 
     std::vector<uint8_t> shader_binding_table_data(shader_binding_table_size);
     if (device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data()) != VK_SUCCESS) {
-        throw std::runtime_error("error geting shader group handles");
+        throw std::runtime_error("error getting shader group handles");
     }
 
     VkBufferCreateInfo sbt_buffer_info{};

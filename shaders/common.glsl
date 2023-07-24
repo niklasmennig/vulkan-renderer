@@ -2,7 +2,7 @@
 #define NULL_INSTANCE 999999
 
 float epsilon = 0.0001f;
-float ray_max = 1000.0f;
+float ray_max = 100000.0f;
 
 uint max_depth = 10;
 
