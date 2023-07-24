@@ -384,8 +384,9 @@ void VulkanApplication::create_default_descriptor_writes() {
         const auto& data = loaded_objects[instance.object_name];
         for (const auto& node : data.nodes) {
             const auto& mesh = data.meshes[node.mesh_index];
-            for (const auto& primitive : mesh.primitives) {
-                mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index);
+            for (int i = 0; i < mesh.primitives.size(); i++) {
+                const auto& primitive = mesh.primitives[i];
+                mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index + i);
                 int material_index = primitive.material_index;
                 auto texture_index_offset = loaded_texture_index[instance.object_name];
                 const auto& material = data.materials[material_index];
