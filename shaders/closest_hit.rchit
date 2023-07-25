@@ -22,6 +22,8 @@ struct MaterialParameters {
     vec4 diffuse_factor;
     // emissive rgb, metallic a
     vec4 emissive_metallic_factor;
+    // transmissive
+    vec4 transmissive_factor;
 };
 layout(std430, set = 1, binding = 8) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
@@ -92,6 +94,9 @@ void main() {
         payload.primary_hit_instance = instance;
         payload.primary_hit_albedo = base_color;
     }
+
+    // russian roulette
+    if (payload.depth > 3 && luminance(payload.contribution) < seed_random(payload.seed)) return;
 
     if (payload.depth < max_depth && dot(normal, ray_out) > 0) {
         payload.depth += 1;

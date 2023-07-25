@@ -7,7 +7,8 @@ layout(set = 1, binding = 7) readonly buffer TextureIndexData {uint data[];} tex
 #define TEXTURE_OFFSET_NORMAL 1
 #define TEXTURE_OFFSET_ROUGHNESS 2
 #define TEXTURE_OFFSET_EMISSIVE 3
-#define TEXTURE_OFFSETS_COUNT 4
+#define TEXTURE_OFFSET_TRANSMISSIVE 4
+#define TEXTURE_OFFSETS_COUNT 5
 
 vec3 sample_texture(uint id, vec2 uv) {
     return texture(tex[nonuniformEXT(id)], uv).rgb;

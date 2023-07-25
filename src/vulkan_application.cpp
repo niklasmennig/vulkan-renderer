@@ -398,17 +398,18 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
                 instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
                 instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
-
-                std::cout << "NORMAL: " << instance.texture_indices.normal << std::endl;
+                instance.texture_indices.transmissive = material.transmission_texture == -1 ? NULL_TEXTURE_INDEX : material.transmission_texture + texture_index_offset;
 
                 instance.material_parameters.diffuse_factor = material.diffuse_factor;
                 instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
+                instance.material_parameters.transmissive = vec4(material.transmission_factor);
 
-                // pairs of 4 textures: diffuse, normal, roughness, emissive
+                // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive
                 texture_indices.push_back(instance.texture_indices.diffuse);
                 texture_indices.push_back(instance.texture_indices.normal);
                 texture_indices.push_back(instance.texture_indices.roughness);
                 texture_indices.push_back(instance.texture_indices.emissive);
+                texture_indices.push_back(instance.texture_indices.transmissive);
 
                 // material parameters
                 material_parameters.push_back(instance.material_parameters);

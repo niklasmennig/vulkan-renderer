@@ -20,10 +20,12 @@ struct GLTFMaterial {
     int roughness_texture = -1;
     int normal_texture = -1;
     int emission_texture = -1;
+    int transmission_texture = -1;
 
     vec4 diffuse_factor = vec4(0);
     float metallic_factor = 0;
     vec3 emissive_factor = vec3(0);
+    float transmission_factor = 0;
 };
 
 struct GLTFPrimitive {

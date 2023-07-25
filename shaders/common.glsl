@@ -4,7 +4,7 @@
 float epsilon = 0.0001f;
 float ray_max = 100000.0f;
 
-uint max_depth = 10;
+uint max_depth = 6;
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)

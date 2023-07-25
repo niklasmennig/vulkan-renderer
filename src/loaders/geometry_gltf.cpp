@@ -105,6 +105,15 @@ GLTFData loaders::load_gltf(const std::string path) {
     for (const auto &material : model.materials) {
         GLTFMaterial result_material;
 
+        if (material.extensions.find("KHR_materials_transmission") != material.extensions.end()) {
+            if (material.extensions.at("KHR_materials_transmission").Has("transmissionTexture")) {
+                result_material.transmission_texture = material.extensions.at("KHR_materials_transmission").Get("transmissionTexture").Get("index").GetNumberAsInt();
+            }
+            if (material.extensions.at("KHR_materials_transmission").Has("transmissionFactor")) {
+                result_material.transmission_factor = material.extensions.at("KHR_materials_transmission").Get("transmissionFactor").GetNumberAsInt();
+            }
+        }
+
         const auto textures = model.textures;
         const auto images = model.images;
         result_material.diffuse_texture = material.pbrMetallicRoughness.baseColorTexture.index;

@@ -2,8 +2,8 @@
     path = "./hdri/rural_asphalt_road_4k.hdr"
 
 [objects]
-    [objects.test2]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    # [objects.test2]
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
@@ -21,9 +21,9 @@
     [instances.test]
     object = "test"
 
-    [instances.test1]
-    object = "test2"
-    position = [2.0, 0.0, 0.0]
+    # [instances.test1]
+    # object = "test2"
+    # position = [2.0, 0.0, 0.0]
 
     # [instances.test2]
     # object = "test"

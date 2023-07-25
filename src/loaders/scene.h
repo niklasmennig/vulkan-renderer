@@ -12,7 +12,7 @@ using mat4 = glm::mat4;
 struct InstanceData
 {
     struct TextureIndices {
-        uint32_t diffuse, normal, roughness, emissive;
+        uint32_t diffuse, normal, roughness, emissive, transmissive;
     } texture_indices;
 
     struct MaterialParameters {
@@ -20,6 +20,8 @@ struct InstanceData
         vec4 diffuse_factor;
         // emissive rgb, metallic a
         vec4 emissive_metallic_factor;
+        // transmissive
+        vec4 transmissive;
     } material_parameters;
 
     std::string object_name;
