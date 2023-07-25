@@ -132,7 +132,21 @@ GLTFData loaders::load_gltf(const std::string path) {
         if (node.mesh < 0) continue;
 
         result_node.mesh_index = node.mesh;
-        if (node.matrix.size() > 0) result_node.matrix = glm::make_mat4(node.matrix.data());
+
+        glm::mat4 node_matrix = glm::mat4(1.0f);
+        
+        if (node.translation.size() == 3) node_matrix = glm::translate(node_matrix, glm::vec3(node.translation[0], node.translation[1], node.translation[2]));
+        if (node.rotation.size() == 4) {
+            auto quat = glm::quat(glm::vec4(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]));
+            auto axis = glm::axis(quat);
+            auto angle = glm::angle(quat);
+            node_matrix = glm::rotate(node_matrix, angle, axis);
+        }
+        if (node.scale.size() == 3) node_matrix = glm::scale(node_matrix, glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
+
+        if (node.matrix.size() > 0) node_matrix = glm::make_mat4(node.matrix.data());
+
+        result_node.matrix = node_matrix;
 
         result.nodes.push_back(result_node);
     }

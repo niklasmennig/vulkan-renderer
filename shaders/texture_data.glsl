@@ -18,8 +18,6 @@ vec3 sample_texture(uint instance, vec2 uv, uint offset) {
     if (texture_index == NULL_TEXTURE_INDEX) {
         if (offset == TEXTURE_OFFSET_DIFFUSE) {
             return vec3(1);
-        } else if (offset == TEXTURE_OFFSET_NORMAL) {
-            return vec3(0,0,1);
         } else {
             return vec3(0);
         }

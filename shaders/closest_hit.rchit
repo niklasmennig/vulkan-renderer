@@ -46,10 +46,12 @@ void main() {
     calculate_tangents(instance, barycentrics, tangent, bitangent);
     mat3 tbn = mat3(tangent, bitangent, normal);
 
-    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL) * 2.0 - 1.0;
+    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL);
 
-    vec3 mapped_normal = (tbn * normalize(sampled_normal));
-    normal = normalize(mapped_normal);
+    if (abs(length(sampled_normal)) > 1.0 - epsilon) {
+        vec3 mapped_normal = (tbn * normalize(sampled_normal * 2.0 - 1.0));
+        normal = normalize(mapped_normal);
+    }
 
     vec3 base_color = parameters.diffuse_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS);
@@ -91,7 +93,7 @@ void main() {
         payload.primary_hit_albedo = base_color;
     }
 
-    if (payload.depth < max_depth) {
+    if (payload.depth < max_depth && dot(normal, ray_out) > 0) {
         payload.depth += 1;
         traceRayEXT(
                 as,

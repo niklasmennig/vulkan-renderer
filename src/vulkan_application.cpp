@@ -196,6 +196,8 @@ TLAS VulkanApplication::build_tlas() {
         int blas_offset = loaded_mesh_index[instance.object_name];
         const auto& object = loaded_objects[instance.object_name];
         for (const auto& node : object.nodes) {
+                glm::mat4 transformation_matrix = instance.transformation * node.matrix;
+
                 const auto& mesh = object.meshes[node.mesh_index];
                 for (int i = 0; i < mesh.primitives.size(); i++) {
 
@@ -208,18 +210,18 @@ TLAS VulkanApplication::build_tlas() {
                 VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
 
                 VkAccelerationStructureInstanceKHR structure{};
-                structure.transform.matrix[0][0] = instance.transformation[0][0];
-                structure.transform.matrix[0][1] = instance.transformation[1][0];
-                structure.transform.matrix[0][2] = instance.transformation[2][0];
-                structure.transform.matrix[0][3] = instance.transformation[3][0];
-                structure.transform.matrix[1][0] = instance.transformation[0][1];
-                structure.transform.matrix[1][1] = instance.transformation[1][1];
-                structure.transform.matrix[1][2] = instance.transformation[2][1];
-                structure.transform.matrix[1][3] = instance.transformation[3][1];
-                structure.transform.matrix[2][0] = instance.transformation[0][2];
-                structure.transform.matrix[2][1] = instance.transformation[1][2];
-                structure.transform.matrix[2][2] = instance.transformation[2][2];
-                structure.transform.matrix[2][3] = instance.transformation[3][2];
+                structure.transform.matrix[0][0] = transformation_matrix[0][0];
+                structure.transform.matrix[0][1] = transformation_matrix[1][0];
+                structure.transform.matrix[0][2] = transformation_matrix[2][0];
+                structure.transform.matrix[0][3] = transformation_matrix[3][0];
+                structure.transform.matrix[1][0] = transformation_matrix[0][1];
+                structure.transform.matrix[1][1] = transformation_matrix[1][1];
+                structure.transform.matrix[1][2] = transformation_matrix[2][1];
+                structure.transform.matrix[1][3] = transformation_matrix[3][1];
+                structure.transform.matrix[2][0] = transformation_matrix[0][2];
+                structure.transform.matrix[2][1] = transformation_matrix[1][2];
+                structure.transform.matrix[2][2] = transformation_matrix[2][2];
+                structure.transform.matrix[2][3] = transformation_matrix[3][2];
 
                 structure.mask = 0xff;
                 structure.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
@@ -396,6 +398,8 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
                 instance.texture_indices.roughness = material.roughness_texture == -1 ? NULL_TEXTURE_INDEX : material.roughness_texture + texture_index_offset;
                 instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
+
+                std::cout << "NORMAL: " << instance.texture_indices.normal << std::endl;
 
                 instance.material_parameters.diffuse_factor = material.diffuse_factor;
                 instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
