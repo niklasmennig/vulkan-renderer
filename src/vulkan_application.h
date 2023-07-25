@@ -109,6 +109,7 @@ struct VulkanApplication {
     Buffer camera_buffer;
 
     uint32_t render_clear_accumulated = 4;
+    bool render_images_dirty;
 
     SceneData loaded_scene_data;
 

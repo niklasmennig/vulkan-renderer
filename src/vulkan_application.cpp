@@ -257,6 +257,7 @@ TLAS VulkanApplication::build_tlas() {
     as_info.pGeometries = &geometry;
 
     VkAccelerationStructureBuildSizesInfoKHR acceleration_structure_size_info;
+    acceleration_structure_size_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
     uint32_t sizes = {
         (uint32_t)instances.size()
     };
@@ -687,6 +688,7 @@ void VulkanApplication::recreate_render_image() {
         transitions.push_back(i.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, i.access));
         i.layout = VK_IMAGE_LAYOUT_GENERAL;
     }
+    std::cout << "Transitioning " << transitions.size() << " images" << std::endl;
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
     for(int i = 0; i < pipeline.output_images.size(); i++) {
         pipeline.set_descriptor_image_binding("images", pipeline.output_images[i], ImageType::Storage, i);
@@ -709,6 +711,8 @@ void VulkanApplication::draw_frame() {
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
         throw std::runtime_error("error beginning command buffer");
     }
+
+    if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
 
     material_parameter_buffer.set_data(material_parameters.data());
 
@@ -760,9 +764,9 @@ void VulkanApplication::draw_frame() {
 
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
     vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_READ_BIT);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -834,6 +838,7 @@ void VulkanApplication::draw_frame() {
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
+    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
     vkQueuePresentKHR(present_queue, &present_info);
 
     auto time = std::chrono::high_resolution_clock::now();
@@ -842,7 +847,6 @@ void VulkanApplication::draw_frame() {
 
     glfwSetWindowTitle(window, ("Vulkan Renderer | FPS: " + std::to_string(1.0 / frame_delta.count())).c_str());
 
-    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
     vkResetFences(logical_device, 1, &in_flight_fence);
 }
 
@@ -1424,6 +1428,7 @@ void VulkanApplication::setup() {
                    .add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
                    .with_output_image_descriptor("images", 0, 2)
                    .add_output_image("result")
+                   .add_output_image("color_accum")
                    .add_output_image("instance_indices")
                    .add_output_image("instance_indices_colored")
                    .add_output_image("albedo")
@@ -1467,7 +1472,8 @@ void VulkanApplication::setup() {
         if (width > 1 && height > 1) {
             VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
             app->recreate_swapchain();
-            app->recreate_render_image();
+            //app->recreate_render_image();
+            app->render_images_dirty = true;
             app->render_clear_accumulated = 0;
         }
     });

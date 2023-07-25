@@ -1,5 +1,5 @@
 [environment]
-    path = "./hdri/vestibule_4k.hdr"
+    path = "./hdri/rural_asphalt_road_4k.hdr"
 
 [objects]
     # [objects.test]

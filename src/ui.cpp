@@ -13,7 +13,7 @@ void UI::draw() {
     ImGui::Begin("Scene Inspector");
     hovered |= ImGui::IsWindowHovered();
 
-    ImGui::SliderFloat("Camera Speed", &camera_speed, 1.0f, 100.0f);
+    ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
 
     ImGui::Text("Display");
     static const char* items[]{"Result Image", "Instance Indices", "Albedo"};

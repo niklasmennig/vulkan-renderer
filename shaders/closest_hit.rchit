@@ -59,12 +59,12 @@ void main() {
     float fresnel_reflect = 0.5;
 
     // direct light
-    vec3 light_position = vec3(3,1,1);
+    vec3 light_position = vec3(3,20,100);
     vec3 light_intensity = vec3(0.0);
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
-    float light_attenuation = 1.0 / (light_dist * light_dist);
+    float light_attenuation = 1.0;
 
     rayQueryEXT ray_query;
     rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
