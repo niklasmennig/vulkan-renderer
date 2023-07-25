@@ -22,6 +22,7 @@ using vec4 = glm::vec4;
 
 namespace Shaders
 {
+    using uint = uint32_t;
     #include "../shaders/camera.glsl"
 }
 
@@ -105,8 +106,10 @@ struct VulkanApplication {
 
     float camera_look_x, camera_look_y;
     bool mouse_look_active = false;
+
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
+    bool camera_changed;
 
     uint32_t render_clear_accumulated = 4;
     bool render_images_dirty;

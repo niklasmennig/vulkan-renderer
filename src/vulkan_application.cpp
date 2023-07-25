@@ -442,12 +442,6 @@ void VulkanApplication::create_default_descriptor_writes() {
 }
 
 void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
-    float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
-
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, 4, &time);
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 4, 4, &render_clear_accumulated);
-
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
 
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
@@ -671,7 +665,7 @@ void VulkanApplication::recreate_swapchain() {
             image_barrier.subresourceRange.baseArrayLayer = 0;
             image_barrier.subresourceRange.layerCount = 1;
             image_barrier.srcAccessMask = 0;
-            image_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            image_barrier.dstAccessMask = 0;
 
             vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
         }
@@ -699,7 +693,7 @@ void VulkanApplication::draw_frame() {
     uint32_t image_index;
     vkAcquireNextImageKHR(logical_device, swap_chain, UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
 
-    vkResetCommandBuffer(command_buffer, 0);
+    vkResetCommandPool(logical_device, command_pool, 0);
 
 
     // command buffer begin
@@ -838,7 +832,6 @@ void VulkanApplication::draw_frame() {
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
-    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
     vkQueuePresentKHR(present_queue, &present_info);
 
     auto time = std::chrono::high_resolution_clock::now();
@@ -847,6 +840,7 @@ void VulkanApplication::draw_frame() {
 
     glfwSetWindowTitle(window, ("Vulkan Renderer | FPS: " + std::to_string(1.0 / frame_delta.count())).c_str());
 
+    vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
     vkResetFences(logical_device, 1, &in_flight_fence);
 }
 
@@ -1259,7 +1253,7 @@ void VulkanApplication::setup() {
         throw std::runtime_error("error creating command pool");
     }
 
-    // create command buffer
+    // create command buffers
     VkCommandBufferAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = command_pool;
@@ -1304,7 +1298,7 @@ void VulkanApplication::setup() {
     dependency.dstSubpass = 0;
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = 0;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo render_pass_info{};
@@ -1328,7 +1322,7 @@ void VulkanApplication::setup() {
     loaded_scene_data = loaders::load_scene_description(scene_path.string());
 
     // BUILD BLAS
-    vkResetCommandBuffer(command_buffer, 0);
+    vkResetCommandPool(logical_device, command_pool, 0);
     vkResetFences(logical_device, 1, &tlas_fence);
 
     VkCommandBufferBeginInfo begin_info{};
@@ -1541,32 +1535,32 @@ void VulkanApplication::run() {
         vec3 camera_movement = vec3(0.0f);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             camera_movement += cam_fwd;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         {
             camera_movement -= cam_r;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         {
             camera_movement -= cam_fwd;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         {
             camera_movement += cam_r;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         {
             camera_movement += cam_up;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         {
             camera_movement -= cam_up;
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
 
         float camera_speed = frame_delta.count();
@@ -1601,12 +1595,12 @@ void VulkanApplication::run() {
         if (glfwGetKey(window, GLFW_KEY_E))
         {
             rotation_matrix = glm::rotate(rotation_matrix, -angle, new_fwd);
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_Q))
         {
             rotation_matrix = glm::rotate(rotation_matrix, angle, new_fwd);
-            render_clear_accumulated = 0;
+            camera_changed = true;
         }
 
         new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
@@ -1619,12 +1613,21 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = 70.0f;
 
+        float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+        if (camera_changed) render_clear_accumulated = 0;
+        camera_changed = false;
+
+        camera_data.time = time;
+        camera_data.clear_accumulated = render_clear_accumulated;
+
         camera_buffer.set_data(&camera_data);
 
         draw_frame();
 
         camera_look_x = 0;
         camera_look_y = 0;
+
+        if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
     }
 
     vkDeviceWaitIdle(logical_device);
