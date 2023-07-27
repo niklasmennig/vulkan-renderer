@@ -105,13 +105,19 @@ GLTFData loaders::load_gltf(const std::string path) {
     for (const auto &material : model.materials) {
         GLTFMaterial result_material;
 
+        // transmissions
         if (material.extensions.find("KHR_materials_transmission") != material.extensions.end()) {
             if (material.extensions.at("KHR_materials_transmission").Has("transmissionTexture")) {
                 result_material.transmission_texture = material.extensions.at("KHR_materials_transmission").Get("transmissionTexture").Get("index").GetNumberAsInt();
             }
             if (material.extensions.at("KHR_materials_transmission").Has("transmissionFactor")) {
-                result_material.transmission_factor = material.extensions.at("KHR_materials_transmission").Get("transmissionFactor").GetNumberAsInt();
+                result_material.transmission_factor = material.extensions.at("KHR_materials_transmission").Get("transmissionFactor").GetNumberAsDouble();
             }
+        }
+
+        // ior
+        if (material.extensions.find("KHR_materials_ior") != material.extensions.end()) {
+            result_material.ior = material.extensions.at("KHR_materials_ior").Get("ior").GetNumberAsDouble();
         }
 
         const auto textures = model.textures;
@@ -138,11 +144,14 @@ GLTFData loaders::load_gltf(const std::string path) {
     }
 
     // Nodes
-    for (const auto &node : model.nodes) {
-        GLTFNode result_node;
+    result.nodes.resize(model.nodes.size());
+    for (int node_index = 0; node_index < model.nodes.size(); node_index++) {
+        const auto& node = model.nodes[node_index];
+
+        GLTFNode* result_node = &result.nodes[node_index];
         //if (node.mesh < 0) continue;
 
-        result_node.mesh_index = node.mesh;
+        result_node->mesh_index = node.mesh;
 
         glm::mat4 node_matrix = glm::mat4(1.0f);
         
@@ -157,22 +166,36 @@ GLTFData loaders::load_gltf(const std::string path) {
 
         if (node.matrix.size() > 0) node_matrix = glm::make_mat4(node.matrix.data());
 
-        result_node.matrix = node_matrix;
+        result_node->matrix = node_matrix;
 
-        result.nodes.push_back(result_node);
+        for (const int child_index : node.children) {
+            result.nodes[child_index].parent_index = node_index;
+        }
     }
 
     // apply transformation of parent nodes to child nodes
     for (int i = 0; i < result.nodes.size(); i++) {
-        const auto& node = result.nodes[i];
-        for (const int child_id : model.nodes[i].children) {
-            auto& child_node = result.nodes[child_id];
-            child_node.matrix = node.matrix * child_node.matrix;
+        GLTFNode* node = &result.nodes[i];
+        if (node->parent_index >= 0) {
+            // step along parent tree to reconstruct full transformation matrix
+            std::vector<mat4> transformations;
+            GLTFNode* parent_node = node;
+            while(parent_node->parent_index >= 0) {
+                parent_node = &result.nodes[parent_node->parent_index];
+                transformations.push_back(parent_node->matrix);
+            }
+
+            mat4 parent_transformation = mat4(1.0f);
+            for (const auto t : transformations) {
+                parent_transformation = t * parent_transformation;
+            }
+
+            node->matrix = parent_transformation * node->matrix;
         }
     }
 
     // delete parent nodes
-    std::remove_if(result.nodes.begin(), result.nodes.end(), [](GLTFNode node) {return node.mesh_index < 0;});
+    result.nodes.erase(std::remove_if(result.nodes.begin(), result.nodes.end(), [](GLTFNode node) {return node.mesh_index < 0;}), result.nodes.end());
 
     return result;
 

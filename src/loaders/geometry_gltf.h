@@ -27,6 +27,7 @@ struct GLTFMaterial {
     float metallic_factor = 0;
     vec3 emissive_factor = vec3(0);
     float transmission_factor = 0;
+    float ior = 1.5;
 };
 
 struct GLTFPrimitive {
@@ -43,7 +44,8 @@ struct GLTFMesh {
 };
 
 struct GLTFNode {
-    int mesh_index;
+    int parent_index = -1;
+    int mesh_index = -1;
     mat4 matrix;
 };
 

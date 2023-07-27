@@ -66,6 +66,9 @@ void main() {
 
     float fresnel_reflect = 0.5;
 
+    bool front_facing = dot(ray_out, normal) > 0;
+    if (!front_facing) ior = 1.0 / ior;
+
     base_color = mix(base_color, vec3(1.0), 1.0 - base_color_tex.a);
 
     // direct light

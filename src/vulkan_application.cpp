@@ -198,7 +198,11 @@ TLAS VulkanApplication::build_tlas() {
         std::cout << object.nodes.size() << " nodes" << std::endl;
         for (const auto& node : object.nodes) {
             // skip nodes with no mesh
-            if (node.mesh_index < 0) continue;
+            std::cout << node.mesh_index << std::endl;
+            if (node.mesh_index < 0) {
+                std::cout << "Skipping node with no geometry" << std::endl;
+                continue;
+            }
 
             glm::mat4 transformation_matrix = instance.transformation * node.matrix;
 
@@ -408,7 +412,7 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.material_parameters.diffuse_roughness_factor = material.diffuse_factor;
                 instance.material_parameters.diffuse_roughness_factor.a = material.roughness_factor;
                 instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
-                instance.material_parameters.transmissive_ior = vec4(material.transmission_factor, 1.5 /*IOR*/, 0.0, 0.0);
+                instance.material_parameters.transmissive_ior = vec4(material.transmission_factor, material.ior, 0.0, 0.0);
 
                 // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive
                 texture_indices.push_back(instance.texture_indices.diffuse);
