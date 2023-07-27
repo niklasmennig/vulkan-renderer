@@ -25,7 +25,7 @@ float g_smith(float NoV, float NoL, float roughness) {
   return g1_l * g1_v;
 }
 
-vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic, float fresnel_reflect, float roughness) {
+vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
     vec3 h = normalize(ray_in + ray_out);
 
     float no = clamp(dot(normal, ray_out), 0.0, 1.0);
@@ -44,7 +44,7 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
 
     // diffuse
     vec3 rho = vec3(1.0) - f;
-    rho *= 1.0 - metallic;
+    rho *= (1.0 - metallic) * (1.0 - transmission);
     vec3 diff = rho * base_color / PI;
 
     return diff + spec;
@@ -52,40 +52,79 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
 
 vec3 sample_ggx(in vec3 V, in vec3 N, 
               in vec3 baseColor, in float metallicness, 
-              in float fresnelReflect, in float roughness, in vec3 random, out vec3 nextFactor) 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec3 random, out vec3 nextFactor) 
 {
-  if(random.z > 0.5) {
-    // diffuse case
+    if(random.z < 0.5) { // non-specular light
+    if((2.0 * random.z) < transmission) { // transmitted light
+      vec3 forwardNormal = N;
+      float frontFacing = dot(V, N);
+      float eta =1.0 / ior;
+      if(frontFacing < 0.0) {
+         forwardNormal = -N;
+         eta = ior;
+      } 
+      
+      // important sample GGX
+      // pdf = D * cos(theta) * sin(theta)
+      float a = roughness * roughness;
+      float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+      float phi = 2.0 * PI * random.x;
+      
+      vec3 localH = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+      vec3 H = basis(forwardNormal) * localH;  
+      
+      // compute L from sampled H
+      vec3 L = refract(-V, H, eta);
+      
+      // all required dot products
+      float NoV = clamp(dot(forwardNormal, V), 0.0, 1.0);
+      float NoL = clamp(dot(-forwardNormal, L), 0.0, 1.0); // reverse normal
+      float NoH = clamp(dot(forwardNormal, H), 0.0, 1.0);
+      float VoH = clamp(dot(V, H), 0.0, 1.0);     
+      
+      // F0 for dielectics in range [0.0, 0.16] 
+      // default FO is (0.16 * 0.5^2) = 0.04
+      vec3 f0 = vec3(0.16 * (fresnelReflect * fresnelReflect)); 
+      // in case of metals, baseColor contains F0
+      f0 = mix(f0, baseColor, metallicness);
     
-    // important sampling diffuse
-    // pdf = cos(theta) * sin(theta) / PI
-    float theta = asin(sqrt(random.y));
-    float phi = 2.0 * PI * random.x;
-    // sampled indirect diffuse direction in normal space
-    vec3 localDiffuseDir = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-    vec3 L = basis(N) * localDiffuseDir;  
+      vec3 F = fresnel_schlick(VoH, f0);
+      float D = d_ggx(NoH, roughness);
+      float G = g_smith(NoV, NoL, roughness);
+      nextFactor = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
     
-     // half vector
-    vec3 H = normalize(V + L);
-    float VoH = clamp(dot(V, H), 0.0, 1.0);     
+      nextFactor *= 2.0; // compensate for splitting diffuse and specular
+      return L;
+      
+    } else { // diffuse light
+      
+      // important sampling diffuse
+      // pdf = cos(theta) * sin(theta) / PI
+      float theta = asin(sqrt(random.y));
+      float phi = 2.0 * PI * random.x;
+      // sampled indirect diffuse direction in normal space
+      vec3 localDiffuseDir = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+      vec3 L = basis(N) * localDiffuseDir;  
+      
+       // half vector
+      vec3 H = normalize(V + L);
+      float VoH = clamp(dot(V, H), 0.0, 1.0);     
+      
+      // F0 for dielectics in range [0.0, 0.16] 
+      // default FO is (0.16 * 0.5^2) = 0.04
+      vec3 f0 = vec3(0.16 * (fresnelReflect * fresnelReflect)); 
+      // in case of metals, baseColor contains F0
+      f0 = mix(f0, baseColor, metallicness);    
+      vec3 F = fresnel_schlick(VoH, f0);
+      
+      vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
+      notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-    // F0 for dielectics in range [0.0, 0.16] 
-    // default FO is (0.16 * 0.5^2) = 0.04
-    vec3 f0 = vec3(0.16 * (fresnelReflect * fresnelReflect)); 
-    // in case of metals, baseColor contains F0
-    f0 = mix(f0, baseColor, metallicness);    
-    vec3 F = fresnel_schlick(VoH, f0);
-    
-    vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
-    notSpec *= 1.0 - metallicness; // no diffuse for metals
-    vec3 diff = notSpec * baseColor; 
-  
-    nextFactor = notSpec * baseColor;
-    nextFactor *= 2.0; // compensate for splitting diffuse and specular
-    return L;
-    
-  } else {
-    // specular case
+      nextFactor = notSpec * baseColor;
+      nextFactor *= 2.0; // compensate for splitting diffuse and specular
+      return L;
+    }
+  } else {// specular light
     
     // important sample GGX
     // pdf = D * cos(theta) * sin(theta)
@@ -114,7 +153,9 @@ vec3 sample_ggx(in vec3 V, in vec3 N,
     float D = d_ggx(NoH, roughness);
     float G = g_smith(NoV, NoL, roughness);
     nextFactor =  F * G * VoH / max((NoH * NoV), 0.001);
+    
     nextFactor *= 2.0; // compensate for splitting diffuse and specular
     return L;
   } 
+  
 }

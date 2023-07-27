@@ -1,8 +1,8 @@
 [environment]
-    path = "./hdri/rural_asphalt_road_4k.hdr"
+    path = "./hdri/kloppenheim_05_puresky_4k.hdr"
 
 [objects]
-    # [objects.test2]
+    # [objects.test]
     # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]

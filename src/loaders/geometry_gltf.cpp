@@ -126,6 +126,8 @@ GLTFData loaders::load_gltf(const std::string path) {
         result_material.diffuse_factor.b = material.pbrMetallicRoughness.baseColorFactor[2];
         result_material.diffuse_factor.a = material.pbrMetallicRoughness.baseColorFactor[3];
 
+        result_material.roughness_factor = material.pbrMetallicRoughness.roughnessFactor;
+
         result_material.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
 
         result_material.emissive_factor.r = material.emissiveFactor[0];
@@ -138,7 +140,7 @@ GLTFData loaders::load_gltf(const std::string path) {
     // Nodes
     for (const auto &node : model.nodes) {
         GLTFNode result_node;
-        if (node.mesh < 0) continue;
+        //if (node.mesh < 0) continue;
 
         result_node.mesh_index = node.mesh;
 
@@ -159,6 +161,18 @@ GLTFData loaders::load_gltf(const std::string path) {
 
         result.nodes.push_back(result_node);
     }
+
+    // apply transformation of parent nodes to child nodes
+    for (int i = 0; i < result.nodes.size(); i++) {
+        const auto& node = result.nodes[i];
+        for (const int child_id : model.nodes[i].children) {
+            auto& child_node = result.nodes[child_id];
+            child_node.matrix = node.matrix * child_node.matrix;
+        }
+    }
+
+    // delete parent nodes
+    std::remove_if(result.nodes.begin(), result.nodes.end(), [](GLTFNode node) {return node.mesh_index < 0;});
 
     return result;
 

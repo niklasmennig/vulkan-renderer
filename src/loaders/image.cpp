@@ -8,7 +8,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-Image loaders::load_image(Device* device, std::string path) {
+Image loaders::load_image(Device* device, std::string path, bool flip_y) {
+    if (flip_y) stbi_set_flip_vertically_on_load(1);
     stbi_set_unpremultiply_on_load(1);
     stbi_ldr_to_hdr_scale(1.0f);
     stbi_ldr_to_hdr_gamma(1.0f);

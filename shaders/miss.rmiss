@@ -24,7 +24,7 @@ void main() {
     float u = phi / (2.0 * PI);
     float v = theta / PI;
 
-    vec3 base_color = sample_texture(0, vec2(u, v)) * 1;
+    vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
 
     payload.color += payload.contribution * base_color;
 

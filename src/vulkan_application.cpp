@@ -192,14 +192,19 @@ TLAS VulkanApplication::build_tlas() {
 
     std::cout << "Building TLAS for " << loaded_scene_data.instances.size() << " instances" << std::endl;
     for (InstanceData instance : loaded_scene_data.instances) {
-        std::cout << instance.object_name << std::endl;
+        std::cout << "Instance: " << instance.object_name << std::endl;
         int blas_offset = loaded_mesh_index[instance.object_name];
         const auto& object = loaded_objects[instance.object_name];
+        std::cout << object.nodes.size() << " nodes" << std::endl;
         for (const auto& node : object.nodes) {
-                glm::mat4 transformation_matrix = instance.transformation * node.matrix;
+            // skip nodes with no mesh
+            if (node.mesh_index < 0) continue;
 
-                const auto& mesh = object.meshes[node.mesh_index];
-                for (int i = 0; i < mesh.primitives.size(); i++) {
+            glm::mat4 transformation_matrix = instance.transformation * node.matrix;
+
+            const auto& mesh = object.meshes[node.mesh_index];
+            std::cout << mesh.primitives.size() << " primitives" << std::endl;
+            for (int i = 0; i < mesh.primitives.size(); i++) {
 
                 BLAS& as = created_blas[blas_offset + node.mesh_index + i];
 
@@ -400,9 +405,10 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
                 instance.texture_indices.transmissive = material.transmission_texture == -1 ? NULL_TEXTURE_INDEX : material.transmission_texture + texture_index_offset;
 
-                instance.material_parameters.diffuse_factor = material.diffuse_factor;
+                instance.material_parameters.diffuse_roughness_factor = material.diffuse_factor;
+                instance.material_parameters.diffuse_roughness_factor.a = material.roughness_factor;
                 instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
-                instance.material_parameters.transmissive = vec4(material.transmission_factor);
+                instance.material_parameters.transmissive_ior = vec4(material.transmission_factor, 1.5 /*IOR*/, 0.0, 0.0);
 
                 // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive
                 texture_indices.push_back(instance.texture_indices.diffuse);
@@ -1616,7 +1622,7 @@ void VulkanApplication::run() {
         camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
 
         // FoV
-        camera_data.fov_x = 70.0f;
+        camera_data.fov_x = 80.0f;
 
         float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
         if (camera_changed) render_clear_accumulated = 0;

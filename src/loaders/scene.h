@@ -16,12 +16,12 @@ struct InstanceData
     } texture_indices;
 
     struct MaterialParameters {
-        // diffuse rgba
-        vec4 diffuse_factor;
+        // diffuse rgb, roughness a
+        vec4 diffuse_roughness_factor;
         // emissive rgb, metallic a
         vec4 emissive_metallic_factor;
-        // transmissive
-        vec4 transmissive;
+        // transmissive x, ior y
+        vec4 transmissive_ior;
     } material_parameters;
 
     std::string object_name;

@@ -6,5 +6,5 @@
 struct Device;
 
 namespace loaders {
-    Image load_image(Device* device, std::string path);
+    Image load_image(Device* device, std::string path, bool flip_y = false);
 }
