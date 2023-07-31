@@ -4,6 +4,7 @@
 #include "loaders/image.h"
 #include "loaders/scene.h"
 #include "loaders/geometry_gltf.h"
+#include "loaders/toml.hpp"
 #include "pipeline_builder.h"
 #include "ui.h"
 
@@ -19,6 +20,7 @@ using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 
 #define NULL_TEXTURE_INDEX 10000 // needs to match index in texture_data.glsl
+const std::string camera_data_path = "./camera_data.toml";
 
 namespace Shaders
 {

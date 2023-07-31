@@ -7,8 +7,6 @@
 
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_gltf.h"
-#include "loaders/json.hpp"
-using json = nlohmann::json;
 
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -1313,7 +1311,7 @@ void VulkanApplication::setup() {
     dependency.dstSubpass = 0;
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo render_pass_info{};
@@ -1537,6 +1535,21 @@ void VulkanApplication::run() {
     // initialize UI
     ui.init(this);
 
+    //load persisted camera data
+    std::filesystem::path cam_path(camera_data_path);
+    if (std::filesystem::exists(cam_path)) {
+        std::cout << "found saved camera data. loading..." << std::endl;
+        toml::table data = toml::parse_file(cam_path.string());
+        camera_data.origin = vec4(data["origin"][0].value_or(0.0), data["origin"][1].value_or(0.0), data["origin"][2].value_or(0.0), 1.0);
+        camera_data.forward = vec4(data["forward"][0].value_or(0.0), data["forward"][1].value_or(0.0), data["forward"][2].value_or(1.0), 0.0);
+        camera_data.right = vec4(data["right"][0].value_or(1.0), data["right"][1].value_or(0.0), data["right"][2].value_or(0.0), 0.0);
+        camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
+    }
+    delta_cursor_x = 0;
+    delta_cursor_y = 0;
+    camera_look_x = 0;
+    camera_look_y = 0;
+
     // main event loop
     while (!glfwWindowShouldClose(window))
     {
@@ -1644,6 +1657,15 @@ void VulkanApplication::run() {
 
         if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
     }
+
+    // persist camera data
+    toml::table camera_data_out;
+    camera_data_out.insert("origin", toml::array{camera_data.origin.x, camera_data.origin.y, camera_data.origin.z});
+    camera_data_out.insert("forward", toml::array{camera_data.forward.x, camera_data.forward.y, camera_data.forward.z});
+    camera_data_out.insert("right", toml::array{camera_data.right.x, camera_data.right.y, camera_data.right.z});
+    camera_data_out.insert("up", toml::array{camera_data.up.x, camera_data.up.y, camera_data.up.z});
+    std::ofstream camera_data_out_file(camera_data_path);
+    camera_data_out_file << camera_data_out;
 
     vkDeviceWaitIdle(logical_device);
 }
