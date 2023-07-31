@@ -982,6 +982,7 @@ void VulkanApplication::setup() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
+    glfwSetWindowSizeLimits(window, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     startup_time = std::chrono::high_resolution_clock::now();
 
@@ -1476,12 +1477,15 @@ void VulkanApplication::setup() {
     // set glfw callbacks
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
         std::cout << "resized to " << width << "x" << height << std::endl;
-        if (width > 1 && height > 1) {
-            VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+        VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+        if (width > 0 && height > 0) {
+            app->minimized = false;
             app->recreate_swapchain();
             //app->recreate_render_image();
             app->render_images_dirty = true;
             app->render_clear_accumulated = 0;
+        } else {
+            app->minimized = true;
         }
     });
 
@@ -1528,6 +1532,16 @@ void VulkanApplication::setup() {
         }
     });
 
+    glfwSetScrollCallback(window, [](GLFWwindow* window, double x_offset, double y_offset) {
+        ImGui_ImplGlfw_ScrollCallback(window, x_offset, y_offset);
+
+        VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
+
+        if (app->mouse_look_active && !app->ui.is_hovered()) {
+            app->ui.camera_speed += y_offset * app->ui.camera_speed * 1e-1f;
+        }
+    });
+
     std::cout << "Setup completed" << std::endl;
 }
 
@@ -1544,6 +1558,7 @@ void VulkanApplication::run() {
         camera_data.forward = vec4(data["forward"][0].value_or(0.0), data["forward"][1].value_or(0.0), data["forward"][2].value_or(1.0), 0.0);
         camera_data.right = vec4(data["right"][0].value_or(1.0), data["right"][1].value_or(0.0), data["right"][2].value_or(0.0), 0.0);
         camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
+        ui.camera_fov = data["fov_x"].value_or(70.0);
     }
     delta_cursor_x = 0;
     delta_cursor_y = 0;
@@ -1554,6 +1569,7 @@ void VulkanApplication::run() {
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+        if (minimized) continue;
 
         // camera movement
         glm::vec3 cam_up = glm::normalize(glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z));
@@ -1639,7 +1655,7 @@ void VulkanApplication::run() {
         camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
 
         // FoV
-        camera_data.fov_x = 80.0f;
+        camera_data.fov_x = ui.camera_fov;
 
         float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
         if (camera_changed) render_clear_accumulated = 0;
@@ -1664,6 +1680,7 @@ void VulkanApplication::run() {
     camera_data_out.insert("forward", toml::array{camera_data.forward.x, camera_data.forward.y, camera_data.forward.z});
     camera_data_out.insert("right", toml::array{camera_data.right.x, camera_data.right.y, camera_data.right.z});
     camera_data_out.insert("up", toml::array{camera_data.up.x, camera_data.up.y, camera_data.up.z});
+    camera_data_out.insert("fov_x", camera_data.fov_x);
     std::ofstream camera_data_out_file(camera_data_path);
     camera_data_out_file << camera_data_out;
 

@@ -22,6 +22,7 @@ public:
     ivec3 color_under_cursor = ivec3(0);
 
     float camera_speed = 1.0f;
+    float camera_fov = 70.0f;
 
     void init(VulkanApplication* application);
     void draw();

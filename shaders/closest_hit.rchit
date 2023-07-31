@@ -68,7 +68,6 @@ void main() {
     float fresnel_reflect = 0.5;
 
     bool front_facing = dot(ray_out, normal) > 0;
-    if (!front_facing) ior = 1.0 / ior;
 
     // // direct light
     // vec3 light_position = vec3(3,20,100);

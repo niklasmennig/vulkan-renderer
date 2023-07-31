@@ -14,6 +14,7 @@ void UI::draw() {
     hovered |= ImGui::IsWindowHovered();
 
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
+    changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
 
     ImGui::Text("Display");
     static const char* items[]{"Result Image", "Instance Indices", "Albedo"};
@@ -27,13 +28,13 @@ void UI::draw() {
     ImGui::Text("Selected Instance: %d", selected_instance);
     if (selected_instance_parameters != nullptr) {
         ImGui::Text("Diffuse");
-        changed |= ImGui::SliderFloat3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_roughness_factor, 0.0, 1.0);
+        changed |= ImGui::ColorPicker3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_roughness_factor);
         ImGui::Text("Roughness");
         changed |= ImGui::SliderFloat("##roughness_factor_slider", (float*)&selected_instance_parameters->diffuse_roughness_factor.a, 0.0, 1.0);
         ImGui::Text("Metallic");
         changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
         ImGui::Text("Emission");
-        changed |= ImGui::SliderFloat3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r, 0.0, 10.0);
+        changed |= ImGui::ColorPicker3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r);
         ImGui::Text("Transmission");
         changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->transmissive_ior.x, 0.0, 1.0);
         ImGui::Text("IOR");
