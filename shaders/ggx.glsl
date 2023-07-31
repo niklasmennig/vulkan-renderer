@@ -51,9 +51,15 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
 }
 
 vec3 sample_ggx(in vec3 V, in vec3 N, 
-              in vec3 baseColor, in float metallicness, 
-              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec3 random, out vec3 nextFactor) 
+              in vec3 baseColor, float opacity, in float metallicness, 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random, out vec3 nextFactor) 
 {
+    // handle opacity
+    if (random.w > opacity) {
+      nextFactor = vec3(1.0);
+      return -V;
+    }
+
     if(random.z < 0.5) { // non-specular light
     if((2.0 * random.z) < transmission) { // transmitted light
       vec3 forwardNormal = N;

@@ -57,6 +57,7 @@ void main() {
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_roughness_factor.rgb * base_color_tex.rgb;
+    float opacity = base_color_tex.a;
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
     float roughness = parameters.diffuse_roughness_factor.a * arm.y;
     float metallic = parameters.emissive_metallic_factor.a * arm.z;
@@ -69,28 +70,26 @@ void main() {
     bool front_facing = dot(ray_out, normal) > 0;
     if (!front_facing) ior = 1.0 / ior;
 
-    base_color = mix(base_color, vec3(1.0), 1.0 - base_color_tex.a);
+    // // direct light
+    // vec3 light_position = vec3(3,20,100);
+    // vec3 light_intensity = vec3(0.0);
+    // vec3 light_dir = light_position - new_origin;
+    // float light_dist = length(light_dir);
+    // light_dir /= light_dist;
+    // float light_attenuation = 1.0;
 
-    // direct light
-    vec3 light_position = vec3(3,20,100);
-    vec3 light_intensity = vec3(0.0);
-    vec3 light_dir = light_position - new_origin;
-    float light_dist = length(light_dir);
-    light_dir /= light_dist;
-    float light_attenuation = 1.0;
+    // rayQueryEXT ray_query;
+    // rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
+    // while(rayQueryProceedEXT(ray_query)) {};
+    // bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
-    rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
-    while(rayQueryProceedEXT(ray_query)) {};
-    bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
-
-    if (!in_shadow && transmission < epsilon) {
-        payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
-    }
+    // if (!in_shadow) {
+    //     payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+    // }
 
     // indirect light
     vec3 next_factor = vec3(0);
-    vec3 r = sample_ggx(ray_out, normal, base_color, metallic, fresnel_reflect, roughness, transmission, ior, vec3(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
+    vec3 r = sample_ggx(ray_out, normal, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
