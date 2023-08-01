@@ -41,7 +41,7 @@ void main() {
 
     vec3 sample_sum = vec3(0);
     for (int s = 0; s < frame_samples; s++) {
-        uint seed = gl_LaunchIDEXT.x * 313 + gl_LaunchIDEXT.y * 12 + uint(raygen_data.camera.time) * 543 + raygen_data.camera.clear_accumulated * 78 + s * 234;
+        uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(raygen_data.camera.time) + raygen_data.camera.clear_accumulated + s;
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);

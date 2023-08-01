@@ -8,14 +8,14 @@
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
 
-    # [objects.test1]
-    # path = "./gltf/sponza/Sponza.gltf"
+    [objects.test]
+    path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
 
-    [objects.test]
-    path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    # [objects.test]
+    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
