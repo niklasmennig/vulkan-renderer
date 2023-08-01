@@ -2,14 +2,14 @@
     path = "./hdri/kloppenheim_05_puresky_4k.hdr"
 
 [objects]
-    # [objects.test]
-    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    [objects.test]
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
 
-    [objects.test]
-    path = "./gltf/sponza/Sponza.gltf"
+    # [objects.test]
+    # path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"

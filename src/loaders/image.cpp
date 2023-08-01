@@ -14,36 +14,60 @@ Image loaders::load_image(Device* device, std::string path, bool flip_y) {
     stbi_ldr_to_hdr_scale(1.0f);
     stbi_ldr_to_hdr_gamma(1.0f);
 
+    bool is_hdr = stbi_is_hdr(path.c_str());
+
     int width, height, channels;
-    float* data = stbi_loadf(path.c_str(), &width, &height, &channels, 0);
+    float* data = stbi_loadf(path.c_str(), &width, &height, &channels, 4);
+
+    void* processed_data;
+    if (!is_hdr) {
+        uint8_t* uint_data = new uint8_t[width * height * 4];
+        for (int i = 0; i < width * height * 4; i++) {
+            uint_data[i] = (uint8_t)(data[i] * 255);
+        }
+        processed_data = uint_data;
+    } else {
+        processed_data = data;
+    }
 
     std::cout << "loading " << path << "| Channels: " << channels << std::endl;
 
     VkFormat format;
+    VkDeviceSize size_per_entry;
     switch (channels)
     {
     case 1:
-        format = VK_FORMAT_R32_SFLOAT;
+        format = VK_FORMAT_R8_UNORM;
+        size_per_entry = 1;
         break;
     case 3:
-        format = VK_FORMAT_R32G32B32_SFLOAT;
+        format = VK_FORMAT_R8G8B8A8_SRGB;
+        size_per_entry = 4;
         break;
     case 4:
-        format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        format = VK_FORMAT_R8G8B8A8_SRGB;
+        size_per_entry = 4;
         break;
+    }
+
+    if (is_hdr) {
+        format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        size_per_entry = 16;
     }
 
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = width * height * channels * sizeof(float);
+    buffer_info.size = width * height * size_per_entry;
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
     Image result;
     result.device_handle = device->vulkan_device;
     result.buffer = device->create_buffer(&buffer_info);
-    result.buffer.set_data(data);
+    result.buffer.set_data(processed_data);
     result.width = width;
     result.height = height;
+
+    if(!is_hdr) free(processed_data);
 
     VkImageCreateInfo image_info{};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;

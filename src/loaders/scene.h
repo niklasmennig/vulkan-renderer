@@ -18,10 +18,10 @@ struct InstanceData
     struct MaterialParameters {
         // diffuse rgb, opacity a
         vec4 diffuse_opacity;
-        // emissive rgb, metallic a
-        vec4 emissive_metallic_factor;
-        // roughness x, transmissive y, ior z
-        vec4 roughness_transmissive_ior;
+        // emissive rgb, emissive strength a
+        vec4 emissive_factor;
+        // roughness x, metallic y, transmissive z, ior a
+        vec4 roughness_metallic_transmissive_ior;
     } material_parameters;
 
     std::string object_name;

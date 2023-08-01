@@ -39,15 +39,17 @@ void UI::draw() {
             ImGui::Text("Diffuse");
             changed |= ImGui::ColorPicker4("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_opacity);
             ImGui::Text("Roughness");
-            changed |= ImGui::SliderFloat("##roughness_factor_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.x, 0.0, 1.0);
+            changed |= ImGui::SliderFloat("##roughness_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.x, 0.0, 1.0);
             ImGui::Text("Metallic");
-            changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
-            ImGui::Text("Emission");
-            changed |= ImGui::ColorPicker3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r);
+            changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.y, 0.0, 1.0);
+            ImGui::Text("Emission Color");
+            changed |= ImGui::ColorPicker3("##emissive_color_picker", (float*)&selected_instance_parameters->emissive_factor);
+            ImGui::Text("Emission Strength");
+            changed |= ImGui::SliderFloat("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_factor.a, 0.0, 10.0);
             ImGui::Text("Transmission");
-            changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.y, 0.0, 1.0);
+            changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");
-            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.z, 0.0, 3.0);
+            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 3.0);
             ImGui::EndChild();
         }
     }

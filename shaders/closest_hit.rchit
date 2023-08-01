@@ -20,10 +20,10 @@ layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 struct MaterialParameters {
     // diffuse rgb, opacity a
     vec4 diffuse_opacity;
-    // emissive rgb, metallic a
-    vec4 emissive_metallic_factor;
-    // roughness x, transmissive y, ior z
-    vec4 roughness_transmissive_ior;
+    // emissive rgb, emission strength a
+    vec4 emissive_factor;
+    // roughness x, metallic y, transmissive z, ior a
+    vec4 roughness_metallic_transmissive_ior;
 };
 layout(std430, set = 1, binding = 8) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
@@ -50,20 +50,20 @@ void main() {
 
     vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).xyz;
 
-    if (abs(length(sampled_normal)) > 1.0 - epsilon) {
-        vec3 mapped_normal = (tbn * normalize(sampled_normal * 2.0 - 1.0));
-        normal = normalize(mapped_normal);
-    }
+    // if (abs(length(sampled_normal)) > 1.0 - epsilon) {
+    //     vec3 mapped_normal = (tbn * normalize(sampled_normal * 2.0 - 1.0));
+    //     normal = normalize(mapped_normal);
+    // }
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
     float opacity = parameters.diffuse_opacity.a * base_color_tex.a;
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-    float roughness = parameters.roughness_transmissive_ior.x * arm.y;
-    float metallic = parameters.emissive_metallic_factor.a * arm.z;
+    float roughness = parameters.roughness_metallic_transmissive_ior.x * arm.y;
+    float metallic = parameters.roughness_metallic_transmissive_ior.y * arm.z;
     vec4 transmission_tex = sample_texture(instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-    float transmission = parameters.roughness_transmissive_ior.y * (1.0 - transmission_tex.x);
-    float ior = parameters.roughness_transmissive_ior.z;
+    float transmission = parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
+    float ior = parameters.roughness_metallic_transmissive_ior.a;
 
     float fresnel_reflect = 0.5;
 
@@ -94,8 +94,8 @@ void main() {
     payload.contribution *= next_factor;
 
     // emission
-    vec3 emission = parameters.emissive_metallic_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb;
-    payload.contribution += emission;
+    vec3 emission = parameters.emissive_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb;
+    payload.contribution += emission * parameters.emissive_factor.a;
 
     if (payload.depth == 0) {
         payload.primary_hit_instance = instance;
