@@ -18,6 +18,10 @@ int main(int argc, char** argv)
     glfwInit();
 
     VulkanApplication app;
+    if (argc < 2) {
+        std::cout << "please provide a scene file as the first argument to program execution" << std::endl;
+        exit(1);
+    }
     app.set_scene_path(argv[1]);
     try {
         app.setup();
