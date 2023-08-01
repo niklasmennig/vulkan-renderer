@@ -8,37 +8,43 @@ void UI::init(VulkanApplication* app) {
 }
 
 void UI::draw() {
+    ImGui::ShowDemoWindow();
     changed = false;
     hovered = false;
     ImGui::Begin("Scene Inspector");
     hovered |= ImGui::IsWindowHovered();
 
+    ImGui::SeparatorText("Camera");
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
 
-    ImGui::Text("Display");
-    static const char* items[]{"Result Image", "Instance Indices", "Albedo"};
-    changed |= ImGui::Combo("##display_selector", &displayed_image_index, items, 3);
+    ImGui::SeparatorText("Display");
+    static const char* items[]{"Result Image", "Instance Indices", "Albedo", "Normals"};
+    changed |= ImGui::Combo("##display_selector", &displayed_image_index, items, sizeof(items) / sizeof(char *));
 
-    ImGui::Text("Application Information");
+    ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
     ImGui::Text("%d Samples", application->get_samples());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
     ImGui::Text("Selected Instance: %d", selected_instance);
     if (selected_instance_parameters != nullptr) {
-        ImGui::Text("Diffuse");
-        changed |= ImGui::ColorPicker3("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_roughness_factor);
-        ImGui::Text("Roughness");
-        changed |= ImGui::SliderFloat("##roughness_factor_slider", (float*)&selected_instance_parameters->diffuse_roughness_factor.a, 0.0, 1.0);
-        ImGui::Text("Metallic");
-        changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
-        ImGui::Text("Emission");
-        changed |= ImGui::ColorPicker3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r);
-        ImGui::Text("Transmission");
-        changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->transmissive_ior.x, 0.0, 1.0);
-        ImGui::Text("IOR");
-        changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->transmissive_ior.y, 0.0, 3.0);
+        if (ImGui::CollapsingHeader("Instance Editor")) {
+            ImGui::BeginChild("instance_editor");
+            ImGui::Text("Diffuse");
+            changed |= ImGui::ColorPicker4("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_opacity);
+            ImGui::Text("Roughness");
+            changed |= ImGui::SliderFloat("##roughness_factor_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.x, 0.0, 1.0);
+            ImGui::Text("Metallic");
+            changed |= ImGui::SliderFloat("##metallic_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.a, 0.0, 1.0);
+            ImGui::Text("Emission");
+            changed |= ImGui::ColorPicker3("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_metallic_factor.r);
+            ImGui::Text("Transmission");
+            changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.y, 0.0, 1.0);
+            ImGui::Text("IOR");
+            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_transmissive_ior.z, 0.0, 3.0);
+            ImGui::EndChild();
+        }
     }
 
     ImGui::End();

@@ -13,6 +13,7 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <filesystem>
 
 #include "glm/glm.hpp"
 using vec2 = glm::vec2;
@@ -118,6 +119,7 @@ struct VulkanApplication {
     uint32_t render_clear_accumulated = 4;
     bool render_images_dirty;
 
+    std::filesystem::path scene_path;
     SceneData loaded_scene_data;
 
     // these use loaded_mesh_index
@@ -166,6 +168,7 @@ struct VulkanApplication {
     void draw_frame();
 
     public:
+    void set_scene_path(std::string path);
     void setup();
     void run();
     void cleanup();

@@ -12,12 +12,13 @@
 
 #include "glslang/SPIRV/GlslangToSpv.h"
 
-int main()
+int main(int argc, char** argv)
 {
     // initialize glfw
     glfwInit();
 
     VulkanApplication app;
+    app.set_scene_path(argv[1]);
     try {
         app.setup();
         app.run();

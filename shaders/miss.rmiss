@@ -31,5 +31,6 @@ void main() {
     if (payload.depth == 0) {
         payload.primary_hit_instance = NULL_INSTANCE;
         payload.primary_hit_albedo = base_color;
+        payload.primary_hit_normal = vec3(0);
     }
 }

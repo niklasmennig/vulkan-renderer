@@ -407,10 +407,9 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.emissive = material.emission_texture == -1 ? NULL_TEXTURE_INDEX : material.emission_texture + texture_index_offset;
                 instance.texture_indices.transmissive = material.transmission_texture == -1 ? NULL_TEXTURE_INDEX : material.transmission_texture + texture_index_offset;
 
-                instance.material_parameters.diffuse_roughness_factor = material.diffuse_factor;
-                instance.material_parameters.diffuse_roughness_factor.a = material.roughness_factor;
+                instance.material_parameters.diffuse_opacity = material.diffuse_factor;
                 instance.material_parameters.emissive_metallic_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.metallic_factor);
-                instance.material_parameters.transmissive_ior = vec4(material.transmission_factor, material.ior, 0.0, 0.0);
+                instance.material_parameters.roughness_transmissive_ior = vec4(material.roughness_factor, material.transmission_factor, material.ior, 0.0);
 
                 // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive
                 texture_indices.push_back(instance.texture_indices.diffuse);
@@ -766,6 +765,9 @@ void VulkanApplication::draw_frame() {
             break;
         case 2:
             displayed_image = pipeline.get_output_image("albedo");
+            break;
+        case 3:
+            displayed_image = pipeline.get_output_image("normals");
             break;
     }
 
@@ -1332,7 +1334,6 @@ void VulkanApplication::setup() {
     // create framebuffers after render pass
     create_framebuffers();
 
-    std::filesystem::path scene_path("./scenes/test.toml");
     loaded_scene_data = loaders::load_scene_description(scene_path.string());
 
     // BUILD BLAS
@@ -1440,6 +1441,7 @@ void VulkanApplication::setup() {
                    .add_output_image("instance_indices")
                    .add_output_image("instance_indices_colored")
                    .add_output_image("albedo")
+                   .add_output_image("normals")
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
@@ -1650,6 +1652,10 @@ void VulkanApplication::run() {
         new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
         new_fwd = glm::cross(new_up, new_right);
 
+        new_fwd = glm::normalize(new_fwd);
+        new_up = glm::normalize(new_up);
+        new_right = glm::normalize(new_right);
+
         camera_data.forward = glm::vec4(new_fwd.x, new_fwd.y, new_fwd.z, 1.0f);
         camera_data.right = glm::vec4(new_right.x, new_right.y, new_right.z, 1.0f);
         camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
@@ -1735,6 +1741,10 @@ void VulkanApplication::cleanup() {
     glfwDestroyWindow(window);
 
     glfwTerminate();
+}
+
+void VulkanApplication::set_scene_path(std::string path) {
+    scene_path = std::filesystem::path(path);
 }
 
 double VulkanApplication::get_fps() {

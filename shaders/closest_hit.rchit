@@ -18,12 +18,12 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 
 struct MaterialParameters {
-    // diffuse rgb, roughness a
-    vec4 diffuse_roughness_factor;
+    // diffuse rgb, opacity a
+    vec4 diffuse_opacity;
     // emissive rgb, metallic a
     vec4 emissive_metallic_factor;
-    // transmissive factor x, ior y
-    vec4 transmissive_factor_ior;
+    // roughness x, transmissive y, ior z
+    vec4 roughness_transmissive_ior;
 };
 layout(std430, set = 1, binding = 8) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
@@ -56,14 +56,14 @@ void main() {
     }
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
-    vec3 base_color = parameters.diffuse_roughness_factor.rgb * base_color_tex.rgb;
-    float opacity = base_color_tex.a;
+    vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
+    float opacity = parameters.diffuse_opacity.a * base_color_tex.a;
     vec3 arm = sample_texture(instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-    float roughness = parameters.diffuse_roughness_factor.a * arm.y;
+    float roughness = parameters.roughness_transmissive_ior.x * arm.y;
     float metallic = parameters.emissive_metallic_factor.a * arm.z;
     vec4 transmission_tex = sample_texture(instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-    float transmission = parameters.transmissive_factor_ior.x * (1.0 - transmission_tex.x);
-    float ior = parameters.transmissive_factor_ior.y;
+    float transmission = parameters.roughness_transmissive_ior.y * (1.0 - transmission_tex.x);
+    float ior = parameters.roughness_transmissive_ior.z;
 
     float fresnel_reflect = 0.5;
 
@@ -100,6 +100,7 @@ void main() {
     if (payload.depth == 0) {
         payload.primary_hit_instance = instance;
         payload.primary_hit_albedo = base_color;
+        payload.primary_hit_normal = transpose(tbn) * normal;
     }
 
     // russian roulette

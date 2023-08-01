@@ -108,4 +108,6 @@ void main() {
 
     // albedo AOV
     imageStore(images[4], img_coord, vec4(payload.primary_hit_albedo, 1.0));
+    // normal AOV
+    imageStore(images[5], img_coord, vec4(payload.primary_hit_normal, 1.0));
 }
