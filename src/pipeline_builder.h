@@ -57,7 +57,7 @@ struct Pipeline {
     void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
     void set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count = 1);
 
-    void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D swap_chain_extent);
+    void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent);
 
     Image get_output_image(std::string name);
 

@@ -19,6 +19,7 @@ public:
     InstanceData::MaterialParameters* selected_instance_parameters = nullptr;
 
     int displayed_image_index = 0;
+    int render_scale_index = 0;
     ivec3 color_under_cursor = ivec3(0);
 
     float camera_speed = 1.0f;

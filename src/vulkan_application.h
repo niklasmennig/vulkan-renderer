@@ -95,6 +95,8 @@ struct VulkanApplication {
 
     VkDescriptorPool imgui_descriptor_pool;
 
+    VkExtent2D render_image_extent;
+
     VkRenderPass render_pass;
     Pipeline pipeline;
 
@@ -172,6 +174,8 @@ struct VulkanApplication {
     void setup();
     void run();
     void cleanup();
+
+    void set_render_images_dirty();
 
     double get_fps();
     uint32_t get_samples();

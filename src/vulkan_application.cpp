@@ -460,7 +460,7 @@ void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, ui
 
     uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
 
-    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, swap_chain_extent.width, swap_chain_extent.height, 1);
+    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -687,7 +687,17 @@ void VulkanApplication::recreate_swapchain() {
 }
 
 void VulkanApplication::recreate_render_image() {
-    pipeline.cmd_recreate_output_images(command_buffer, swap_chain_extent);
+    float render_scale = 1.0;
+    switch(ui.render_scale_index) {
+        case 1:
+            render_scale = 0.5;
+            break;
+        case 2:
+            render_scale = 0.25;
+            break;
+    }
+    render_image_extent = {(uint32_t)(swap_chain_extent.width * render_scale), (uint32_t)(swap_chain_extent.height * render_scale)};
+    pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
 
     std::vector<VkImageMemoryBarrier> transitions;
     for (Image& i : pipeline.output_images) {
@@ -744,8 +754,8 @@ void VulkanApplication::draw_frame() {
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     VkImageCopy image_copy{};
-    image_copy.extent.width = swap_chain_extent.width;
-    image_copy.extent.height = swap_chain_extent.height;
+    image_copy.extent.width = render_image_extent.width;
+    image_copy.extent.height = render_image_extent.height;
     image_copy.extent.depth = 1;
     image_copy.srcSubresource.layerCount = 1;
     image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -753,6 +763,18 @@ void VulkanApplication::draw_frame() {
     image_copy.dstSubresource.layerCount = 1;
     image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_copy.dstSubresource.baseArrayLayer = 0;
+
+    VkImageBlit image_blit{};
+    image_blit.srcSubresource.layerCount = 1;
+    image_blit.srcSubresource.baseArrayLayer = 0;
+    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.dstSubresource.layerCount = 1;
+    image_blit.dstSubresource.baseArrayLayer = 0;
+    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.srcOffsets[0] = {0,0,0};
+    image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
+    image_blit.dstOffsets[0] = {0,0,0};
+    image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
     // select image to display
     Image displayed_image;
@@ -774,7 +796,8 @@ void VulkanApplication::draw_frame() {
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
     displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
     // imgui draw
@@ -1745,6 +1768,10 @@ void VulkanApplication::cleanup() {
 
 void VulkanApplication::set_scene_path(std::string path) {
     scene_path = std::filesystem::path(path);
+}
+
+void VulkanApplication::set_render_images_dirty() {
+    render_images_dirty = true;
 }
 
 double VulkanApplication::get_fps() {

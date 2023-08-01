@@ -19,8 +19,13 @@ void UI::draw() {
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
 
     ImGui::SeparatorText("Display");
-    static const char* items[]{"Result Image", "Instance Indices", "Albedo", "Normals"};
-    changed |= ImGui::Combo("##display_selector", &displayed_image_index, items, sizeof(items) / sizeof(char *));
+    static const char* display_options[]{"Result Image", "Instance Indices", "Albedo", "Normals"};
+    changed |= ImGui::Combo("##display_selector", &displayed_image_index, display_options, sizeof(display_options) / sizeof(char *));
+    static const char* render_scale_options[]{"Full Resolution", "Half Resolution", "Quarter Resolution"};
+    if (ImGui::Combo("##render_scale_selector", &render_scale_index, render_scale_options, sizeof(render_scale_options) / sizeof(char*))) {
+        application->set_render_images_dirty();
+        changed = true;
+    }
 
     ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
