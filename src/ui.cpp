@@ -8,7 +8,6 @@ void UI::init(VulkanApplication* app) {
 }
 
 void UI::draw() {
-    ImGui::ShowDemoWindow();
     changed = false;
     hovered = false;
     ImGui::Begin("Scene Inspector");
@@ -32,6 +31,8 @@ void UI::draw() {
     ImGui::Text("%d Samples", application->get_samples());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
+
+    ImGui::SeparatorText("Scene Instance");
     ImGui::Text("Selected Instance: %d", selected_instance);
     if (selected_instance_parameters != nullptr) {
         if (ImGui::CollapsingHeader("Instance Editor")) {

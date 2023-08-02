@@ -100,15 +100,6 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     return res;
 }
 
-MeshData VulkanApplication::create_mesh_data(LoadedMeshData loaded_mesh_data) {
-    return create_mesh_data(
-        loaded_mesh_data.indices,
-        loaded_mesh_data.vertices,
-        loaded_mesh_data.normals,
-        loaded_mesh_data.texcoords
-        );
-}
-
 BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     VkAccelerationStructureGeometryKHR geometry{};
     geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;

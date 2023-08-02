@@ -147,7 +147,6 @@ struct VulkanApplication {
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
     MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec4> &vertices, std::vector<vec4> &normals, std::vector<vec2> &texcoords);
-    MeshData create_mesh_data(LoadedMeshData loaded_mesh_data);
 
     BLAS build_blas(MeshData &mesh_data);
     void free_blas(BLAS &blas);

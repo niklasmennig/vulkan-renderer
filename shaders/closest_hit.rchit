@@ -48,12 +48,13 @@ void main() {
     calculate_tangents(instance, barycentrics, tangent, bitangent);
     mat3 tbn = mat3(tangent, bitangent, normal);
 
-    vec3 sampled_normal = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).xyz;
+    vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
+    vec3 sampled_normal = (normal_tex * 2.0) - 1.0;
 
-    // if (abs(length(sampled_normal)) > 1.0 - epsilon) {
-    //     vec3 mapped_normal = (tbn * normalize(sampled_normal * 2.0 - 1.0));
-    //     normal = normalize(mapped_normal);
-    // }
+
+    vec3 mapped_normal = tbn * normal_tex;
+    if (sampled_normal.z < 0.99) normal = sampled_normal;
+
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
@@ -100,7 +101,7 @@ void main() {
     if (payload.depth == 0) {
         payload.primary_hit_instance = instance;
         payload.primary_hit_albedo = base_color;
-        payload.primary_hit_normal = transpose(tbn) * normal;
+        payload.primary_hit_normal = normal;
     }
 
     // russian roulette

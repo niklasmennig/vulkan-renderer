@@ -2,8 +2,8 @@
     path = "./hdri/kloppenheim_05_puresky_4k.hdr"
 
 [objects]
-    [objects.test]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    # [objects.test]
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
@@ -17,8 +17,8 @@
     # [objects.test]
     # path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
-    # [objects.test]
-    # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
+    [objects.test]
+    path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
     # [objects.test2]
     # path = "./gltf/transmission_small/untitled.gltf"

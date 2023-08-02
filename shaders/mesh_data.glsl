@@ -84,6 +84,6 @@ void calculate_tangents(uint instance, vec2 barycentric_coordinates, out vec3 tu
         vert2 - pc
     );
 
-    tu = normalize((gl_ObjectToWorldEXT * vec4(p * vec2(t[1][1], -t[0][1]), 0)).xyz);
-    tv = normalize((gl_ObjectToWorldEXT * vec4(p * vec2(-t[1][0], t[0][0]), 0)).xyz);
+    tu = ((gl_ObjectToWorldEXT * vec4(p * vec2(t[1][1], -t[0][1]), 0)).xyz);
+    tv = ((gl_ObjectToWorldEXT * vec4(p * vec2(-t[1][0], t[0][0]), 0)).xyz);
 }
