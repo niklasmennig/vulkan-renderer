@@ -1,9 +1,11 @@
 #include "geometry.h"
 
+#include <iostream>
+
 #include "../mikktspace/mikktspace.h"
 
 int get_num_faces(const SMikkTSpaceContext* ctx) {
-    LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
+    GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;
 
     return mesh_data->indices.size() / 3;
 }
@@ -14,7 +16,7 @@ int get_num_vertices_of_face(const SMikkTSpaceContext* ctx, int face) {
 }
 
 void get_position(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
-    LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
+    GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
     int vertex_index = mesh_data->indices[idx];
@@ -27,7 +29,7 @@ void get_position(const SMikkTSpaceContext* ctx, float* out, int face, int vert)
 }
 
 void get_normal(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
-    LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
+    GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
     int normal_index = mesh_data->indices[idx];
@@ -40,19 +42,19 @@ void get_normal(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
 }
 
 void get_uv(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
-    LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
+    GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
     int uv_index = mesh_data->indices[idx];
 
-    glm::vec2 uv = mesh_data->texcoords[uv_index];
+    glm::vec2 uv = mesh_data->uvs[uv_index];
 
     out[0] = uv.x;
     out[1] = uv.y;
 }
 
 void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, int face, int vert) {
-    LoadedMeshData* mesh_data = (LoadedMeshData*)ctx->m_pUserData;
+    GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;
 
     int idx = face * 3 + vert;
     int tangent_idx = mesh_data->indices[idx];
@@ -66,7 +68,7 @@ void set_tangent(const SMikkTSpaceContext* ctx, const float* in, float f_sign, i
     mesh_data->tangents[tangent_idx] = tangent;
 }
 
-void LoadedMeshData::calculate_tangents() {
+void TangentGenerator::calculate_tangents() {
     SMikkTSpaceInterface interface{};
     SMikkTSpaceContext ctx{};
 
@@ -78,9 +80,12 @@ void LoadedMeshData::calculate_tangents() {
     interface.m_setTSpaceBasic = set_tangent;
 
     ctx.m_pInterface = &interface;
-    ctx.m_pUserData = this;
+    ctx.m_pUserData = primitive;
 
-    tangents.resize(vertices.size());
+    primitive->tangents.resize(primitive->vertices.size());
+
+    std::cout << "Generating Tangents..." << std::endl;
 
     genTangSpaceDefault(&ctx);
+    std::cout << primitive->tangents.size() << " tangents generated." << std::endl;
 }

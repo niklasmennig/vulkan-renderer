@@ -41,10 +41,12 @@ struct MeshData {
     size_t vertex_count;
     size_t normal_count;
     size_t texcoord_count;
+    size_t tangent_count;
     Buffer indices;
     Buffer vertices;
     Buffer normals;
     Buffer texcoords;
+    Buffer tangents;
 
     void free();
 };
@@ -140,13 +142,13 @@ struct VulkanApplication {
 
     TLAS scene_tlas;
 
-    Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
+    Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, tangent_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
     std::vector<InstanceData::MaterialParameters> material_parameters;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
-    MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec4> &vertices, std::vector<vec4> &normals, std::vector<vec2> &texcoords);
+    MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec4> &vertices, std::vector<vec4> &normals, std::vector<vec2> &texcoords, std::vector<vec4> &tangents);
 
     BLAS build_blas(MeshData &mesh_data);
     void free_blas(BLAS &blas);

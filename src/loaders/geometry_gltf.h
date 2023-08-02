@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "geometry.h"
-
 #include "glm/glm.hpp"
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
@@ -35,6 +33,7 @@ struct GLTFPrimitive {
     std::vector<vec4> normals;
     std::vector<vec2> uvs;
     std::vector<uint32_t> indices;
+    std::vector<vec4> tangents;
 
     int material_index;
 };

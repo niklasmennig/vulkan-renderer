@@ -5,14 +5,11 @@
 #include "glm/vec4.hpp"
 #include "glm/vec2.hpp"
 
-struct LoadedMeshData
-{
-    std::vector<glm::vec4> vertices;
-    std::vector<glm::vec4> normals;
-    std::vector<glm::vec2> texcoords;
-    std::vector<glm::vec4> tangents;
+#include "geometry_gltf.h"
 
-    std::vector<uint32_t> indices;
+struct TangentGenerator
+{
+    GLTFPrimitive* primitive;
 
     void calculate_tangents();
 };

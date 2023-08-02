@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "glm/gtc/type_ptr.hpp"
+#include "geometry.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -48,7 +49,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                 }
             }
 
-            // Vertices, Normals, UVs
+            // Vertices, Normals, UVs, Tangents
             for (const auto &attribute : primitive.attributes) {
                 const auto attrib_accessor = model.accessors[attribute.second];
                 const auto &buffer_view = model.bufferViews[attrib_accessor.bufferView];
@@ -80,10 +81,24 @@ GLTFData loaders::load_gltf(const std::string path) {
 
                         result_primitive.uvs.push_back(vec2(x, y));
                     }
+                } else if (attribute.first == "TANGENT") {
+                    for (int i = 0; i < count; i++) {
+                        float x = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 0);
+                        float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
+                        float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
+
+                        result_primitive.tangents.push_back(vec4(x, y, z, 0.0));
+                    }
                 }
             }
             
-            // only support meshes with one primitive
+            if (result_primitive.tangents.size() == 0) {
+                TangentGenerator tangent_generator;
+                tangent_generator.primitive = &result_primitive;
+
+                tangent_generator.calculate_tangents();
+            }
+
             result_primitive.material_index = primitive.material;
 
             result_mesh.primitives.push_back(result_primitive);

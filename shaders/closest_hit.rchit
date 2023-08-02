@@ -25,7 +25,7 @@ struct MaterialParameters {
     // roughness x, metallic y, transmissive z, ior a
     vec4 roughness_metallic_transmissive_ior;
 };
-layout(std430, set = 1, binding = 8) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
+layout(std430, set = 1, binding = 9) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
 MaterialParameters get_material_parameters(uint instance) {
     return material_parameters.data[instance];
@@ -37,6 +37,7 @@ void main() {
     vec3 position = get_vertex_position(instance, barycentrics);
     vec3 normal = get_vertex_normal(instance, barycentrics);
     vec2 uv = get_vertex_uv(instance, barycentrics);
+    vec3 tangent = get_vertex_tangent(instance, barycentrics);
 
     vec3 ray_out = normalize(-gl_WorldRayDirectionEXT);
     vec3 new_origin = position;
@@ -44,16 +45,15 @@ void main() {
     MaterialParameters parameters = get_material_parameters(instance);
 
     //normal mapping
-    vec3 tangent, bitangent;
-    calculate_tangents(instance, barycentrics, tangent, bitangent);
+    vec3 bitangent = cross(normal, tangent);
     mat3 tbn = mat3(tangent, bitangent, normal);
 
     vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
     vec3 sampled_normal = (normal_tex * 2.0) - 1.0;
 
 
-    vec3 mapped_normal = tbn * normal_tex;
-    if (sampled_normal.z < 0.99) normal = sampled_normal;
+    vec3 mapped_normal = tbn * sampled_normal;
+    normal = mapped_normal;
 
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);

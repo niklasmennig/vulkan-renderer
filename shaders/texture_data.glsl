@@ -1,5 +1,5 @@
-layout(set = 1, binding = 6) uniform sampler2D tex[];
-layout(set = 1, binding = 7) readonly buffer TextureIndexData {uint data[];} texture_indices;
+layout(set = 1, binding = 7) uniform sampler2D tex[];
+layout(set = 1, binding = 8) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
 #define NULL_TEXTURE_INDEX 10000
 
