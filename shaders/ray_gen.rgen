@@ -73,12 +73,12 @@ void main() {
                     0
                 );
         
-        sample_sum += clamp(payload.color, vec3(0,0,0), vec3(10,10,10));
+        sample_sum += clamp(payload.color, vec3(0,0,0), vec3(30,30,30));
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
     uint sample_count = raygen_data.camera.clear_accumulated;
-    vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(10,10,10));
+    vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
 
     // accumulate color
     vec4 accum_color;

@@ -1,8 +1,8 @@
 [environment]
-    # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    path = "./hdri/kloppenheim_05_puresky_4k.hdr"
     # path = "./hdri/studio_small_03_4k.hdr"
     # path = "./hdri/vestibule_4k.hdr"
-    path = "./hdri/rural_asphalt_road_4k.hdr"
+    # path = "./hdri/rural_asphalt_road_4k.hdr"
 
 [objects]
     # [objects.test]
@@ -11,8 +11,8 @@
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
 
-    [objects.test]
-    path = "./gltf/sponza/Sponza.gltf"
+    # [objects.test]
+    # path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
@@ -26,8 +26,8 @@
     # [objects.test]
     # path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
-    # [objects.test]
-    # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
+    [objects.test]
+    path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
     # [objects.test2]
     # path = "./gltf/transmission_small/untitled.gltf"

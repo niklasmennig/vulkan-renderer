@@ -51,7 +51,15 @@ void main() {
     vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
     vec3 sampled_normal = (normal_tex * 2.0) - 1.0;
 
-    normal = normalize(sampled_normal);
+    // COMPONENTS THAT SHOULD BE 0 ARE NOT MAPPING TO 0
+    // CHECK sampled_normal.x FOR EXAMPLE
+
+    normal = vec3(sampled_normal.x);
+    // sampled_normal = vec3(0,0,1);
+    // normal = tbn * sampled_normal;
+
+    payload.color = normal;
+    return;
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
