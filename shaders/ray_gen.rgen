@@ -41,7 +41,7 @@ void main() {
 
     vec3 sample_sum = vec3(0);
     for (int s = 0; s < frame_samples; s++) {
-        uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(raygen_data.camera.time) + raygen_data.camera.clear_accumulated + s;
+        uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(raygen_data.camera.time) + raygen_data.camera.clear_accumulated * 15 + s;
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
@@ -110,4 +110,6 @@ void main() {
     imageStore(images[4], img_coord, vec4(payload.primary_hit_albedo, 1.0));
     // normal AOV
     imageStore(images[5], img_coord, vec4(payload.primary_hit_normal, 1.0));
+    // roughness AOV
+    imageStore(images[6], img_coord, vec4(payload.primary_hit_roughness, 1.0));
 }

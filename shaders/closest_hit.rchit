@@ -51,10 +51,7 @@ void main() {
     vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
     vec3 sampled_normal = (normal_tex * 2.0) - 1.0;
 
-
-    vec3 mapped_normal = tbn * sampled_normal;
-    normal = mapped_normal;
-
+    normal = normalize(sampled_normal);
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
@@ -102,6 +99,7 @@ void main() {
         payload.primary_hit_instance = instance;
         payload.primary_hit_albedo = base_color;
         payload.primary_hit_normal = normal;
+        payload.primary_hit_roughness = vec3(roughness);
     }
 
     // russian roulette

@@ -799,6 +799,8 @@ void VulkanApplication::draw_frame() {
         case 3:
             displayed_image = pipeline.get_output_image("normals");
             break;
+        case 4:
+            displayed_image = pipeline.get_output_image("roughness");
     }
 
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
@@ -1473,6 +1475,7 @@ void VulkanApplication::setup() {
                    .add_output_image("instance_indices_colored")
                    .add_output_image("albedo")
                    .add_output_image("normals")
+                   .add_output_image("roughness")
                    // mesh data descriptors (set 1)
                    .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
                    .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
