@@ -10,6 +10,9 @@
 
 Image loaders::load_image(Device* device, std::string path, bool flip_y) {
     if (flip_y) stbi_set_flip_vertically_on_load(1);
+    stbi_set_unpremultiply_on_load(1);
+    stbi_ldr_to_hdr_gamma(1.0);
+    stbi_ldr_to_hdr_scale(1.0);
 
     bool is_hdr = stbi_is_hdr(path.c_str());
 
@@ -21,7 +24,7 @@ Image loaders::load_image(Device* device, std::string path, bool flip_y) {
         uint8_t* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
         std::cout << "loading non-HDR image at " << path << "| Channels: " << channels << std::endl;
-        format = VK_FORMAT_R8G8B8A8_SRGB;;
+        format = VK_FORMAT_R8G8B8A8_UNORM;
 
         VkBufferCreateInfo buffer_info{};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

@@ -25,7 +25,8 @@ float g_smith(float NoV, float NoL, float roughness) {
   return g1_l * g1_v;
 }
 
-vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+    vec3 normal = tbn[2];
     vec3 h = normalize(ray_in + ray_out);
 
     float no = clamp(dot(normal, ray_out), 0.0, 1.0);
@@ -50,10 +51,12 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, vec3 normal, vec3 base_color, float metallic
     return diff + spec;
 }
 
-vec3 sample_ggx(in vec3 V, in vec3 N, 
+vec3 sample_ggx(in vec3 V, in mat3 tbn, 
               in vec3 baseColor, float opacity, in float metallicness, 
               in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random, out vec3 nextFactor) 
 {
+    vec3 N = tbn[2];
+
     // handle opacity
     if (random.w > opacity) {
       nextFactor = vec3(1.0);
@@ -77,7 +80,7 @@ vec3 sample_ggx(in vec3 V, in vec3 N,
       float phi = 2.0 * PI * random.x;
       
       vec3 localH = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-      vec3 H = basis(forwardNormal) * localH;  
+      vec3 H = tbn * localH;  
       
       // compute L from sampled H
       vec3 L = refract(-V, H, eta);
@@ -110,7 +113,7 @@ vec3 sample_ggx(in vec3 V, in vec3 N,
       float phi = 2.0 * PI * random.x;
       // sampled indirect diffuse direction in normal space
       vec3 localDiffuseDir = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-      vec3 L = basis(N) * localDiffuseDir;  
+      vec3 L = tbn * localDiffuseDir;  
       
        // half vector
       vec3 H = normalize(V + L);
