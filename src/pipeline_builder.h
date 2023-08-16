@@ -98,11 +98,14 @@ struct PipelineBuilder
 
     VkShaderModule create_shader_module(const std::vector<char>& code);
 
+    private:
+    void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
+    void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
+    void add_output_image(std::string name);
+
     public:
-    PipelineBuilder add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
-    PipelineBuilder add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
-    PipelineBuilder add_output_image(std::string name);
+    PipelineBuilder with_default_pipeline();
 
     Pipeline build();
 };

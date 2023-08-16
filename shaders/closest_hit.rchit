@@ -46,16 +46,17 @@ void main() {
 
     vec3 bitangent = normalize(cross(normal, tangent));
     mat3 tbn = mat3(tangent, bitangent, normal);
+    
     //normal mapping
-
     vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
     vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
 
     // // COMPONENTS THAT SHOULD BE 0 ARE NOT MAPPING TO 0
     // // CHECK sampled_normal.x FOR EXAMPLE
 
-    normal = tbn * sampled_normal;
+    normal = normalize(tbn * sampled_normal);
     tbn[2] = normal;
+    
 
     vec4 base_color_tex = sample_texture(instance, uv, TEXTURE_OFFSET_DIFFUSE);
     vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;

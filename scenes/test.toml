@@ -23,11 +23,11 @@
     # [objects.test]
     # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
-    # [objects.test]
-    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
-
     [objects.test]
-    path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
+    path = "./gltf/mosquito/MosquitoInAmber.gltf"
+
+    # [objects.test]
+    # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
     # [objects.test2]
     # path = "./gltf/transmission_small/untitled.gltf"

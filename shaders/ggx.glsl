@@ -70,6 +70,7 @@ vec3 sample_ggx(in vec3 V, in mat3 tbn,
       float eta =1.0 / ior;
       if(frontFacing < 0.0) {
          forwardNormal = -N;
+         tbn[2] = forwardNormal;
          eta = ior;
       } 
       

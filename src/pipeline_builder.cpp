@@ -28,16 +28,14 @@ VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &co
     return shader_module;
 }
 
-PipelineBuilder PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::string code_path) {
+void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::string code_path) {
     shader_stages.push_back(PipelineBuilderShaderStage{
         stage,
         code_path
     });
-
-    return *this;
 }
 
-PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
+void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
     descriptors.push_back(PipelineBuilderDescriptor {
         name,
         set,
@@ -46,22 +44,49 @@ PipelineBuilder PipelineBuilder::add_descriptor(std::string name, uint32_t set, 
         type,
         stage
     });
-
-    return *this;
 }
 
-PipelineBuilder PipelineBuilder::add_output_image(std::string name) {
+void PipelineBuilder::add_output_image(std::string name) {
     output_images.push_back(PipelineBuilderOutputImage {
         name
     });
-
-    return *this;
 }
 
 PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding) {
     output_image_name = name;
     output_image_set = set;
     output_image_binding = binding;
+
+    return *this;
+}
+
+PipelineBuilder PipelineBuilder::with_default_pipeline() {
+    // framework descriptors (set 0)
+    add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    with_output_image_descriptor("images", 0, 2);
+    add_output_image("result");
+    add_output_image("color_accum");
+    add_output_image("instance_indices");
+    add_output_image("instance_indices_colored");
+    add_output_image("albedo");
+    add_output_image("normals");
+    add_output_image("roughness");
+    // mesh data descriptors (set 1)
+    add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_normals", 1, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_texcoords", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_tangents", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_data_offsets", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_offset_indices", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("textures", 1, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 128);
+    add_descriptor("texture_indices", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("material_parameters", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    // shader stages
+    add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen");
+    add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit");
+    add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
 
     return *this;
 }
@@ -379,7 +404,6 @@ Pipeline PipelineBuilder::build() {
     }
 
 #pragma region SBT CREATION
-
     uint32_t group_handle_size = device->ray_tracing_pipeline_properties.shaderGroupHandleSize;
     uint32_t handle_alignment = device->ray_tracing_pipeline_properties.shaderGroupHandleAlignment;
     uint32_t base_alignment = device->ray_tracing_pipeline_properties.shaderGroupBaseAlignment;

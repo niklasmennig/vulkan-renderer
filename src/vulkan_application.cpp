@@ -1465,32 +1465,7 @@ void VulkanApplication::setup() {
 
     // create pipeline
     PipelineBuilder pipeline_builder = device.create_pipeline_builder()
-                   // framework descriptors (set 0)
-                   .add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR)
-                   .with_output_image_descriptor("images", 0, 2)
-                   .add_output_image("result")
-                   .add_output_image("color_accum")
-                   .add_output_image("instance_indices")
-                   .add_output_image("instance_indices_colored")
-                   .add_output_image("albedo")
-                   .add_output_image("normals")
-                   .add_output_image("roughness")
-                   // mesh data descriptors (set 1)
-                   .add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_normals", 1, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_texcoords", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_tangents", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_data_offsets", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("mesh_offset_indices", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("textures", 1, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 128)
-                   .add_descriptor("texture_indices", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   .add_descriptor("material_parameters", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)
-                   // shader stages
-                   .add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")
-                   .add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")
-                   .add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
+                   .with_default_pipeline();
 
     pipeline = pipeline_builder.build();
 
@@ -1505,8 +1480,6 @@ void VulkanApplication::setup() {
 
     while(vkWaitForFences(logical_device, 1, &tlas_fence, VK_FALSE, UINT64_MAX) != VK_SUCCESS);
     create_default_descriptor_writes();
-
-    
 
     std::cout << "pipeline created" << std::endl;
 
