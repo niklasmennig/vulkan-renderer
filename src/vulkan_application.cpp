@@ -461,16 +461,6 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
 }
 
-void VulkanApplication::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index) {
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
-
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
-
-    uint32_t shader_group_handle_size = device.ray_tracing_pipeline_properties.shaderGroupHandleSize;
-
-    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
-}
-
 void VulkanApplication::create_synchronization() {
     VkSemaphoreCreateInfo semaphore_info{};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -741,7 +731,9 @@ void VulkanApplication::draw_frame() {
     material_parameter_buffer.set_data(material_parameters.data());
 
     // raytracer draw
-    record_command_buffer(command_buffer, image_index);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
+    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};

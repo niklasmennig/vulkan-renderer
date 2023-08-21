@@ -33,7 +33,11 @@ void UI::draw() {
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
 
     ImGui::SeparatorText("Scene Instance");
-    ImGui::Text("Selected Instance: %d", selected_instance);
+    if (selected_instance == -1) {
+        ImGui::Text("No instance selected");
+    } else {
+        ImGui::Text("Selected Instance: %d", selected_instance);
+    }
     if (selected_instance_parameters != nullptr) {
         if (ImGui::CollapsingHeader("Instance Editor")) {
             ImGui::BeginChild("instance_editor");

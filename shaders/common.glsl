@@ -1,3 +1,6 @@
+#ifndef COMMON_GLSL
+#define COMMON_GLSL
+
 #define PI 3.1415926535897932384626433832795
 #define NULL_INSTANCE 999999
 
@@ -32,3 +35,5 @@ mat3 basis(in vec3 n)
 float luminance(vec3 color) {
     return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }
+
+#endif

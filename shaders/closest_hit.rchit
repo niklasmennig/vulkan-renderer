@@ -4,13 +4,13 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : enable
 
-#include "common.glsl"
 #include "payload.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "random.glsl"
 #include "sampling.glsl"
 #include "ggx.glsl"
+#include "lambert.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -32,7 +32,7 @@ MaterialParameters get_material_parameters(uint instance) {
 }
 
 void main() {
-    uint instance = gl_InstanceID; 
+    uint instance = gl_InstanceID;
 
     vec3 position = get_vertex_position(instance, barycentrics);
     vec3 normal = get_vertex_normal(instance, barycentrics);
@@ -91,7 +91,10 @@ void main() {
 
     // indirect light
     vec3 next_factor = vec3(0);
-    vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed)), next_factor);
+    vec4 random_values = vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed));
+
+    // vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
+    vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;

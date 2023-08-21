@@ -166,7 +166,6 @@ struct VulkanApplication {
     void recreate_swapchain();
     void recreate_render_image();
     void create_default_descriptor_writes();
-    void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index);
     void create_synchronization();
     void draw_frame();
 
