@@ -3,7 +3,7 @@ out/
 .vscode/*
 CMakeFiles
 CmakeCache.txt
-*.cmake
+*cmake_install.cmake
 Debug
 renderer.dir
 x64
