@@ -27,7 +27,7 @@ float g_smith(float NoV, float NoL, float roughness) {
   return g1_l * g1_v;
 }
 
-vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
     vec3 normal = tbn[2];
     vec3 h = normalize(ray_in + ray_out);
 
@@ -50,7 +50,7 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float metallic, f
     rho *= (1.0 - metallic) * (1.0 - transmission);
     vec3 diff = rho * base_color / PI;
 
-    return diff + spec;
+    return (diff + spec) * opacity;
 }
 
 vec3 sample_ggx(in vec3 V, in mat3 tbn, 

@@ -11,6 +11,7 @@
 #include "sampling.glsl"
 #include "ggx.glsl"
 #include "lambert.glsl"
+#include "structs.glsl"
 
 hitAttributeEXT vec2 barycentrics;
 
@@ -26,6 +27,9 @@ struct MaterialParameters {
     vec4 roughness_metallic_transmissive_ior;
 };
 layout(std430, set = 1, binding = 9) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
+layout(std430, set = 2, binding = 0) readonly buffer LightsData {Light[] lights;} lights_data;
+
+layout( push_constant ) uniform PConstants {PushConstants constants;} push_constants;
 
 MaterialParameters get_material_parameters(uint instance) {
     return material_parameters.data[instance];
@@ -73,8 +77,10 @@ void main() {
     bool front_facing = dot(ray_out, normal) > 0;
 
     // direct light
-    vec3 light_position = vec3(5,5,0);
-    vec3 light_intensity = vec3(100.0);
+    float rand = seed_random(payload.seed);
+    Light selected_light = lights_data.lights[uint(floor(push_constants.constants.light_count * rand))];
+    vec3 light_position = selected_light.position;
+    vec3 light_intensity = selected_light.intensity;
     vec3 light_dir = light_position - new_origin;
     float light_dist = length(light_dir);
     light_dir /= light_dist;
@@ -86,10 +92,9 @@ void main() {
     bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
     if (!in_shadow) {
-        payload.color += ggx(light_dir, ray_out, tbn, base_color, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
     }
 
-    return;
 
     // indirect light
     vec3 next_factor = vec3(0);

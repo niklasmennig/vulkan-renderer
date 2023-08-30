@@ -459,6 +459,24 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
+
+    Shaders::Light test_light;
+    test_light.position = vec3(5,0,0);
+    test_light.intensity = vec3(30.0, 0, 0);
+    lights.push_back(test_light);
+
+    test_light.position = vec3(0,5,0);
+    test_light.intensity = vec3(0, 30.0, 0);
+    lights.push_back(test_light);
+
+    test_light.position = vec3(0,0,5);
+    test_light.intensity = vec3(0, 0, 30.0);
+    lights.push_back(test_light);
+
+    lights_buffer = device.create_buffer(sizeof(Shaders::Light) * lights.size());
+    lights_buffer.set_data(lights.data());
+
+    pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -727,8 +745,13 @@ void VulkanApplication::draw_frame() {
     }
 
     if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
-
     material_parameter_buffer.set_data(material_parameters.data());
+
+    Shaders::PushConstants push_constants;
+    push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+    push_constants.clear_accumulated = render_clear_accumulated;
+    push_constants.light_count = lights.size();
+    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
     // raytracer draw
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
@@ -1663,12 +1686,8 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        float time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
         if (camera_changed) render_clear_accumulated = 0;
         camera_changed = false;
-
-        camera_data.time = time;
-        camera_data.clear_accumulated = render_clear_accumulated;
 
         camera_buffer.set_data(&camera_data);
 
@@ -1700,6 +1719,7 @@ void VulkanApplication::cleanup() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     // deinitialization
+    lights_buffer.free();
     camera_buffer.free();
     for (Image i : loaded_textures) {
         i.free();

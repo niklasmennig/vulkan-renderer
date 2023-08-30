@@ -27,6 +27,7 @@ namespace Shaders
 {
     using uint = uint32_t;
     #include "../shaders/camera.glsl"
+    #include "../shaders/structs.glsl"
 }
 
 struct QueueFamilyIndices
@@ -143,7 +144,9 @@ struct VulkanApplication {
     TLAS scene_tlas;
 
     Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, tangent_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
+    Buffer lights_buffer;
     std::vector<InstanceData::MaterialParameters> material_parameters;
+    std::vector<Shaders::Light> lights;
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
