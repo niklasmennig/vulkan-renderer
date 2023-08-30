@@ -72,22 +72,24 @@ void main() {
 
     bool front_facing = dot(ray_out, normal) > 0;
 
-    // // direct light
-    // vec3 light_position = vec3(3,20,100);
-    // vec3 light_intensity = vec3(0.0);
-    // vec3 light_dir = light_position - new_origin;
-    // float light_dist = length(light_dir);
-    // light_dir /= light_dist;
-    // float light_attenuation = 1.0;
+    // direct light
+    vec3 light_position = vec3(5,5,0);
+    vec3 light_intensity = vec3(100.0);
+    vec3 light_dir = light_position - new_origin;
+    float light_dist = length(light_dir);
+    light_dir /= light_dist;
+    float light_attenuation = 1.0 / pow(light_dist, 2);
 
-    // rayQueryEXT ray_query;
-    // rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
-    // while(rayQueryProceedEXT(ray_query)) {};
-    // bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
+    while(rayQueryProceedEXT(ray_query)) {};
+    bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
-    // if (!in_shadow) {
-    //     payload.color += ggx(light_dir, ray_out, normal, base_color, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
-    // }
+    if (!in_shadow) {
+        payload.color += ggx(light_dir, ray_out, tbn, base_color, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+    }
+
+    return;
 
     // indirect light
     vec3 next_factor = vec3(0);
