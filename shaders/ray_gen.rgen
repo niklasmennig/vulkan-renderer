@@ -47,7 +47,8 @@ void main() {
         uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15 + s;
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-        vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+        //vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+        vec2 pixel_offset = vec2(0, 0);
 
         vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
         ndc.y *= -1;
@@ -76,12 +77,14 @@ void main() {
                     0
                 );
         
-        sample_sum += clamp(payload.color, vec3(0,0,0), vec3(30,30,30));
+        //sample_sum += clamp(payload.color, vec3(0,0,0), vec3(30,30,30));
+        sample_sum += payload.color;
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
     uint sample_count = push_constants.constants.clear_accumulated;
-    vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
+    //vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
+    vec3 color = sample_sum / float(frame_samples);
 
     // accumulate color
     vec4 accum_color;

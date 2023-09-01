@@ -1,0 +1,17 @@
+[environment]
+
+    path = "./hdri/moonless_golf_4k.hdr"
+
+[objects]
+    [objects.sponza]
+    path = "./gltf/sponza/Sponza.gltf"
+
+
+[instances]
+    [instances.sponza]
+    object = "sponza"
+
+[lights]
+    [lights.sun]
+    position = [0.0, 100.0, 0.0]
+    intensity = [14000.0, 14000.0, 14000.0]

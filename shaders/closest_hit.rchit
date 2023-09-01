@@ -93,7 +93,7 @@ void main() {
         bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
         if (!in_shadow) {
-            payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+            payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * payload.contribution;
         }
     }
 
