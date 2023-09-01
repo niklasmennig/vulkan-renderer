@@ -69,20 +69,22 @@ SceneData loaders::load_scene_description(std::string path) {
 
     // lights
     std::vector<LightData> lights;
-    auto lights_table = scene_table["lights"].as_table();
-    for (auto l = lights_table->begin(); l != lights_table->end(); l++) {
-        std::string name = l->first.str().data();
-        auto data = scene_table["lights"][name];
-        LightData light_data;
-        float pos_x = data["position"][0].as_floating_point()->get();
-        float pos_y = data["position"][1].as_floating_point()->get();
-        float pos_z = data["position"][2].as_floating_point()->get();
-        light_data.position = vec3(pos_x, pos_y, pos_z);
-        float int_x = data["intensity"][0].as_floating_point()->get();
-        float int_y = data["intensity"][1].as_floating_point()->get();
-        float int_z = data["intensity"][2].as_floating_point()->get();
-        light_data.intensity = vec3(int_x, int_y, int_z);
-        lights.push_back(light_data);
+    if (scene_table.contains("lights")) {
+        auto lights_table = scene_table["lights"].as_table();
+        for (auto l = lights_table->begin(); l != lights_table->end(); l++) {
+            std::string name = l->first.str().data();
+            auto data = scene_table["lights"][name];
+            LightData light_data;
+            float pos_x = data["position"][0].as_floating_point()->get();
+            float pos_y = data["position"][1].as_floating_point()->get();
+            float pos_z = data["position"][2].as_floating_point()->get();
+            light_data.position = vec3(pos_x, pos_y, pos_z);
+            float int_x = data["intensity"][0].as_floating_point()->get();
+            float int_y = data["intensity"][1].as_floating_point()->get();
+            float int_z = data["intensity"][2].as_floating_point()->get();
+            light_data.intensity = vec3(int_x, int_y, int_z);
+            lights.push_back(light_data);
+        }
     }
 
 
