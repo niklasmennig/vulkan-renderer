@@ -28,6 +28,11 @@ struct InstanceData
     mat4 transformation;
 };
 
+struct LightData {
+    vec3 position;
+    vec3 intensity;
+};
+
 struct SceneData
 {
     std::string environment_path;
@@ -35,6 +40,8 @@ struct SceneData
     std::vector<std::tuple<std::string, std::string>> object_paths;
     // instance data
     std::vector<InstanceData> instances;
+    // light data
+    std::vector<LightData> lights;
 };
 
 namespace loaders {

@@ -77,22 +77,24 @@ void main() {
     bool front_facing = dot(ray_out, normal) > 0;
 
     // direct light
-    float rand = seed_random(payload.seed);
-    Light selected_light = lights_data.lights[uint(floor(push_constants.constants.light_count * rand))];
-    vec3 light_position = selected_light.position;
-    vec3 light_intensity = selected_light.intensity;
-    vec3 light_dir = light_position - new_origin;
-    float light_dist = length(light_dir);
-    light_dir /= light_dist;
-    float light_attenuation = 1.0 / pow(light_dist, 2);
+    if (push_constants.constants.light_count > 0) {
+        float rand = seed_random(payload.seed);
+        Light selected_light = lights_data.lights[uint(floor(push_constants.constants.light_count * rand))];
+        vec3 light_position = selected_light.position;
+        vec3 light_intensity = selected_light.intensity;
+        vec3 light_dir = light_position - new_origin;
+        float light_dist = length(light_dir);
+        light_dir /= light_dist;
+        float light_attenuation = 1.0 / pow(light_dist, 2);
 
-    rayQueryEXT ray_query;
-    rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
-    while(rayQueryProceedEXT(ray_query)) {};
-    bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
+        rayQueryEXT ray_query;
+        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
+        while(rayQueryProceedEXT(ray_query)) {};
+        bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
 
-    if (!in_shadow) {
-        payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        if (!in_shadow) {
+            payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * max(0, dot(light_dir, normal));
+        }
     }
 
 

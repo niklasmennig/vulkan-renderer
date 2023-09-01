@@ -60,3 +60,8 @@
     # [instances.test5]
     # object = "test2"
     # position = [4.0, 2.0, 0.0]
+
+[lights]
+    [lights.test]
+    position = [5.0, 0.0, 0.0]
+    intensity = [10.0, 0.0, 0.0]

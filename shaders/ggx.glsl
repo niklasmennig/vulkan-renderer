@@ -1,5 +1,7 @@
 #include "common.glsl"
 
+// BRDF Formulations: http://graphicrants.blogspot.com/2013/08/specular-brdf-reference.html
+
 //https://www.mathematik.uni-marburg.de/~thormae/lectures/graphics2/graphics_4_3_ger_web.html#1
 vec3 fresnel_schlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);

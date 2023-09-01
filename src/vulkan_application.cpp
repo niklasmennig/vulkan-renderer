@@ -460,21 +460,10 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
 
-    Shaders::Light test_light;
-    test_light.position = vec3(5,0,0);
-    test_light.intensity = vec3(30.0, 0, 0);
-    lights.push_back(test_light);
-
-    test_light.position = vec3(0,5,0);
-    test_light.intensity = vec3(0, 30.0, 0);
-    lights.push_back(test_light);
-
-    test_light.position = vec3(0,0,5);
-    test_light.intensity = vec3(0, 0, 30.0);
-    lights.push_back(test_light);
-
-    lights_buffer = device.create_buffer(sizeof(Shaders::Light) * lights.size());
-    lights_buffer.set_data(lights.data());
+    int light_buffer_size = lights.size();
+    if (light_buffer_size < 1) light_buffer_size = 1;
+    lights_buffer = device.create_buffer(sizeof(Shaders::Light) * light_buffer_size);
+    if (lights.size() > 0) lights_buffer.set_data(lights.data());
 
     pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
 }
@@ -1430,6 +1419,14 @@ void VulkanApplication::setup() {
         i.cmd_setup_texture(command_buffer);
     }
     std::cout << "Set up " << loaded_textures.size() << " textures" << std::endl;
+
+    for (auto light_data : loaded_scene_data.lights) {
+        Shaders::Light light;
+        light.position = light_data.position;
+        light.intensity = light_data.intensity;
+        lights.push_back(light);
+    }
+    std::cout << "Loaded " << lights.size() << " lights" << std::endl;
 
     // vkEndCommandBuffer(command_buffer);
     
