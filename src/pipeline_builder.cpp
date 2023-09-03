@@ -313,7 +313,7 @@ Pipeline PipelineBuilder::build() {
         shader_out_path.make_preferred();
         std::stringstream compile_command;
         compile_command << GLSLC_EXE << " --target-env=vulkan1.3 -O -o " << std::filesystem::absolute(shader_out_path) << " " << std::filesystem::absolute(shader_path);
-        std::cout << "COMPILE SHADERS: " << compile_command.str() << std::endl;
+        std::cout << "COMPILING SHADER: " << compile_command.str() << std::endl;
         system(compile_command.str().c_str());
 
         auto code = loaders::read_spirv(shader_out_path.string());
@@ -385,7 +385,7 @@ Pipeline PipelineBuilder::build() {
     pipeline_info.pStages = stage_create_infos.data();
     pipeline_info.groupCount = (uint32_t)group_create_infos.size();
     pipeline_info.pGroups = group_create_infos.data();
-    pipeline_info.maxPipelineRayRecursionDepth = 10;
+    pipeline_info.maxPipelineRayRecursionDepth = device->ray_tracing_pipeline_properties.maxRayRecursionDepth;
 
     VkPipelineCacheCreateInfo cache_create_info{};
     cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -409,24 +409,24 @@ Pipeline PipelineBuilder::build() {
     uint32_t group_handle_size = device->ray_tracing_pipeline_properties.shaderGroupHandleSize;
     uint32_t handle_alignment = device->ray_tracing_pipeline_properties.shaderGroupHandleAlignment;
     uint32_t base_alignment = device->ray_tracing_pipeline_properties.shaderGroupBaseAlignment;
-    uint32_t group_handle_size_aligned = align_up(group_handle_size, handle_alignment);
+    uint32_t group_handle_size_aligned = memory::align_up(group_handle_size, handle_alignment);
 
     std::cout << "SHADER GROUPS: Handle Size: " << group_handle_size << " | Handle Alignment: " << handle_alignment << " | Aligned Size: " << group_handle_size_aligned << std::endl;
 
     uint32_t group_count = group_create_infos.size();
     size_t shader_binding_table_size = group_count * group_handle_size;
 
-    result.sbt.region_raygen.stride = align_up(group_handle_size_aligned, base_alignment);
+    result.sbt.region_raygen.stride = memory::align_up(group_handle_size_aligned, base_alignment);
     result.sbt.region_raygen.size = result.sbt.region_raygen.stride;
 
     result.sbt.region_hit.stride = group_handle_size_aligned;
-    result.sbt.region_hit.size = align_up(group_handle_size_aligned, base_alignment);
+    result.sbt.region_hit.size = memory::align_up(group_handle_size_aligned, base_alignment);
 
     result.sbt.region_miss.stride = group_handle_size_aligned;
-    result.sbt.region_miss.size = align_up(group_handle_size_aligned, base_alignment);
+    result.sbt.region_miss.size = memory::align_up(group_handle_size_aligned, base_alignment);
 
     result.sbt.region_callable.stride = group_handle_size_aligned;
-    result.sbt.region_callable.size = align_up(group_handle_size_aligned  * 0/* multiply with number of callable shaders */, base_alignment);
+    result.sbt.region_callable.size = memory::align_up(group_handle_size_aligned  * 0/* multiply with number of callable shaders */, base_alignment);
 
     std::vector<uint8_t> shader_binding_table_data(shader_binding_table_size);
     if (device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data()) != VK_SUCCESS) {
@@ -451,9 +451,9 @@ Pipeline PipelineBuilder::build() {
     result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size;
     result.sbt.buffer.set_data(shader_binding_table_data.data() + 2 * group_handle_size, buffer_offset, group_handle_size);
 
-    buffer_offset += result.sbt.region_miss.size;
+    // buffer_offset += result.sbt.region_miss.size;
     result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size;
-    result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
+    // result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
 
 #pragma endregion
 

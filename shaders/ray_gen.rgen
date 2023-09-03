@@ -39,7 +39,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    uint max_depth = 6;
+    uint max_depth = 10;
     int frame_samples = 1;
 
     vec3 sample_sum = vec3(0);

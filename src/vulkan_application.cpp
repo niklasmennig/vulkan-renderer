@@ -514,21 +514,21 @@ void VulkanApplication::create_swapchain() {
         }
 
         // select present mode (MAILBOX is preferred)
-        VkPresentModeKHR present_mode;
-        {
-            bool found = false;
-            for (const auto &mode : present_modes)
-            {
-                if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-                {
-                    present_mode = mode;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                present_mode = VK_PRESENT_MODE_FIFO_KHR;
-        }
+        VkPresentModeKHR present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+        // {
+        //     bool found = false;
+        //     for (const auto &mode : present_modes)
+        //     {
+        //         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+        //         {
+        //             present_mode = mode;
+        //             found = true;
+        //             break;
+        //         }
+        //     }
+        //     if (!found)
+        //         present_mode = VK_PRESENT;
+        // }
 
         // select swap extent
         VkSurfaceCapabilitiesKHR surface_capabilities;
@@ -732,20 +732,21 @@ void VulkanApplication::draw_frame() {
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
         throw std::runtime_error("error beginning command buffer");
     }
+    std::cout << "BEGIN" << std::endl;
 
-    if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
-    material_parameter_buffer.set_data(material_parameters.data());
+    // if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
+    // material_parameter_buffer.set_data(material_parameters.data());
 
-    Shaders::PushConstants push_constants;
-    push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    push_constants.clear_accumulated = render_clear_accumulated;
-    push_constants.light_count = lights.size();
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+    // Shaders::PushConstants push_constants;
+    // push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+    // push_constants.clear_accumulated = render_clear_accumulated;
+    // push_constants.light_count = lights.size();
+    // vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
-    // raytracer draw
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
-    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+    // // raytracer draw
+    // vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
+    // vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
+    // device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
@@ -765,54 +766,54 @@ void VulkanApplication::draw_frame() {
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
-    VkImageCopy image_copy{};
-    image_copy.extent.width = render_image_extent.width;
-    image_copy.extent.height = render_image_extent.height;
-    image_copy.extent.depth = 1;
-    image_copy.srcSubresource.layerCount = 1;
-    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.srcSubresource.baseArrayLayer = 0;
-    image_copy.dstSubresource.layerCount = 1;
-    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.dstSubresource.baseArrayLayer = 0;
+    // VkImageCopy image_copy{};
+    // image_copy.extent.width = render_image_extent.width;
+    // image_copy.extent.height = render_image_extent.height;
+    // image_copy.extent.depth = 1;
+    // image_copy.srcSubresource.layerCount = 1;
+    // image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    // image_copy.srcSubresource.baseArrayLayer = 0;
+    // image_copy.dstSubresource.layerCount = 1;
+    // image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    // image_copy.dstSubresource.baseArrayLayer = 0;
 
-    VkImageBlit image_blit{};
-    image_blit.srcSubresource.layerCount = 1;
-    image_blit.srcSubresource.baseArrayLayer = 0;
-    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_blit.dstSubresource.layerCount = 1;
-    image_blit.dstSubresource.baseArrayLayer = 0;
-    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_blit.srcOffsets[0] = {0,0,0};
-    image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
-    image_blit.dstOffsets[0] = {0,0,0};
-    image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
+    // VkImageBlit image_blit{};
+    // image_blit.srcSubresource.layerCount = 1;
+    // image_blit.srcSubresource.baseArrayLayer = 0;
+    // image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    // image_blit.dstSubresource.layerCount = 1;
+    // image_blit.dstSubresource.baseArrayLayer = 0;
+    // image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    // image_blit.srcOffsets[0] = {0,0,0};
+    // image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
+    // image_blit.dstOffsets[0] = {0,0,0};
+    // image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
-    // select image to display
-    Image displayed_image;
-    switch(ui.displayed_image_index) {
-        case 0:
-            displayed_image = pipeline.get_output_image("result");
-            break;
-        case 1:
-            displayed_image = pipeline.get_output_image("instance_indices_colored");
-            break;
-        case 2:
-            displayed_image = pipeline.get_output_image("albedo");
-            break;
-        case 3:
-            displayed_image = pipeline.get_output_image("normals");
-            break;
-        case 4:
-            displayed_image = pipeline.get_output_image("roughness");
-    }
+    // // select image to display
+    // Image displayed_image;
+    // switch(ui.displayed_image_index) {
+    //     case 0:
+    //         displayed_image = pipeline.get_output_image("result");
+    //         break;
+    //     case 1:
+    //         displayed_image = pipeline.get_output_image("instance_indices_colored");
+    //         break;
+    //     case 2:
+    //         displayed_image = pipeline.get_output_image("albedo");
+    //         break;
+    //     case 3:
+    //         displayed_image = pipeline.get_output_image("normals");
+    //         break;
+    //     case 4:
+    //         displayed_image = pipeline.get_output_image("roughness");
+    // }
 
-    ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
+    // ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
+    // displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+    // //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    // vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
+    // displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -857,9 +858,9 @@ void VulkanApplication::draw_frame() {
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     VkSemaphore wait_semaphores[] = {image_available_semaphore};
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR};
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
     submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitSemaphores = &image_available_semaphore;
     submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
@@ -962,22 +963,22 @@ void VulkanApplication::init_imgui() {
     // the size of the pool is very oversize, but it's copied from imgui demo itself.
     VkDescriptorPoolSize pool_sizes[] =
         {
-            {VK_DESCRIPTOR_TYPE_SAMPLER, 300},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 300},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 300},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 300},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 300},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 300},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 300},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 300},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 300},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 300},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 300}};
+            {VK_DESCRIPTOR_TYPE_SAMPLER, 10000},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000},
+            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 10000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 10000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 10000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 10000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10000},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10000},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 10000},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 10000}};
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    pool_info.maxSets = 300;
+    pool_info.maxSets = 10000;
     pool_info.poolSizeCount = std::size(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
 
@@ -1485,6 +1486,7 @@ void VulkanApplication::setup() {
     recreate_render_image();
 
     init_imgui();
+    std::cout << "IMGUI INITIALIZED" << std::endl;
 
     vkEndCommandBuffer(command_buffer);
 

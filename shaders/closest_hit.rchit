@@ -76,6 +76,19 @@ void main() {
 
     bool front_facing = dot(ray_out, normal) > 0;
 
+    
+
+
+    // indirect light
+    vec3 next_factor = vec3(0);
+    vec4 random_values = vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed));
+
+    // vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
+    vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
+
+    vec3 new_direction = normalize(r);
+    payload.contribution *= next_factor;
+
     // direct light
     if (push_constants.constants.light_count > 0) {
         float rand = seed_random(payload.seed);
@@ -96,17 +109,6 @@ void main() {
             payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * payload.contribution;
         }
     }
-
-
-    // indirect light
-    vec3 next_factor = vec3(0);
-    vec4 random_values = vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed));
-
-    // vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
-    vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
-
-    vec3 new_direction = normalize(r);
-    payload.contribution *= next_factor;
 
     // emission
     vec3 emission = parameters.emissive_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb;

@@ -5,7 +5,14 @@
 
 #include "image.h"
 
+#include <unordered_map>
+
 struct PipelineBuilder;
+
+struct SharedDeviceMemory {
+    VkDeviceMemory memory;
+    VkDeviceSize offset = 0;
+};
 
 struct Device
 {
@@ -20,8 +27,11 @@ struct Device
     VkPhysicalDeviceMemoryProperties memory_properties{};
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties{};
 
-    VkDeviceMemory small_buffer_memory = VK_NULL_HANDLE;
-    VkDeviceSize small_buffer_memory_offset = 0;
+    
+
+    // maps memory type index to shared memory
+    std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
+
 
     Buffer create_buffer(VkBufferCreateInfo *create_info);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
