@@ -76,15 +76,12 @@ void main() {
 
     bool front_facing = dot(ray_out, normal) > 0;
 
-    
-
-
     // indirect light
     vec3 next_factor = vec3(0);
     vec4 random_values = vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed));
 
-    // vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
-    vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
+    vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
+    //vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
 
     vec3 new_direction = normalize(r);
     payload.contribution *= next_factor;
@@ -122,7 +119,7 @@ void main() {
     }
 
     // russian roulette
-    if (payload.depth > 3 && luminance(payload.contribution) < seed_random(payload.seed)) return;
+    if (payload.depth > 1 && luminance(payload.contribution) < seed_random(payload.seed) * 10) return;
 
     if (payload.depth < payload.max_depth) {
         payload.depth += 1;

@@ -39,7 +39,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    uint max_depth = 10;
+    uint max_depth = 16;
     int frame_samples = 1;
 
     vec3 sample_sum = vec3(0);
@@ -47,8 +47,8 @@ void main() {
         uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15 + s;
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-        //vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
-        vec2 pixel_offset = vec2(0, 0);
+        vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+        //vec2 pixel_offset = vec2(0, 0);
 
         vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
         ndc.y *= -1;
