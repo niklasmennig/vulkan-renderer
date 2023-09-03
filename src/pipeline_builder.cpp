@@ -426,7 +426,7 @@ Pipeline PipelineBuilder::build() {
     result.sbt.region_miss.size = memory::align_up(group_handle_size_aligned, base_alignment);
 
     result.sbt.region_callable.stride = group_handle_size_aligned;
-    result.sbt.region_callable.size = memory::align_up(group_handle_size_aligned  * 0/* multiply with number of callable shaders */, base_alignment);
+    result.sbt.region_callable.size = memory::align_up(group_handle_size_aligned  * 1/* multiply with number of callable shaders */, base_alignment);
 
     std::vector<uint8_t> shader_binding_table_data(shader_binding_table_size);
     if (device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data()) != VK_SUCCESS) {
@@ -437,7 +437,7 @@ Pipeline PipelineBuilder::build() {
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     sbt_buffer_info.size = result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size + result.sbt.region_callable.size;
-    result.sbt.buffer = device->create_buffer(&sbt_buffer_info);
+    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, true);
 
 
     result.sbt.region_raygen.deviceAddress = result.sbt.buffer.device_address;
@@ -451,9 +451,9 @@ Pipeline PipelineBuilder::build() {
     result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size;
     result.sbt.buffer.set_data(shader_binding_table_data.data() + 2 * group_handle_size, buffer_offset, group_handle_size);
 
-    // buffer_offset += result.sbt.region_miss.size;
+    buffer_offset += result.sbt.region_miss.size;
     result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size;
-    // result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
+    result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
 
 #pragma endregion
 

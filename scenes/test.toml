@@ -6,8 +6,8 @@
     path = "./hdri/moonless_golf_4k.hdr"
 
 [objects]
-    # [objects.test]
-    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    [objects.test]
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
@@ -24,8 +24,8 @@
     # [objects.test]
     # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
-    [objects.test]
-    path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    # [objects.test]
+    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"

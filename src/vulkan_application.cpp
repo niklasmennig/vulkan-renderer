@@ -149,13 +149,13 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = device.create_buffer(&as_buffer_info);
+    result.as_buffer = device.create_buffer(&as_buffer_info, true);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = device.create_buffer(&scratch_buffer_info);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, true);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -248,7 +248,7 @@ TLAS VulkanApplication::build_tlas() {
     instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size();
 
     TLAS result{};
-    result.instance_buffer = device.create_buffer(&instance_buffer_info);
+    result.instance_buffer = device.create_buffer(&instance_buffer_info, true);
     result.instance_buffer.set_data(instances.data());
 
     VkAccelerationStructureGeometryKHR geometry{};
@@ -277,13 +277,13 @@ TLAS VulkanApplication::build_tlas() {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = device.create_buffer(&as_buffer_info);
+    result.as_buffer = device.create_buffer(&as_buffer_info, true);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = device.create_buffer(&scratch_buffer_info);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, true);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -732,21 +732,20 @@ void VulkanApplication::draw_frame() {
     if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
         throw std::runtime_error("error beginning command buffer");
     }
-    std::cout << "BEGIN" << std::endl;
 
-    // if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
-    // material_parameter_buffer.set_data(material_parameters.data());
+    if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
+    material_parameter_buffer.set_data(material_parameters.data());
 
-    // Shaders::PushConstants push_constants;
-    // push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    // push_constants.clear_accumulated = render_clear_accumulated;
-    // push_constants.light_count = lights.size();
-    // vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+    Shaders::PushConstants push_constants;
+    push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+    push_constants.clear_accumulated = render_clear_accumulated;
+    push_constants.light_count = lights.size();
+    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
-    // // raytracer draw
-    // vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
-    // vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
-    // device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+    // raytracer draw
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
+    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
@@ -766,54 +765,54 @@ void VulkanApplication::draw_frame() {
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
-    // VkImageCopy image_copy{};
-    // image_copy.extent.width = render_image_extent.width;
-    // image_copy.extent.height = render_image_extent.height;
-    // image_copy.extent.depth = 1;
-    // image_copy.srcSubresource.layerCount = 1;
-    // image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    // image_copy.srcSubresource.baseArrayLayer = 0;
-    // image_copy.dstSubresource.layerCount = 1;
-    // image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    // image_copy.dstSubresource.baseArrayLayer = 0;
+    VkImageCopy image_copy{};
+    image_copy.extent.width = render_image_extent.width;
+    image_copy.extent.height = render_image_extent.height;
+    image_copy.extent.depth = 1;
+    image_copy.srcSubresource.layerCount = 1;
+    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.srcSubresource.baseArrayLayer = 0;
+    image_copy.dstSubresource.layerCount = 1;
+    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_copy.dstSubresource.baseArrayLayer = 0;
 
-    // VkImageBlit image_blit{};
-    // image_blit.srcSubresource.layerCount = 1;
-    // image_blit.srcSubresource.baseArrayLayer = 0;
-    // image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    // image_blit.dstSubresource.layerCount = 1;
-    // image_blit.dstSubresource.baseArrayLayer = 0;
-    // image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    // image_blit.srcOffsets[0] = {0,0,0};
-    // image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
-    // image_blit.dstOffsets[0] = {0,0,0};
-    // image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
+    VkImageBlit image_blit{};
+    image_blit.srcSubresource.layerCount = 1;
+    image_blit.srcSubresource.baseArrayLayer = 0;
+    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.dstSubresource.layerCount = 1;
+    image_blit.dstSubresource.baseArrayLayer = 0;
+    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    image_blit.srcOffsets[0] = {0,0,0};
+    image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
+    image_blit.dstOffsets[0] = {0,0,0};
+    image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
-    // // select image to display
-    // Image displayed_image;
-    // switch(ui.displayed_image_index) {
-    //     case 0:
-    //         displayed_image = pipeline.get_output_image("result");
-    //         break;
-    //     case 1:
-    //         displayed_image = pipeline.get_output_image("instance_indices_colored");
-    //         break;
-    //     case 2:
-    //         displayed_image = pipeline.get_output_image("albedo");
-    //         break;
-    //     case 3:
-    //         displayed_image = pipeline.get_output_image("normals");
-    //         break;
-    //     case 4:
-    //         displayed_image = pipeline.get_output_image("roughness");
-    // }
+    // select image to display
+    Image displayed_image;
+    switch(ui.displayed_image_index) {
+        case 0:
+            displayed_image = pipeline.get_output_image("result");
+            break;
+        case 1:
+            displayed_image = pipeline.get_output_image("instance_indices_colored");
+            break;
+        case 2:
+            displayed_image = pipeline.get_output_image("albedo");
+            break;
+        case 3:
+            displayed_image = pipeline.get_output_image("normals");
+            break;
+        case 4:
+            displayed_image = pipeline.get_output_image("roughness");
+    }
 
-    // ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
+    ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    // displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    // //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    // vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
-    // displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+    //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
+    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -1754,6 +1753,9 @@ void VulkanApplication::cleanup() {
         vkDestroyImageView(logical_device, image_view, nullptr);
     vkDestroySwapchainKHR(logical_device, swap_chain, nullptr);
     vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
+    for (auto shared_memory = device.shared_buffer_memory.begin(); shared_memory != device.shared_buffer_memory.end(); shared_memory++) {
+        vkFreeMemory(logical_device, (*shared_memory).second.memory, nullptr);
+    }
     vkDestroyDevice(logical_device, nullptr);
     DestroyDebugUtilsMessengerEXT(vulkan_instance, debug_messenger, nullptr);
     vkDestroyInstance(vulkan_instance, nullptr);

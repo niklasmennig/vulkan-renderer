@@ -27,5 +27,6 @@ void Buffer::get_data(void* data, size_t offset, size_t size) {
 void Buffer::free()
 {
     vkDestroyBuffer(device_handle, buffer_handle, nullptr);
+    if (is_shared) return;
     vkFreeMemory(device_handle, device_memory, nullptr);
 }

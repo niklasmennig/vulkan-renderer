@@ -33,7 +33,7 @@ struct Device
     std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
 
 
-    Buffer create_buffer(VkBufferCreateInfo *create_info);
+    Buffer create_buffer(VkBufferCreateInfo *create_info, bool ignore_shared_buffers = false);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     PipelineBuilder create_pipeline_builder();
