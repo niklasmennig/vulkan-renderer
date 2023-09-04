@@ -26,7 +26,7 @@ float pdf_cosine_hemisphere() {
 }
 
 // taken from https://www.cim.mcgill.ca/~derek/ecse689_a3.html
-BSDFSample sample_power_hemisphere(float u1, float u2, float n)
+vec3 sample_power_hemisphere(float u1, float u2, float n)
 {
     float alpha = sqrt(1.0 - pow(u1, 2.0 / (n+1.0)));
 
@@ -34,10 +34,7 @@ BSDFSample sample_power_hemisphere(float u1, float u2, float n)
     float y = alpha * sin(2.0 * PI * u2);
     float z = pow(u1, 1.0 / (n+1.0));
 
-    return BSDFSample(
-        vec3(x, y, z),
-        1.0 / PI
-    );
+    return vec3(x, y, z);
 }
 
 #endif
