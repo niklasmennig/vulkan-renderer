@@ -1,12 +1,17 @@
 #include "common.glsl"
+#include "sampling.glsl"
 
-vec3 sample_lambert(in vec3 V, in mat3 tbn, in vec3 baseColor, in vec4 random, out vec3 nextFactor) {
-        nextFactor = baseColor;
+BSDFSample sample_lambert(in vec3 V, in mat3 tbn, in vec3 baseColor, in vec4 random) {
+        vec3 sample_direction = sample_cosine_hemisphere(random.x, random.y);
 
-        float theta = acos(random.x);
-        float phi = 2.0 * PI * random.y;
+        BSDFSample result;
+        result.contribution = baseColor;
+        result.direction = tbn * sample_direction;
+        result.pdf = 1.0f / PI;
 
-        vec3 dir = vec3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
+        return result;
+}
 
-        return tbn * dir;
+vec3 eval_lambert(in vec3 baseColor) {
+        return baseColor;
 }

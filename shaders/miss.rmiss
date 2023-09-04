@@ -13,8 +13,14 @@ layout(push_constant) uniform PushConstants {
 #include "texture_data.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
+layout(location = 1) rayPayloadInEXT ShadowRayPayload shadow_payload;
 
 void main() {
+    if (shadow_payload.query_shadow) {
+        shadow_payload.occluded = false;
+        shadow_payload.query_shadow = false;
+        return;
+    }
 
     vec3 dir = gl_WorldRayDirectionEXT;
 

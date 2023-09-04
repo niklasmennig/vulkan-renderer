@@ -15,7 +15,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.37.32822/bin/Hostx64/x64/lib.exe"
+			"value" : "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.36.32532/bin/Hostx64/x64/lib.exe"
 		},
 		{
 			"name" : "CMAKE_CACHEFILE_DIR",
@@ -27,7 +27,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "e:/Dev/vulkan-renderer/build"
+			"value" : "c:/Users/mennig/master/vulkan-renderer/build"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -63,7 +63,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "3"
+			"value" : "0"
 		},
 		{
 			"name" : "CMAKE_COMMAND",
@@ -75,7 +75,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "D:/CMake/bin/cmake.exe"
+			"value" : "C:/Program Files/CMake/bin/cmake.exe"
 		},
 		{
 			"name" : "CMAKE_CONFIGURATION_TYPES",
@@ -99,7 +99,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "D:/CMake/bin/cpack.exe"
+			"value" : "C:/Program Files/CMake/bin/cpack.exe"
 		},
 		{
 			"name" : "CMAKE_CTEST_COMMAND",
@@ -111,7 +111,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "D:/CMake/bin/ctest.exe"
+			"value" : "C:/Program Files/CMake/bin/ctest.exe"
 		},
 		{
 			"name" : "CMAKE_CXX_FLAGS",
@@ -398,18 +398,6 @@
 			"value" : "/debug /INCREMENTAL"
 		},
 		{
-			"name" : "CMAKE_EXPORT_COMPILE_COMMANDS",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
-				}
-			],
-			"type" : "BOOL",
-			"value" : "TRUE"
-		},
-		{
 			"name" : "CMAKE_EXTRA_GENERATOR",
 			"properties" : 
 			[
@@ -431,7 +419,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "E:/Dev/vulkan-renderer/build/CMakeFiles/pkgRedirects"
+			"value" : "C:/Users/mennig/master/vulkan-renderer/build/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -491,7 +479,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "E:/Dev/vulkan-renderer"
+			"value" : "C:/Users/mennig/master/vulkan-renderer"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -519,7 +507,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.37.32822/bin/Hostx64/x64/link.exe"
+			"value" : "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.36.32532/bin/Hostx64/x64/link.exe"
 		},
 		{
 			"name" : "CMAKE_MODULE_LINKER_FLAGS",
@@ -807,7 +795,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "D:/CMake/share/cmake-3.27"
+			"value" : "C:/Program Files/CMake/share/cmake-3.27"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1027,7 +1015,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "[E:/Libraries/GLFW3/lib/glfw3.lib][E:/Libraries/GLFW3/include][v()]"
+			"value" : "[C:/Libraries/glfw3/lib/glfw3.lib][C:/Libraries/glfw3/include][v()]"
 		},
 		{
 			"name" : "FIND_PACKAGE_MESSAGE_DETAILS_Vulkan",
@@ -1039,7 +1027,19 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "[D:/VulkanSDK/Lib/vulkan-1.lib][D:/VulkanSDK/Include][cfound components: glslc glslangValidator ][v1.3.261()]"
+			"value" : "[C:/VulkanSDK/1.3.250.0/Lib/vulkan-1.lib][C:/VulkanSDK/1.3.250.0/Include][cfound components: glslc glslangValidator ][v1.3.250()]"
+		},
+		{
+			"name" : "FIND_PACKAGE_MESSAGE_DETAILS_glfw3",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Details about finding glfw3"
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : "[C:/Libraries/glfw3/lib/glfw3.lib][C:/Libraries/glfw3/include][v()]"
 		},
 		{
 			"name" : "GLFW3_INCLUDE_DIR",
@@ -1051,7 +1051,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "E:/Libraries/GLFW3/include"
+			"value" : "C:/Libraries/glfw3/include"
 		},
 		{
 			"name" : "GLFW3_LIBRARY",
@@ -1063,7 +1063,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "E:/Libraries/GLFW3/lib/glfw3.lib"
+			"value" : "C:/Libraries/glfw3/lib/glfw3.lib"
 		},
 		{
 			"name" : "Vulkan_GLSLANG_VALIDATOR_EXECUTABLE",
@@ -1079,7 +1079,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "D:/VulkanSDK/Bin/glslangValidator.exe"
+			"value" : "C:/VulkanSDK/1.3.250.0/Bin/glslangValidator.exe"
 		},
 		{
 			"name" : "Vulkan_GLSLC_EXECUTABLE",
@@ -1095,7 +1095,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "D:/VulkanSDK/Bin/glslc.exe"
+			"value" : "C:/VulkanSDK/1.3.250.0/Bin/glslc.exe"
 		},
 		{
 			"name" : "Vulkan_INCLUDE_DIR",
@@ -1111,7 +1111,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "D:/VulkanSDK/Include"
+			"value" : "C:/VulkanSDK/1.3.250.0/Include"
 		},
 		{
 			"name" : "Vulkan_LIBRARY",
@@ -1127,19 +1127,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "D:/VulkanSDK/Lib/vulkan-1.lib"
-		},
-		{
-			"name" : "glfw3_DIR",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "The directory containing a CMake configuration file for glfw3."
-				}
-			],
-			"type" : "PATH",
-			"value" : "glfw3_DIR-NOTFOUND"
+			"value" : "C:/VulkanSDK/1.3.250.0/Lib/vulkan-1.lib"
 		},
 		{
 			"name" : "imgui_LIB_DEPENDS",
@@ -1163,7 +1151,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "E:/Dev/vulkan-renderer/build"
+			"value" : "C:/Users/mennig/master/vulkan-renderer/build"
 		},
 		{
 			"name" : "vulkanrenderer_IS_TOP_LEVEL",
@@ -1187,7 +1175,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "E:/Dev/vulkan-renderer"
+			"value" : "C:/Users/mennig/master/vulkan-renderer"
 		}
 	],
 	"kind" : "cache",

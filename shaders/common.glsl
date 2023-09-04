@@ -1,7 +1,7 @@
 #ifndef COMMON_GLSL
 #define COMMON_GLSL
 
-#define PI 3.1415926535897932384626433832795
+#define PI 3.1415926f
 #define NULL_INSTANCE 999999
 
 float epsilon = 0.0001f;

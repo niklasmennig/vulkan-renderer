@@ -2,10 +2,10 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "RelWithDebInfo/renderer.exe"
+			"path" : "Debug/renderer.exe"
 		},
 		{
-			"path" : "RelWithDebInfo/renderer.pdb"
+			"path" : "Debug/renderer.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -66,38 +66,38 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /W3 /MD /Zi /O2 /Ob1 /DNDEBUG"
+					"fragment" : "/DWIN32 /D_WINDOWS /W3 /MDd /Zi /Ob0 /Od /RTC1"
 				}
 			],
 			"defines" : 
 			[
 				{
 					"backtrace" : 3,
-					"define" : "GLSLC_EXE=\"D:/VulkanSDK/Bin/glslc\""
+					"define" : "GLSLC_EXE=\"C:/VulkanSDK/1.3.250.0/Bin/glslc\""
 				},
 				{
 					"backtrace" : 3,
-					"define" : "SHADER_DIR=\"E:/Dev/vulkan-renderer/shaders\""
+					"define" : "SHADER_DIR=\"C:/Users/mennig/master/vulkan-renderer/shaders\""
 				}
 			],
 			"includes" : 
 			[
 				{
 					"backtrace" : 4,
-					"path" : "E:/Dev/vulkan-renderer/includes"
+					"path" : "C:/Users/mennig/master/vulkan-renderer/includes"
 				},
 				{
 					"backtrace" : 4,
-					"path" : "E:/Libraries/GLFW3/include"
+					"path" : "C:/Libraries/glfw3/include"
 				},
 				{
 					"backtrace" : 4,
-					"path" : "E:/Dev/vulkan-renderer/src/imgui"
+					"path" : "C:/Users/mennig/master/vulkan-renderer/src/imgui"
 				},
 				{
 					"backtrace" : 2,
 					"isSystem" : true,
-					"path" : "D:/VulkanSDK/Include"
+					"path" : "C:/VulkanSDK/1.3.250.0/Include"
 				}
 			],
 			"language" : "C",
@@ -110,38 +110,38 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-MD /MD /Zi /O2 /Ob1 /DNDEBUG -std:c++17"
+					"fragment" : "-MD /MDd /Zi /Ob0 /Od /RTC1 -std:c++17"
 				}
 			],
 			"defines" : 
 			[
 				{
 					"backtrace" : 3,
-					"define" : "GLSLC_EXE=\"D:/VulkanSDK/Bin/glslc\""
+					"define" : "GLSLC_EXE=\"C:/VulkanSDK/1.3.250.0/Bin/glslc\""
 				},
 				{
 					"backtrace" : 3,
-					"define" : "SHADER_DIR=\"E:/Dev/vulkan-renderer/shaders\""
+					"define" : "SHADER_DIR=\"C:/Users/mennig/master/vulkan-renderer/shaders\""
 				}
 			],
 			"includes" : 
 			[
 				{
 					"backtrace" : 4,
-					"path" : "E:/Dev/vulkan-renderer/includes"
+					"path" : "C:/Users/mennig/master/vulkan-renderer/includes"
 				},
 				{
 					"backtrace" : 4,
-					"path" : "E:/Libraries/GLFW3/include"
+					"path" : "C:/Libraries/glfw3/include"
 				},
 				{
 					"backtrace" : 4,
-					"path" : "E:/Dev/vulkan-renderer/src/imgui"
+					"path" : "C:/Users/mennig/master/vulkan-renderer/src/imgui"
 				},
 				{
 					"backtrace" : 2,
 					"isSystem" : true,
-					"path" : "D:/VulkanSDK/Include"
+					"path" : "C:/VulkanSDK/1.3.250.0/Include"
 				}
 			],
 			"language" : "CXX",
@@ -186,7 +186,7 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-MD /MD /Zi /O2 /Ob1 /DNDEBUG",
+				"fragment" : "-MD /MDd /Zi /Ob0 /Od /RTC1",
 				"role" : "flags"
 			},
 			{
@@ -195,22 +195,22 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "E:\\Libraries\\GLFW3\\lib\\glfw3.lib",
+				"fragment" : "C:\\Libraries\\glfw3\\lib\\glfw3.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "D:\\VulkanSDK\\Lib\\vulkan-1.lib",
+				"fragment" : "C:\\VulkanSDK\\1.3.250.0\\Lib\\vulkan-1.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "src\\imgui\\RelWithDebInfo\\imgui.lib",
+				"fragment" : "src\\imgui\\Debug\\imgui.lib",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "D:\\VulkanSDK\\Lib\\vulkan-1.lib",
+				"fragment" : "C:\\VulkanSDK\\1.3.250.0\\Lib\\vulkan-1.lib",
 				"role" : "libraries"
 			},
 			{

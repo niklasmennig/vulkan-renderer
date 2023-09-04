@@ -1,5 +1,4 @@
 // taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
-#define PI 3.1415926535897932384626433832795
 
 // A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
 uint hash( uint x ) {

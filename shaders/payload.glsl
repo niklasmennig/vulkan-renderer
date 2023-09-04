@@ -12,3 +12,9 @@ struct RayPayload
     vec3 primary_hit_normal;
     vec3 primary_hit_roughness;
 };
+
+struct ShadowRayPayload
+{
+    bool query_shadow;
+    bool occluded;
+};

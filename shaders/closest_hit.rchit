@@ -16,6 +16,7 @@
 hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
+layout(location = 1) rayPayloadInEXT ShadowRayPayload shadow_payload;
 layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 
 struct MaterialParameters {
@@ -36,6 +37,12 @@ MaterialParameters get_material_parameters(uint instance) {
 }
 
 void main() {
+    if (shadow_payload.query_shadow) {
+        shadow_payload.occluded = true;
+        shadow_payload.query_shadow = false;
+        return;
+    }
+
     uint instance = gl_InstanceID;
 
     vec3 position = get_vertex_position(instance, barycentrics);
@@ -76,40 +83,57 @@ void main() {
 
     bool front_facing = dot(ray_out, normal) > 0;
 
+    // direct light
+    // if (push_constants.constants.light_count > 0) {
+    //     float rand = seed_random(payload.seed);
+    //     Light selected_light = lights_data.lights[uint(floor(push_constants.constants.light_count * rand))];
+    //     vec3 light_position = selected_light.position;
+    //     vec3 light_intensity = selected_light.intensity;
+    //     vec3 light_dir = light_position - new_origin;
+    //     float light_dist = length(light_dir);
+    //     light_dir /= light_dist;
+    //     float light_attenuation = 1.0 / pow(light_dist, 2);
+
+    //     // rayQueryEXT ray_query;
+    //     // rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
+    //     // while(rayQueryProceedEXT(ray_query)) {};
+    //     shadow_payload.occluded = true;
+    //     shadow_payload.query_shadow = true;
+
+    //     traceRayEXT(
+    //         as,
+    //         gl_RayFlagsOpaqueEXT,
+    //         0xff,
+    //         0,
+    //         0,
+    //         0,
+    //         new_origin,
+    //         epsilon,
+    //         light_dir,
+    //         light_dist - 2.0 * epsilon,
+    //         1
+    //     );
+
+    //     if (!shadow_payload.occluded) {
+    //         //payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * payload.contribution * dot(light_dir, normal);
+    //         vec3 eval = eval_lambert(base_color) * max(0, dot(light_dir, normal)) * light_intensity * light_attenuation * payload.contribution;
+    //         payload.color += eval;
+    //     }
+    // }
+
     // indirect light
     vec3 next_factor = vec3(0);
     vec4 random_values = vec4(seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed), seed_random(payload.seed));
 
-    vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
-    //vec3 r = sample_lambert(ray_out, tbn, base_color, random_values, next_factor);
+    //vec3 r = sample_ggx(ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, next_factor);
+    BSDFSample sampled = sample_lambert(ray_out, tbn, base_color, random_values);
 
-    vec3 new_direction = normalize(r);
-    payload.contribution *= next_factor;
-
-    // direct light
-    if (push_constants.constants.light_count > 0) {
-        float rand = seed_random(payload.seed);
-        Light selected_light = lights_data.lights[uint(floor(push_constants.constants.light_count * rand))];
-        vec3 light_position = selected_light.position;
-        vec3 light_intensity = selected_light.intensity;
-        vec3 light_dir = light_position - new_origin;
-        float light_dist = length(light_dir);
-        light_dir /= light_dist;
-        float light_attenuation = 1.0 / pow(light_dist, 2);
-
-        rayQueryEXT ray_query;
-        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, new_origin, epsilon, light_dir, light_dist - 2 * epsilon);
-        while(rayQueryProceedEXT(ray_query)) {};
-        bool in_shadow = (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionTriangleEXT);
-
-        if (!in_shadow) {
-            payload.color += ggx(light_dir, ray_out, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light_intensity * light_attenuation * payload.contribution;
-        }
-    }
+    vec3 new_direction = sampled.direction;
+    payload.contribution *= sampled.contribution / sampled.pdf;
 
     // emission
     vec3 emission = parameters.emissive_factor.rgb * sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb;
-    payload.contribution += emission * parameters.emissive_factor.a;
+    //payload.contribution += emission * parameters.emissive_factor.a;
 
     if (payload.depth == 0) {
         payload.primary_hit_instance = instance;
@@ -119,7 +143,7 @@ void main() {
     }
 
     // russian roulette
-    if (payload.depth > 1 && luminance(payload.contribution) < seed_random(payload.seed) * 10) return;
+    if (payload.depth > 3 && luminance(payload.contribution) < seed_random(payload.seed)) return;
 
     if (payload.depth < payload.max_depth) {
         payload.depth += 1;

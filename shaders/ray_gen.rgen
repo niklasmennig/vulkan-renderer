@@ -10,6 +10,7 @@
 #include "random.glsl"
 #include "payload.glsl"
 layout(location = 0) rayPayloadEXT RayPayload payload;
+layout(location = 1) rayPayloadEXT ShadowRayPayload shadow_payload;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
 layout(set = 0, binding = 1) uniform RayGenerationData {
@@ -39,7 +40,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    uint max_depth = 16;
+    uint max_depth = 1;
     int frame_samples = 1;
 
     vec3 sample_sum = vec3(0);
@@ -62,6 +63,9 @@ void main() {
         payload.max_depth = max_depth;
         payload.depth = 0;
         payload.seed = seed;
+
+        shadow_payload.query_shadow = false;
+        shadow_payload.occluded = false;
 
         traceRayEXT(
                     as,

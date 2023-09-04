@@ -171,5 +171,4 @@ vec3 sample_ggx(in vec3 V, in mat3 tbn,
     nextFactor *= 2.0; // compensate for splitting diffuse and specular
     return L;
   } 
-  
 }
