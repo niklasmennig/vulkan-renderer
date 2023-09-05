@@ -21,8 +21,8 @@
     # [objects.test]
     # path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
-    # [objects.test]
-    # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+    [objects.test3]
+    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     # [objects.test]
     # path = "./gltf/mosquito/MosquitoInAmber.gltf"
@@ -30,16 +30,18 @@
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
-    # [objects.test2]
-    # path = "./gltf/transmission_small/untitled.gltf"
+    [objects.test2]
+    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
 [instances]
     [instances.test]
     object = "test"
-    # [instances.test1]
-    # object = "test1"
-    # [instances.test2]
-    # object = "test2"
+    scale = [0.1, 0.1, 0.1]
+    position = [0.0, 0.1, 0.0]
+
+    [instances.test2]
+    object = "test2"
+    position = [0.0, -1.0, 0.0]
 
     # [instances.test1]
     # object = "test2"
@@ -49,9 +51,9 @@
     # object = "test"
     # position = [4.0, 0.0, 0.0]
 
-    # [instances.test3]
-    # object = "test2"
-    # position = [0.0, 2.0, 0.0]
+    [instances.test3]
+    object = "test3"
+    position = [0.5, 0.0, 0.0]
 
     # [instances.test4]
     # object = "test2"
@@ -63,5 +65,9 @@
 
 [lights]
     [lights.test]
-    position = [5.0, 0.0, 0.0]
-    intensity = [5.0, 0.0, 0.0]
+    position = [1.0, 1.0, 0.0]
+    intensity = [10.0, 10.0, 10.0]
+
+    # [lights.test2]
+    # position = [-1.0, 2.0, 3.0]
+    # intensity = [50.0, 50.0, 80.0]

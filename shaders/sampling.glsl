@@ -9,21 +9,38 @@ struct BSDFSample {
     float pdf;
 };
 
-vec3 sample_cosine_hemisphere(float u1, float u2)
+struct DirectionSample {
+    vec3 direction;
+    float pdf;
+};
+
+vec3 dir_from_thetaphi(float theta, float phi) {
+    float s = sin(theta);
+    float c = cos(theta);
+    float x = s * cos(phi);
+    float y = s * sin(phi);
+    float z = c;
+
+    return vec3(x,y,z);
+};
+
+float pdf_cosine_hemisphere(float cos) {
+    return cos / PI;
+}
+
+DirectionSample sample_cosine_hemisphere(float u, float v)
 {
-    float theta = 0.5 * acos(-2.0 * u1 + 1.0);
-    float phi = u2 * 2.0 * PI;
+    float theta = acos(sqrt(u));
+    float phi = 2.0 * PI * v;
 
-    float x = cos(phi) * sin(theta);
-    float y = sin(phi) * sin(theta);
-    float z = cos(theta);
+    DirectionSample dir_sample;
+    dir_sample.direction = dir_from_thetaphi(theta, phi);
+    dir_sample.pdf = pdf_cosine_hemisphere(dir_sample.direction.z);
 
-    return vec3(x, y, z);
+    return dir_sample;
 }
 
-float pdf_cosine_hemisphere() {
-    return 1.0 / PI;
-}
+
 
 // taken from https://www.cim.mcgill.ca/~derek/ecse689_a3.html
 vec3 sample_power_hemisphere(float u1, float u2, float n)

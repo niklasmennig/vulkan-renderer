@@ -1,4 +1,5 @@
 #include "common.glsl"
+#include "sampling.glsl"
 
 // BRDF Formulations: http://graphicrants.blogspot.com/2013/08/specular-brdf-reference.html
 
@@ -29,7 +30,7 @@ float g_smith(float NoV, float NoL, float roughness) {
   return g1_l * g1_v;
 }
 
-vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+vec3 eval_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
     vec3 normal = tbn[2];
     vec3 h = normalize(ray_in + ray_out);
 
@@ -55,16 +56,19 @@ vec3 ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, fl
     return (diff + spec) * opacity;
 }
 
-vec3 sample_ggx(in vec3 V, in mat3 tbn, 
+BSDFSample sample_ggx(in vec3 V, in mat3 tbn, 
               in vec3 baseColor, float opacity, in float metallicness, 
-              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random, out vec3 nextFactor) 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random) 
 {
     vec3 N = tbn[2];
 
     // handle opacity
     if (random.w > opacity) {
-      nextFactor = vec3(1.0);
-      return -V;
+      BSDFSample res;
+      res.contribution = vec3(1.0);
+      res.direction = -V;
+      res.pdf = 1.0;
+      return res;
     }
 
     if(random.z < 0.5) { // non-specular light
@@ -105,10 +109,15 @@ vec3 sample_ggx(in vec3 V, in mat3 tbn,
       vec3 F = fresnel_schlick(VoH, f0);
       float D = d_ggx(NoH, roughness);
       float G = g_smith(NoV, NoL, roughness);
-      nextFactor = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
+      vec3 contrib = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
     
-      nextFactor *= 2.0; // compensate for splitting diffuse and specular
-      return L;
+      contrib *= 2.0; // compensate for splitting diffuse and specular
+      
+      BSDFSample res;
+      res.contribution = contrib;
+      res.direction = L;
+      res.pdf = 1.0 / (D * cos(theta) * sin(theta));
+      return res;
       
     } else { // diffuse light
       
@@ -134,9 +143,14 @@ vec3 sample_ggx(in vec3 V, in mat3 tbn,
       vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-      nextFactor = notSpec * baseColor;
-      nextFactor *= 2.0; // compensate for splitting diffuse and specular
-      return L;
+      vec3 contrib = notSpec * baseColor;
+      contrib *= 2.0; // compensate for splitting diffuse and specular
+      
+      BSDFSample res;
+      res.contribution = contrib;
+      res.direction = L;
+      res.pdf = 1.0 / (cos(theta) * sin(theta) / PI);
+      return res;
     }
   } else {// specular light
     
@@ -166,9 +180,14 @@ vec3 sample_ggx(in vec3 V, in mat3 tbn,
     vec3 F = fresnel_schlick(VoH, f0);
     float D = d_ggx(NoH, roughness);
     float G = g_smith(NoV, NoL, roughness);
-    nextFactor =  F * G * VoH / max((NoH * NoV), 0.001);
+    vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001);
     
-    nextFactor *= 2.0; // compensate for splitting diffuse and specular
-    return L;
+    contrib *= 2.0; // compensate for splitting diffuse and specular
+    
+    BSDFSample res;
+    res.contribution = contrib;
+    res.direction = L;
+    res.pdf = 1.0 / (D * cos(theta) * sin(theta));
+    return res;
   } 
 }

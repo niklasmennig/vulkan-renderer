@@ -33,9 +33,9 @@ void main() {
     vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
     //base_color = vec3(0,0,0);
 
-    payload.color += payload.contribution * base_color;
+    // payload.color += base_color * payload.contribution;
 
-    if (payload.depth == 0) {
+    if (payload.depth == 1) {
         payload.primary_hit_instance = NULL_INSTANCE;
         payload.primary_hit_albedo = base_color;
         payload.primary_hit_normal = vec3(0);
