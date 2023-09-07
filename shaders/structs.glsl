@@ -9,6 +9,7 @@ struct Light {
 };
 
 struct PushConstants {
+    uint sbt_stride;
     float time;
     uint clear_accumulated;
     uint light_count;

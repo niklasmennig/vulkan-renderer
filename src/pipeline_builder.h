@@ -41,6 +41,7 @@ struct Pipeline {
     std::vector<VkDescriptorSet> descriptor_sets;
 
     ShaderBindingTable sbt;
+    VkDeviceSize sbt_stride;
 
     struct SetBinding {
         uint32_t set;
@@ -99,6 +100,10 @@ struct PipelineBuilder
     VkShaderModule create_shader_module(const std::vector<char>& code);
 
     private:
+    uint32_t hit_stages = 0;
+    uint32_t miss_stages = 0;
+    uint32_t callable_stages = 0;
+
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
     void add_output_image(std::string name);

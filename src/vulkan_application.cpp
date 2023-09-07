@@ -737,6 +737,7 @@ void VulkanApplication::draw_frame() {
     material_parameter_buffer.set_data(material_parameters.data());
 
     Shaders::PushConstants push_constants;
+    push_constants.sbt_stride = pipeline.sbt_stride;
     push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
     push_constants.clear_accumulated = render_clear_accumulated;
     push_constants.light_count = lights.size();

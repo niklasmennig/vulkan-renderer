@@ -1,20 +1,13 @@
+#ifndef PAYLOAD_GLSL
+#define PAYLOAD_GLSL
+
 struct RayPayload
 {
-    vec3 color;
-    vec3 contribution;
-
-    uint max_depth;
-    uint depth;
-    uint seed;
-
-    uint primary_hit_instance;
-    vec3 primary_hit_albedo;
-    vec3 primary_hit_normal;
-    vec3 primary_hit_roughness;
+    bool hit;
+    uint hit_instance;
+    uint hit_primitive;
+    mat4x3 hit_transform;
+    vec2 hit_barycentrics;
 };
 
-struct ShadowRayPayload
-{
-    bool query_shadow;
-    bool occluded;
-};
+#endif

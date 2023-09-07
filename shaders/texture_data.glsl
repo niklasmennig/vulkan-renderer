@@ -1,3 +1,8 @@
+#ifndef TEXTURE_DATA_GLSL
+#define TEXTURE_DATA_GLSL
+
+#extension GL_EXT_nonuniform_qualifier : require
+
 layout(set = 1, binding = 7) uniform sampler2D tex[];
 layout(set = 1, binding = 8) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
@@ -27,3 +32,5 @@ vec4 sample_texture(uint instance, vec2 uv, uint offset) {
     }
     return sample_texture(texture_index, uv);
 }
+
+#endif

@@ -10,6 +10,17 @@
 #include <sstream>
 #include <filesystem>
 
+#include "glm/glm.hpp"
+using vec2 = glm::vec2;
+using vec3 = glm::vec3;
+using vec4 = glm::vec4;
+
+namespace Shaders
+{
+    using uint = uint32_t;
+    #include "../shaders/structs.glsl"
+}
+
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
 {
     VkShaderModuleCreateInfo create_info{};
@@ -29,7 +40,25 @@ VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &co
 }
 
 void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::string code_path) {
-    shader_stages.push_back(PipelineBuilderShaderStage{
+    auto insert_position = shader_stages.begin();
+    switch(stage) {
+        case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+            break;
+        case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+            insert_position = std::next(insert_position, 1 + hit_stages);
+            hit_stages++;
+            break;
+        case VK_SHADER_STAGE_MISS_BIT_KHR:
+            insert_position = std::next(insert_position, 1 + hit_stages + miss_stages);
+            miss_stages++;
+            break;
+        case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+            insert_position = std::next(insert_position, 1 + hit_stages + miss_stages + callable_stages);
+            callable_stages++;
+            break;
+    }
+
+    shader_stages.insert(insert_position, PipelineBuilderShaderStage{
         stage,
         code_path
     });
@@ -84,11 +113,13 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("texture_indices", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     add_descriptor("material_parameters", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     // other scene descriptors (set 2)
-    add_descriptor("lights", 2, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("lights", 2, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
     add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen");
     add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit");
     add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
+    add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit");
+    add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss");
 
     return *this;
 }
@@ -361,7 +392,7 @@ Pipeline PipelineBuilder::build() {
 
     VkPushConstantRange push_constant_range{};
     push_constant_range.offset = 0;
-    push_constant_range.size = 16;
+    push_constant_range.size = sizeof(Shaders::PushConstants);
     push_constant_range.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{};
@@ -416,17 +447,20 @@ Pipeline PipelineBuilder::build() {
     uint32_t group_count = group_create_infos.size();
     size_t shader_binding_table_size = group_count * group_handle_size;
 
-    result.sbt.region_raygen.stride = memory::align_up(group_handle_size_aligned, base_alignment);
-    result.sbt.region_raygen.size = result.sbt.region_raygen.stride;
+    VkDeviceSize entry_stride = memory::align_up(group_handle_size_aligned, base_alignment);
+    result.sbt_stride = entry_stride;
 
-    result.sbt.region_hit.stride = group_handle_size_aligned;
-    result.sbt.region_hit.size = memory::align_up(group_handle_size_aligned, base_alignment);
+    result.sbt.region_raygen.stride = entry_stride;
+    result.sbt.region_raygen.size = entry_stride;
 
-    result.sbt.region_miss.stride = group_handle_size_aligned;
-    result.sbt.region_miss.size = memory::align_up(group_handle_size_aligned, base_alignment);
+    result.sbt.region_hit.stride = entry_stride;
+    result.sbt.region_hit.size = entry_stride * hit_stages;
 
-    result.sbt.region_callable.stride = group_handle_size_aligned;
-    result.sbt.region_callable.size = memory::align_up(group_handle_size_aligned  * 1/* multiply with number of callable shaders */, base_alignment);
+    result.sbt.region_miss.stride = entry_stride;
+    result.sbt.region_miss.size = entry_stride * miss_stages;
+
+    result.sbt.region_callable.stride = entry_stride;
+    result.sbt.region_callable.size = entry_stride * callable_stages;
 
     std::vector<uint8_t> shader_binding_table_data(shader_binding_table_size);
     if (device->vkGetRayTracingShaderGroupHandlesKHR(device->vulkan_device, result.pipeline_handle, 0, group_count, shader_binding_table_size, shader_binding_table_data.data()) != VK_SUCCESS) {
@@ -436,24 +470,27 @@ Pipeline PipelineBuilder::build() {
     VkBufferCreateInfo sbt_buffer_info{};
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
-    sbt_buffer_info.size = result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size + result.sbt.region_callable.size;
+    sbt_buffer_info.size = entry_stride * (shader_stages.size());
     result.sbt.buffer = device->create_buffer(&sbt_buffer_info, true);
 
 
+    // write shader stage data to sbt buffer consecutively
+    // layout is [raygen | chit1 | chit2 | ... | miss1 | miss2 | ... | callable1 | callable2 | ...]
+    for (int stage = 0; stage < shader_stages.size(); stage++) {
+        result.sbt.buffer.set_data(shader_binding_table_data.data() + stage * group_handle_size, stage * entry_stride, entry_stride);
+    }
+
+    // raygen shader first
     result.sbt.region_raygen.deviceAddress = result.sbt.buffer.device_address;
-    result.sbt.buffer.set_data(shader_binding_table_data.data(), 0, group_handle_size);
 
-    size_t buffer_offset = result.sbt.region_raygen.size;
-    result.sbt.region_hit.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size;
-    result.sbt.buffer.set_data(shader_binding_table_data.data() + 1 * group_handle_size, buffer_offset, group_handle_size);
+    // closest hit shader stages after raygen
+    result.sbt.region_hit.deviceAddress = result.sbt.buffer.device_address + entry_stride;
 
-    buffer_offset += result.sbt.region_hit.size;
-    result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size;
-    result.sbt.buffer.set_data(shader_binding_table_data.data() + 2 * group_handle_size, buffer_offset, group_handle_size);
+    // miss shader stages after closest-hit
+    result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + (1 + hit_stages) * entry_stride;
 
-    buffer_offset += result.sbt.region_miss.size;
-    result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + result.sbt.region_raygen.size + result.sbt.region_hit.size + result.sbt.region_miss.size;
-    result.sbt.buffer.set_data(shader_binding_table_data.data() + 3 * group_handle_size, buffer_offset, group_handle_size);
+    // callable shader stages after miss shaders
+    result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + (1 + hit_stages + miss_stages) * entry_stride;
 
 #pragma endregion
 

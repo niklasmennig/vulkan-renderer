@@ -116,7 +116,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       BSDFSample res;
       res.contribution = contrib;
       res.direction = L;
-      res.pdf = 1.0 / (D * cos(theta) * sin(theta));
+      res.pdf = D * cos(theta) * sin(theta);
       return res;
       
     } else { // diffuse light
@@ -149,7 +149,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       BSDFSample res;
       res.contribution = contrib;
       res.direction = L;
-      res.pdf = 1.0 / (cos(theta) * sin(theta) / PI);
+      res.pdf = cos(theta) * sin(theta) / PI;
       return res;
     }
   } else {// specular light
@@ -187,7 +187,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     BSDFSample res;
     res.contribution = contrib;
     res.direction = L;
-    res.pdf = 1.0 / (D * cos(theta) * sin(theta));
+    res.pdf = 1.0;
     return res;
   } 
 }
