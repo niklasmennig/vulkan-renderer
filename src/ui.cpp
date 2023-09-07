@@ -16,6 +16,7 @@ void UI::draw() {
     ImGui::SeparatorText("Camera");
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
+    changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
 
     ImGui::SeparatorText("Display");
     static const char* display_options[]{"Result Image", "Instance Indices", "Albedo", "Normals","Roughness"};

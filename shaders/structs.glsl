@@ -13,6 +13,7 @@ struct PushConstants {
     float time;
     uint clear_accumulated;
     uint light_count;
+    uint max_depth;
 };
 
 #endif

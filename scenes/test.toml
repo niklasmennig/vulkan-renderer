@@ -37,7 +37,8 @@
     [instances.test]
     object = "test"
     scale = [0.1, 0.1, 0.1]
-    position = [0.0, 0.1, 0.0]
+    position = [0.5, 0.1, 0.0]
+    rotation = [0.0, -90.0, 0.0]
 
     [instances.test2]
     object = "test2"
@@ -65,9 +66,9 @@
 
 [lights]
     [lights.test]
-    position = [3.0, 5.0, 0.0]
-    intensity = [25.0, 25.0, 15.0]
+    position = [3.0, 1.0, 0.0]
+    intensity = [10.0, 10.0, 8.0]
 
-    [lights.test2]
-    position = [-1.0, 2.0, 3.0]
-    intensity = [50.0, 50.0, 80.0]
+    # [lights.test2]
+    # position = [-3.0, 1.0, 0.0]
+    # intensity = [15.0, 25.0, 25.0]

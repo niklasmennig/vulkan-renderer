@@ -11,6 +11,7 @@
 #include "texture_data.glsl"
 #include "mesh_data.glsl"
 #include "ggx.glsl"
+#include "lambert.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool occluded;
@@ -59,14 +60,11 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 
 void main() {
-    uint max_depth = 16;
-
+    uint max_depth = push_constants.constants.max_depth;
     uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15;
 
     vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
-    //vec2 pixel_offset = vec2(0, 0);
-
     vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
     ndc.y *= -1;
 
@@ -79,6 +77,9 @@ void main() {
     vec3 contribution = vec3(1.0);
 
     uint primary_hit_instance = NULL_INSTANCE;
+    vec3 primary_hit_albedo = vec3(0);
+    vec3 primary_hit_normal = vec3(0);
+    float primary_hit_roughness = 0;
 
     payload.hit = false;
 
@@ -110,7 +111,7 @@ void main() {
             vec3 ray_out = normalize(-ray_direction);
             vec3 new_origin = position;
 
-            MaterialParameters parameters = get_material_parameters(payload.hit_instance);
+            MaterialParameters material_parameters = get_material_parameters(payload.hit_instance);
 
             vec3 bitangent = normalize(cross(normal, tangent));
             mat3 tbn = mat3(tangent, bitangent, normal);
@@ -123,16 +124,24 @@ void main() {
             
             // material properties
             vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
-            vec3 base_color = parameters.diffuse_opacity.rgb * base_color_tex.rgb;
-            float opacity = parameters.diffuse_opacity.a * base_color_tex.a;
+            vec3 base_color = material_parameters.diffuse_opacity.rgb * base_color_tex.rgb;
+            float opacity = material_parameters.diffuse_opacity.a * base_color_tex.a;
             vec3 arm = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-            float roughness = parameters.roughness_metallic_transmissive_ior.x * arm.y;
-            float metallic = parameters.roughness_metallic_transmissive_ior.y * arm.z;
+            float roughness = material_parameters.roughness_metallic_transmissive_ior.x * arm.y;
+            float metallic = material_parameters.roughness_metallic_transmissive_ior.y * arm.z;
             vec4 transmission_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-            float transmission = parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
-            float ior = parameters.roughness_metallic_transmissive_ior.a;
+            float transmission = material_parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
+            float ior = material_parameters.roughness_metallic_transmissive_ior.a;
             float fresnel_reflect = 0.5;
             bool front_facing = dot(ray_out, normal) > 0;
+
+            // AOV data
+            if (depth == 1) {
+                primary_hit_instance = payload.hit_instance;
+                primary_hit_albedo = base_color;
+                primary_hit_normal = normal;
+                primary_hit_roughness = roughness;
+            }
 
             // direct light
             uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
@@ -140,12 +149,12 @@ void main() {
             vec3 light_direction = light.position - position;
             float light_distance = length(light_direction);
             light_direction /= light_distance;
-            float light_attenuation = pow(1.0 / light_distance, 2);
+            float light_attenuation = 1.0 / pow(light_distance, 2);
 
             // cast shadow ray
             traceRayEXT(
                 as,
-                gl_RayFlagsOpaqueEXT,
+                gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
                 0xff,
                 1,
                 push_constants.constants.sbt_stride,
@@ -158,14 +167,20 @@ void main() {
             );
 
             if (!occluded) {
-                color += eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * light.intensity * light_attenuation * dot(ray_out, normal);
+                // vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                vec3 bsdf_eval = eval_lambert(base_color);
+                color += contribution * bsdf_eval * light.intensity * light_attenuation * max(0, dot(light_direction, normal));
             }
+
+            // material emission
+            color += (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
 
             // bsdf sampling
             vec4 random_values = vec4(seed_random(seed), seed_random(seed), seed_random(seed), seed_random(seed));
-            BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
+            // BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
+            BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
 
-            contribution *= bsdf_sample.contribution / bsdf_sample.pdf * dot(ray_out, normal);
+            contribution *= bsdf_sample.contribution * max(0, dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
             
             ray_direction = bsdf_sample.direction;
             ray_origin = position;
@@ -183,13 +198,19 @@ void main() {
 
             // query environment map color
             vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
-            // color = vec3(0,0,0);
-            break;
+            
+            if (depth == 1) {
+                color = base_color;
+            }
         }
 
-        // AOV data
-        if (depth == 1) {
-            primary_hit_instance = payload.hit_instance;
+        // russian roulette
+        if (depth > 3 ) {
+            float rr_probability = max(0.05f, 1.0 - max(contribution.x, max(contribution.y, contribution.z)));
+            if (seed_random(seed) < rr_probability) {
+                break;
+            }
+            contribution /= (1.0 - rr_probability);
         }
 
         depth += 1;
@@ -202,21 +223,20 @@ void main() {
     //vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
 
     // accumulate color
-    vec4 accum_color;
+    vec3 accum_color;
     if (sample_count <= 1) {
-        accum_color = vec4(color, 1.0);
-        imageStore(images[1], img_coord, accum_color);
+        accum_color = color;
+        imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     } else {
-        accum_color = imageLoad(images[1], img_coord);
-        accum_color = (accum_color * (sample_count) + vec4(color, 1.0)) / (sample_count + 1);
-        imageStore(images[1], img_coord, accum_color);
+        accum_color = (imageLoad(images[1], img_coord).rgb * (sample_count - 1) + color) / (sample_count);
+        imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     }
 
     // output image
     vec3 color_rgb = accum_color.rgb;
     // apply Reinhard TMO
-    vec3 color_tonemapped = vec3(color_rgb.r / 1.0 + color_rgb.r, color_rgb.g / 1.0 + color_rgb.g, color_rgb.b / 1.0 + color_rgb.b);
-    imageStore(images[0], img_coord, vec4(color_tonemapped, 1.0));
+    //vec3 color_tonemapped = vec3(color_rgb.r / 1.0 + color_rgb.r, color_rgb.g / 1.0 + color_rgb.g, color_rgb.b / 1.0 + color_rgb.b);
+    imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
     // instance indices AOV
     vec3 instance_color =  vec3(floor(primary_hit_instance/(255*255))/255.0, floor(primary_hit_instance/255)/255.0, (mod(primary_hit_instance,255))/255.0);
@@ -227,9 +247,9 @@ void main() {
     imageStore(images[3], img_coord, vec4(colored_instance_color, 1.0));
 
     // albedo AOV
-    imageStore(images[4], img_coord, vec4(vec3(0.0), 1.0));
+    imageStore(images[4], img_coord, vec4(primary_hit_albedo, 1.0));
     // normal AOV
-    imageStore(images[5], img_coord, vec4(vec3(0.0), 1.0));
+    imageStore(images[5], img_coord, vec4(primary_hit_normal, 1.0));
     // roughness AOV
-    imageStore(images[6], img_coord, vec4(vec3(0.0), 1.0));
+    imageStore(images[6], img_coord, vec4(vec3(primary_hit_roughness), 1.0));
 }

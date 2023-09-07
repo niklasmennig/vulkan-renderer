@@ -24,6 +24,18 @@ vec3 dir_from_thetaphi(float theta, float phi) {
     return vec3(x,y,z);
 };
 
+DirectionSample sample_uniform_hemisphere(float u, float v) 
+{
+    float theta = u * PI * 0.5;
+    float phi = 2.0 * PI * v;
+
+    DirectionSample dir_sample;
+    dir_sample.direction = dir_from_thetaphi(theta, phi);
+    dir_sample.pdf = 1.0 / PI;
+
+    return dir_sample;
+}
+
 float pdf_cosine_hemisphere(float cos) {
     return cos / PI;
 }

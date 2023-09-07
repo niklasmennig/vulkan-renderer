@@ -2,7 +2,7 @@
 #include "sampling.glsl"
 
 BSDFSample sample_lambert(in vec3 V, in mat3 tbn, in vec3 baseColor, in vec4 random) {
-        DirectionSample dir_sample = sample_cosine_hemisphere(random.x, random.y);
+        DirectionSample dir_sample = sample_uniform_hemisphere(random.x, random.y);
 
         BSDFSample result;
         result.contribution = baseColor;

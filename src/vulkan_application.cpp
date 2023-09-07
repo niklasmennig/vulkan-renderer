@@ -741,6 +741,7 @@ void VulkanApplication::draw_frame() {
     push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
     push_constants.clear_accumulated = render_clear_accumulated;
     push_constants.light_count = lights.size();
+    push_constants.max_depth = ui.max_ray_depth;
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
     // raytracer draw

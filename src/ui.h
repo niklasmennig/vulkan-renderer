@@ -21,6 +21,7 @@ public:
     int displayed_image_index = 0;
     int render_scale_index = 0;
     ivec3 color_under_cursor = ivec3(0);
+    int max_ray_depth = 5;
 
     float camera_speed = 1.0f;
     float camera_fov = 70.0f;
