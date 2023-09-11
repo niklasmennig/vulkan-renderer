@@ -101,6 +101,7 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_output_image("albedo");
     add_output_image("normals");
     add_output_image("roughness");
+    add_output_image("ray_depth");
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);

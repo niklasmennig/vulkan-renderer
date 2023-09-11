@@ -75,6 +75,7 @@ void main() {
     uint depth = 1;
     vec3 color = vec3(0.0);
     vec3 contribution = vec3(1.0);
+    float last_bsdf_pdf = 1;
 
     uint primary_hit_instance = NULL_INSTANCE;
     vec3 primary_hit_albedo = vec3(0);
@@ -144,6 +145,7 @@ void main() {
             }
 
             // direct light
+            float p_nee = 1.0 / push_constants.constants.light_count;
             uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
             Light light = lights_data.lights[light_idx];
             vec3 light_direction = light.position - position;
@@ -167,8 +169,9 @@ void main() {
             );
 
             if (!occluded) {
-                // vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
-                vec3 bsdf_eval = eval_lambert(base_color);
+                float mis_nee = 1.0 / (1.0 + last_bsdf_pdf * p_nee);
+                vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * mis_nee;
+                // vec3 bsdf_eval = eval_lambert(base_color);
                 color += contribution * bsdf_eval * light.intensity * light_attenuation * max(0, dot(light_direction, normal));
             }
 
@@ -177,13 +180,16 @@ void main() {
 
             // bsdf sampling
             vec4 random_values = vec4(seed_random(seed), seed_random(seed), seed_random(seed), seed_random(seed));
-            // BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
-            BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
+            BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
+            // BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
+            float p_bsdf = bsdf_sample.pdf;
+            float mis_bsdf = 1.0 / (1.0 + p_nee);
 
-            contribution *= bsdf_sample.contribution * max(0, dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
+            contribution *= bsdf_sample.contribution * max(0, dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf * mis_bsdf;
             
             ray_direction = bsdf_sample.direction;
             ray_origin = position;
+            last_bsdf_pdf = bsdf_sample.pdf;
 
         } else {
             // ray missed scene
@@ -200,17 +206,17 @@ void main() {
             vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
             
             if (depth == 1) {
-                color = base_color;
+                //color = base_color;
             }
         }
 
         // russian roulette
         if (depth > 3 ) {
-            float rr_probability = max(0.05f, 1.0 - max(contribution.x, max(contribution.y, contribution.z)));
-            if (seed_random(seed) < rr_probability) {
+            float rr_probability = luminance(contribution);
+            if (seed_random(seed) > rr_probability) {
                 break;
             }
-            contribution /= (1.0 - rr_probability);
+            contribution /= rr_probability;
         }
 
         depth += 1;
@@ -252,4 +258,6 @@ void main() {
     imageStore(images[5], img_coord, vec4(primary_hit_normal, 1.0));
     // roughness AOV
     imageStore(images[6], img_coord, vec4(vec3(primary_hit_roughness), 1.0));
+    // ray depth AOV
+    imageStore(images[7], img_coord, vec4(float(depth) / max_depth));
 }

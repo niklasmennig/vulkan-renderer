@@ -807,6 +807,10 @@ void VulkanApplication::draw_frame() {
             break;
         case 4:
             displayed_image = pipeline.get_output_image("roughness");
+            break;
+        case 5:
+            displayed_image = pipeline.get_output_image("ray_depth");
+            break;
     }
 
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);

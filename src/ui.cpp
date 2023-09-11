@@ -19,7 +19,7 @@ void UI::draw() {
     changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
 
     ImGui::SeparatorText("Display");
-    static const char* display_options[]{"Result Image", "Instance Indices", "Albedo", "Normals","Roughness"};
+    static const char* display_options[]{"Result Image", "Instance Indices", "Albedo", "Normals", "Roughness", "Ray Depth"};
     changed |= ImGui::Combo("##display_selector", &displayed_image_index, display_options, sizeof(display_options) / sizeof(char *));
     static const char* render_scale_options[]{"Full Resolution", "Half Resolution", "Quarter Resolution"};
     if (ImGui::Combo("##render_scale_selector", &render_scale_index, render_scale_options, sizeof(render_scale_options) / sizeof(char*))) {

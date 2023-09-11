@@ -92,13 +92,17 @@ ivec3 Image::get_pixel(uint32_t x, uint32_t y) {
 
     char* char_data = reinterpret_cast<char*>(data);
 
+    size_t offset = (y * width + x) * 4;
     switch(format) {
         case VK_FORMAT_B8G8R8A8_UNORM:
-            size_t offset = (y * width + x) * 4;
-
             result.b = (unsigned char)char_data[offset];
             result.g = (unsigned char)char_data[offset+1];
             result.r = (unsigned char)char_data[offset+2];
+            break;
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            result.r = (unsigned char)char_data[offset];
+            result.g = (unsigned char)char_data[offset+1];
+            result.b = (unsigned char)char_data[offset+2];
             break;
     }
 
