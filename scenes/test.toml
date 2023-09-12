@@ -21,8 +21,8 @@
     # [objects.test3]
     # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
-    # [objects.test]
-    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    [objects.mosquito]
+    path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
@@ -59,9 +59,10 @@
     object = "test2"
     position = [0.0, -1.0, 0.0]
 
-    # [instances.test1]
-    # object = "test2"
-    # position = [2.0, 0.0, 0.0]
+    [instances.mosquito]
+    object = "mosquito"
+    position = [0.0, 0.2, 0.0]
+    scale = [5.0, 5.0, 5.0]
 
     # [instances.test2]
     # object = "test"

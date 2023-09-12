@@ -180,9 +180,11 @@ void main() {
                     );
 
                     float light_pdf = 1.0; // point light
-                    float bsdf_pdf = pdf_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                    float bsdf_pdf = pdf_ggx(light_direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                    // float bsdf_pdf = 1.0 / PI;
                     if (!occluded && light_pdf > epsilon && bsdf_pdf > epsilon) {
-                        vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                        vec3 bsdf_eval = eval_ggx(light_direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                        // vec3 bsdf_eval = eval_lambert(base_color);
                         float w = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf);
                         color += w * contribution * bsdf_eval * light.intensity * light_attenuation * abs(dot(light_direction, normal)) / (bsdf_pdf);
                     }
@@ -213,6 +215,13 @@ void main() {
                 // query environment map color
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
                 
+                if (depth <= 1) {
+                    //color = base_color;
+                } else {
+                    // needs to sample environment map as light source
+                    float env_light = 0.1;
+                    //color += contribution * base_color;
+                }
                 break;
             }
 
@@ -253,7 +262,7 @@ void main() {
     // output image
     vec3 color_rgb = accum_color.rgb;
     // apply Reinhard TMO
-    //vec3 color_tonemapped = vec3(color_rgb.r / 1.0 + color_rgb.r, color_rgb.g / 1.0 + color_rgb.g, color_rgb.b / 1.0 + color_rgb.b);
+    color_rgb = vec3(color_rgb.r / 1.0 + color_rgb.r, color_rgb.g / 1.0 + color_rgb.g, color_rgb.b / 1.0 + color_rgb.b);
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
     // instance indices AOV

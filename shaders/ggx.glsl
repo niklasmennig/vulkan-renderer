@@ -109,7 +109,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
       float phi = 2.0 * PI * random.x;
       
-      vec3 localH = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+      vec3 localH = dir_from_thetaphi(theta, phi);
       vec3 H = tbn * localH;  
       
       // compute L from sampled H
@@ -136,7 +136,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = L;
+      res.direction = normalize(L);
       res.pdf = D * cos(theta) * sin(theta);
       res.specular = false;
       return res;
@@ -145,11 +145,12 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       
       // important sampling diffuse
       // pdf = cos(theta) * sin(theta) / PI
-      float theta = asin(sqrt(random.y));
-      float phi = 2.0 * PI * random.x;
       // sampled indirect diffuse direction in normal space
-      vec3 localDiffuseDir = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-      vec3 L = tbn * localDiffuseDir;  
+      DirectionSample diffuse_sample = sample_cosine_hemisphere(random.x, random.y);
+      vec3 localDiffuseDir = diffuse_sample.direction;
+      vec3 L = tbn * localDiffuseDir;
+
+      float theta = acos(localDiffuseDir.z);
       
        // half vector
       vec3 H = normalize(V + L);
@@ -170,8 +171,8 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = L;
-      res.pdf = cos(theta) * sin(theta) / PI;
+      res.direction = normalize(L);
+      res.pdf = diffuse_sample.pdf;
       res.specular = false;
       return res;
     }
@@ -183,8 +184,8 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
     float phi = 2.0 * PI * random.x;
     
-    vec3 localH = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-    vec3 H = basis(N) * localH;  
+    vec3 localH = dir_from_thetaphi(theta, phi);
+    vec3 H = tbn * localH;  
     vec3 L = reflect(-V, H);
 
     // all required dot products
@@ -209,7 +210,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     
     BSDFSample res;
     res.contribution = contrib;
-    res.direction = L;
+    res.direction = normalize(L);
     res.pdf = 1.0;
     res.specular = true;
     return res;
