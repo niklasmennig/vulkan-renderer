@@ -18,9 +18,6 @@
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
 
-    # [objects.test]
-    # path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
-
     # [objects.test3]
     # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
@@ -34,10 +31,28 @@
     path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
 [instances]
-    [instances.test]
+    [instances.h1]
     object = "test"
     scale = [0.1, 0.1, 0.1]
-    position = [0.0, 0.15, 0.0]
+    position = [0.2, 0.15, 0.0]
+    rotation = [110.0, 0.0, 90.0]
+
+    [instances.h2]
+    object = "test"
+    scale = [0.1, 0.1, 0.1]
+    position = [-0.2, 0.15, 0.0]
+    rotation = [110.0, 0.0, -90.0]
+
+    [instances.h3]
+    object = "test"
+    scale = [0.1, 0.1, 0.1]
+    position = [0.0, 0.15, 0.2]
+    rotation = [110.0, 0.0, 0.0]
+
+    [instances.h4]
+    object = "test"
+    scale = [0.1, 0.1, 0.1]
+    position = [0.0, 0.15, -0.2]
     rotation = [110.0, 0.0, 0.0]
 
     [instances.test2]
@@ -65,10 +80,10 @@
     # position = [4.0, 2.0, 0.0]
 
 [lights]
-    [lights.test]
-    position = [3.0, 1.0, 0.0]
-    intensity = [20.0, 20.0, 16.0]
+    [lights.test0]
+    position = [-0.5, 1.0, 0.0]
+    intensity = [1.0, 1.0, 1.0]
 
-    [lights.test2]
-    position = [-3.0, 1.0, 0.0]
-    intensity = [15.0, 25.0, 25.0]
+    [lights.test1]
+    position = [0.5, 1.0, 0.0]
+    intensity = [1.0, 1.0, 1.0]

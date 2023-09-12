@@ -7,6 +7,7 @@ struct BSDFSample {
     vec3 contribution;
     vec3 direction;
     float pdf;
+    bool specular;
 };
 
 struct DirectionSample {

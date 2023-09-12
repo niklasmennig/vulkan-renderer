@@ -12,6 +12,7 @@
 #include "mesh_data.glsl"
 #include "ggx.glsl"
 #include "lambert.glsl"
+#include "mis.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool occluded;
@@ -61,166 +62,176 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 void main() {
     uint max_depth = push_constants.constants.max_depth;
-    uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15;
-
-    vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
-    vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
-    ndc.y *= -1;
-
-    // initialize payload
-    vec3 ray_origin = raygen_data.camera.origin.xyz;
-    vec3 ray_direction = compute_ray_direction(ndc);
-
-    uint depth = 1;
-    vec3 color = vec3(0.0);
-    vec3 contribution = vec3(1.0);
-    float last_bsdf_pdf = 1;
+    uint frame_samples = 4;
 
     uint primary_hit_instance = NULL_INSTANCE;
     vec3 primary_hit_albedo = vec3(0);
     vec3 primary_hit_normal = vec3(0);
     float primary_hit_roughness = 0;
 
-    payload.hit = false;
+    vec3 color_sum = vec3(0.0);
+    uint depth_sum = 0;
+    for (int frame_sample = 0; frame_sample < frame_samples; frame_sample++) {
+        uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15 + frame_sample * 313;
 
-    while (depth <= max_depth) {
+        vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+        vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+        vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
+        ndc.y *= -1;
 
-        // trace scene for hit information
-        traceRayEXT(
-                as,
-                gl_RayFlagsOpaqueEXT,
-                0xff,
-                0,
-                push_constants.constants.sbt_stride,
-                0,
-                ray_origin,
-                epsilon,
-                ray_direction,
-                ray_max,
-                0
-            );
+        // initialize payload
+        vec3 ray_origin = raygen_data.camera.origin.xyz;
+        vec3 ray_direction = compute_ray_direction(ndc);
 
-        if (payload.hit) {
-            // ray intersected with scene geometry
+        uint depth = 1;
+        vec3 color = vec3(0.0);
+        vec3 contribution = vec3(1.0);
+        float last_bsdf_pdf = 1;
 
-            vec3 position = get_vertex_position(payload);
-            vec3 normal = get_vertex_normal(payload);
-            vec2 uv = get_vertex_uv(payload);
-            vec3 tangent = get_vertex_tangent(payload);
+        payload.hit = false;
 
-            vec3 ray_out = normalize(-ray_direction);
-            vec3 new_origin = position;
+        while (depth <= max_depth) {
 
-            MaterialParameters material_parameters = get_material_parameters(payload.hit_instance);
-
-            vec3 bitangent = normalize(cross(normal, tangent));
-            mat3 tbn = mat3(tangent, bitangent, normal);
-            
-            //normal mapping
-            vec3 normal_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
-            vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
-            normal = normalize(tbn * sampled_normal);
-            tbn[2] = normal;
-            
-            // material properties
-            vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
-            vec3 base_color = material_parameters.diffuse_opacity.rgb * base_color_tex.rgb;
-            float opacity = material_parameters.diffuse_opacity.a * base_color_tex.a;
-            vec3 arm = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-            float roughness = material_parameters.roughness_metallic_transmissive_ior.x * arm.y;
-            float metallic = material_parameters.roughness_metallic_transmissive_ior.y * arm.z;
-            vec4 transmission_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-            float transmission = material_parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
-            float ior = material_parameters.roughness_metallic_transmissive_ior.a;
-            float fresnel_reflect = 0.5;
-            bool front_facing = dot(ray_out, normal) > 0;
-
-            // AOV data
-            if (depth == 1) {
-                primary_hit_instance = payload.hit_instance;
-                primary_hit_albedo = base_color;
-                primary_hit_normal = normal;
-                primary_hit_roughness = roughness;
-            }
-
-            // direct light
-            float p_nee = 1.0 / push_constants.constants.light_count;
-            uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
-            Light light = lights_data.lights[light_idx];
-            vec3 light_direction = light.position - position;
-            float light_distance = length(light_direction);
-            light_direction /= light_distance;
-            float light_attenuation = 1.0 / pow(light_distance, 2);
-
-            // cast shadow ray
+            // trace scene for hit information
             traceRayEXT(
-                as,
-                gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
-                0xff,
-                1,
-                push_constants.constants.sbt_stride,
-                1,
-                position,
-                epsilon,
-                light_direction,
-                light_distance - 2 * epsilon,
-                1
-            );
+                    as,
+                    gl_RayFlagsOpaqueEXT,
+                    0xff,
+                    0,
+                    push_constants.constants.sbt_stride,
+                    0,
+                    ray_origin,
+                    epsilon,
+                    ray_direction,
+                    ray_max,
+                    0
+                );
 
-            if (!occluded) {
-                float mis_nee = 1.0 / (1.0 + last_bsdf_pdf * p_nee);
-                vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior) * mis_nee;
-                // vec3 bsdf_eval = eval_lambert(base_color);
-                color += contribution * bsdf_eval * light.intensity * light_attenuation * max(0, dot(light_direction, normal));
-            }
+            if (payload.hit) {
+                // ray intersected with scene geometry
 
-            // material emission
-            color += (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
+                vec3 position = get_vertex_position(payload);
+                vec3 normal = get_vertex_normal(payload);
+                vec2 uv = get_vertex_uv(payload);
+                vec3 tangent = get_vertex_tangent(payload);
 
-            // bsdf sampling
-            vec4 random_values = vec4(seed_random(seed), seed_random(seed), seed_random(seed), seed_random(seed));
-            BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
-            // BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
-            float p_bsdf = bsdf_sample.pdf;
-            float mis_bsdf = 1.0 / (1.0 + p_nee);
+                vec3 ray_out = normalize(-ray_direction);
+                vec3 new_origin = position;
 
-            contribution *= bsdf_sample.contribution * max(0, dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf * mis_bsdf;
-            
-            ray_direction = bsdf_sample.direction;
-            ray_origin = position;
-            last_bsdf_pdf = bsdf_sample.pdf;
+                MaterialParameters material_parameters = get_material_parameters(payload.hit_instance);
 
-        } else {
-            // ray missed scene
+                vec3 bitangent = normalize(cross(normal, tangent));
+                mat3 tbn = mat3(tangent, bitangent, normal);
+                
+                //normal mapping
+                vec3 normal_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
+                vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
+                normal = normalize(tbn * sampled_normal);
+                tbn[2] = normal;
+                
+                // material properties
+                vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
+                vec3 base_color = material_parameters.diffuse_opacity.rgb * base_color_tex.rgb;
+                float opacity = material_parameters.diffuse_opacity.a * base_color_tex.a;
+                vec3 arm = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
+                float roughness = material_parameters.roughness_metallic_transmissive_ior.x * arm.y;
+                float metallic = material_parameters.roughness_metallic_transmissive_ior.y * arm.z;
+                vec4 transmission_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
+                float transmission = material_parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
+                float ior = material_parameters.roughness_metallic_transmissive_ior.a;
+                float fresnel_reflect = 0.5;
+                bool front_facing = dot(ray_out, normal) > 0;
 
-            // calculate theta and phi for environment map
-            float theta = acos(ray_direction.y);
-            float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
+                // bsdf sampling
+                vec4 random_values = vec4(seed_random(seed), seed_random(seed), seed_random(seed), seed_random(seed));
+                BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
+                // BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
 
-            // uv coordinates from theta and phi
-            float u = phi / (2.0 * PI);
-            float v = theta / PI;
+                // AOV data
+                if (depth == 1) {
+                    primary_hit_instance = payload.hit_instance;
+                    primary_hit_albedo = base_color;
+                    primary_hit_normal = normal;
+                    primary_hit_roughness = roughness;
+                }
 
-            // query environment map color
-            vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
-            
-            if (depth == 1) {
-                //color = base_color;
-            }
-        }
+                if (!bsdf_sample.specular) {
+                    // direct light
+                    uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
+                    Light light = lights_data.lights[nonuniformEXT(light_idx)];
+                    vec3 light_direction = light.position - position;
+                    float light_distance = length(light_direction);
+                    light_direction /= light_distance;
+                    float light_attenuation = 1.0 / pow(light_distance, 2);
 
-        // russian roulette
-        if (depth > 3 ) {
-            float rr_probability = luminance(contribution);
-            if (seed_random(seed) > rr_probability) {
+                    // cast shadow ray
+                    traceRayEXT(
+                        as,
+                        gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
+                        0xff,
+                        1,
+                        push_constants.constants.sbt_stride,
+                        1,
+                        position,
+                        epsilon,
+                        light_direction,
+                        light_distance - 2 * epsilon,
+                        1
+                    );
+
+                    float light_pdf = 1.0; // point light
+                    float bsdf_pdf = pdf_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                    if (!occluded && light_pdf > epsilon && bsdf_pdf > epsilon) {
+                        vec3 bsdf_eval = eval_ggx(ray_out, light_direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                        float w = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf);
+                        color += w * contribution * bsdf_eval * light.intensity * light_attenuation * abs(dot(light_direction, normal)) / (bsdf_pdf);
+                    }
+                }
+
+                // material emission
+                //color += (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
+
+                if (bsdf_sample.pdf < epsilon) {break;}
+
+                contribution *= bsdf_sample.contribution * abs(dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
+                
+                ray_direction = bsdf_sample.direction;
+                ray_origin = position;
+                last_bsdf_pdf = bsdf_sample.pdf;
+
+            } else {
+                // ray missed scene
+
+                // calculate theta and phi for environment map
+                float theta = acos(ray_direction.y);
+                float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
+
+                // uv coordinates from theta and phi
+                float u = phi / (2.0 * PI);
+                float v = theta / PI;
+
+                // query environment map color
+                vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
+                
                 break;
             }
-            contribution /= rr_probability;
+
+            // russian roulette
+            if (depth > 3 ) {
+                float rr_probability = luminance(contribution);
+                if (seed_random(seed) > rr_probability) {
+                    break;
+                }
+                contribution /= rr_probability;
+            }
+
+            depth += 1;
         }
 
-        depth += 1;
+        color_sum += color;
+        depth_sum += depth;
     }
+
 
     //color = color / depth;
 
@@ -229,12 +240,13 @@ void main() {
     //vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
 
     // accumulate color
+    vec3 frame_color = color_sum / frame_samples;
     vec3 accum_color;
     if (sample_count <= 1) {
-        accum_color = color;
+        accum_color = frame_color;
         imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     } else {
-        accum_color = (imageLoad(images[1], img_coord).rgb * (sample_count - 1) + color) / (sample_count);
+        accum_color = (imageLoad(images[1], img_coord).rgb * (sample_count - 1) + frame_color) / (sample_count);
         imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     }
 
@@ -259,5 +271,5 @@ void main() {
     // roughness AOV
     imageStore(images[6], img_coord, vec4(vec3(primary_hit_roughness), 1.0));
     // ray depth AOV
-    imageStore(images[7], img_coord, vec4(float(depth) / max_depth));
+    imageStore(images[7], img_coord, vec4(float(depth_sum / frame_samples) / max_depth));
 }

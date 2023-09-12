@@ -31,29 +31,49 @@ float g_smith(float NoV, float NoL, float roughness) {
 }
 
 vec3 eval_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
-    vec3 normal = tbn[2];
-    vec3 h = normalize(ray_in + ray_out);
+  vec3 normal = tbn[2];
+  vec3 h = normalize(ray_in + ray_out);
 
-    float no = clamp(dot(normal, ray_out), 0.0, 1.0);
-    float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
-    float nh = clamp(dot(normal, h), 0.0, 1.0);
-    float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+  float no = clamp(dot(normal, ray_out), 0.0, 1.0);
+  float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
+  float nh = clamp(dot(normal, h), 0.0, 1.0);
+  float oh = clamp(dot(ray_out, h), 0.0, 1.0);
 
-    vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
-    f0 = mix(f0, base_color, metallic);
+  vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
+  f0 = mix(f0, base_color, metallic);
 
-    // specular
-    vec3 f = fresnel_schlick(oh, f0);
-    float d = d_ggx(nh, roughness);
-    float g = g_smith(no, ni, roughness);
-    vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
+  // specular
+  vec3 f = fresnel_schlick(oh, f0);
+  float d = d_ggx(nh, roughness);
+  float g = g_smith(no, ni, roughness);
+  vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
 
-    // diffuse
-    vec3 rho = vec3(1.0) - f;
-    rho *= (1.0 - metallic) * (1.0 - transmission);
-    vec3 diff = rho * base_color / PI;
+  // diffuse
+  vec3 rho = vec3(1.0) - f;
+  rho *= (1.0 - metallic) * (1.0 - transmission);
+  vec3 diff = rho * base_color / PI;
 
-    return (diff + spec) * opacity;
+  return (diff + spec) * opacity;
+}
+
+float pdf_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+  vec3 normal = tbn[2];
+  vec3 h = normalize(ray_in + ray_out);
+
+  float no = clamp(dot(normal, ray_out), 0.0, 1.0);
+  float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
+  float nh = clamp(dot(normal, h), 0.0, 1.0);
+  float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+  float d = d_ggx(nh, roughness);
+  float g = g_smith(no, ni, roughness);
+
+  float theta = dot(ray_out, normal);
+
+  float pdf_diffuse = cos(theta) * sin(theta) / PI;
+  float pdf_specular = d * cos(theta) * sin(theta);
+
+  return (pdf_diffuse + pdf_specular) / 2.0;
 }
 
 BSDFSample sample_ggx(in vec3 V, in mat3 tbn, 
@@ -68,6 +88,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       res.contribution = vec3(1.0);
       res.direction = -V;
       res.pdf = 1.0;
+      res.specular = true;
       return res;
     }
 
@@ -117,6 +138,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       res.contribution = contrib;
       res.direction = L;
       res.pdf = D * cos(theta) * sin(theta);
+      res.specular = false;
       return res;
       
     } else { // diffuse light
@@ -150,6 +172,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       res.contribution = contrib;
       res.direction = L;
       res.pdf = cos(theta) * sin(theta) / PI;
+      res.specular = false;
       return res;
     }
   } else {// specular light
@@ -188,6 +211,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     res.contribution = contrib;
     res.direction = L;
     res.pdf = 1.0;
+    res.specular = true;
     return res;
   } 
 }
