@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 set(CMAKE_CXX_FLAGS -MD)
 
-set(GLSLC_EXE "C:/VulkanSDK/1.3.250.0/Bin/glslc")
+set(GLSLC_EXE "D:/VulkanSDK/Bin/glslc")
 set(SHADER_DIR "${PROJECT_SOURCE_DIR}/shaders")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")

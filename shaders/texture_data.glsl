@@ -24,6 +24,8 @@ vec4 sample_texture(uint instance, vec2 uv, uint offset) {
     if (texture_index == NULL_TEXTURE_INDEX) {
         if (offset == TEXTURE_OFFSET_DIFFUSE) {
             return vec4(1);
+        } else if (offset == TEXTURE_OFFSET_NORMAL) {
+            return vec4(0.5, 0.5, 1.0,0);
         } else if (offset == TEXTURE_OFFSET_ROUGHNESS) {
             return vec4(0,1,0,0);
         } else {

@@ -172,8 +172,8 @@ void main() {
                         1,
                         push_constants.constants.sbt_stride,
                         1,
-                        position,
-                        epsilon,
+                        position + normal * epsilon,
+                        0,
                         light_direction,
                         light_distance - 2 * epsilon,
                         1
@@ -215,13 +215,11 @@ void main() {
                 // query environment map color
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
                 
-                if (depth <= 1) {
-                    //color = base_color;
-                } else {
-                    // needs to sample environment map as light source
-                    float env_light = 0.1;
-                    //color += contribution * base_color;
-                }
+                
+                // needs to sample environment map as light source
+                // float env_light = 1.0;
+                // color += contribution * base_color * env_light;
+                
                 break;
             }
 

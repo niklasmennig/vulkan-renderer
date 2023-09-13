@@ -1,0 +1,19 @@
+[environment]
+    #path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    path = "./hdri/studio_small_03_4k.hdr"
+    # path = "./hdri/vestibule_4k.hdr"
+    # path = "./hdri/rural_asphalt_road_4k.hdr"
+    # path = "./hdri/moonless_golf_4k.hdr"
+
+[objects]
+    [objects.test]
+    path = "./gltf/transmission_test/TransmissionTest.gltf"
+
+[instances]
+    [instances.test]
+    object = "test"
+
+[lights]
+    [lights.test0]
+    position = [0.0, 1.0, 0.0]
+    intensity = [0.2, 0.2, 0.2]
