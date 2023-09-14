@@ -460,6 +460,48 @@ void VulkanApplication::create_default_descriptor_writes() {
     pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
     pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
 
+    int created_area_lights = 0;
+    for (int instance_index = 0; instance_index < loaded_scene_data.instances.size(); instance_index++) {
+        auto instance = loaded_scene_data.instances[instance_index];
+        auto object = loaded_objects[instance.object_name];
+        for (auto node : object.nodes) {
+            auto mesh = object.meshes[node.mesh_index];
+            uint32_t primitive_index = 0;
+            for (auto primitive : mesh.primitives) {
+                if (object.materials[primitive.material_index].emission_texture > -1) {
+                    Shaders::Light light;
+                    light.uint_data[0] = LightData::LightType::AREA;
+                    light.uint_data[1] = instance_index + primitive_index;
+                    light.uint_data[2] = primitive.vertices.size();
+
+                    mat4 transform = instance.transformation * node.matrix;
+
+                    light.float_data[0] = transform[0][0];
+                    light.float_data[1] = transform[1][0];
+                    light.float_data[2] = transform[2][0];
+                    light.float_data[3] = transform[3][0];
+                    light.float_data[4] = transform[0][1];
+                    light.float_data[5] = transform[1][1];
+                    light.float_data[6] = transform[2][1];
+                    light.float_data[7] = transform[3][1];
+                    light.float_data[8] = transform[0][2];
+                    light.float_data[9] = transform[1][2];
+                    light.float_data[10] = transform[2][2];
+                    light.float_data[11] = transform[3][2];
+                    light.float_data[12] = transform[0][3];
+                    light.float_data[13] = transform[1][3];
+                    light.float_data[14] = transform[2][3];
+                    light.float_data[15] = transform[3][3];
+
+                    lights.push_back(light);
+                    created_area_lights++;
+                }
+                primitive_index++;
+            }
+        }
+    }
+    std::cout << "Created " << created_area_lights << " area lights from scene geometry with emissive maps" << std::endl;
+
     int light_buffer_size = lights.size();
     if (light_buffer_size < 1) light_buffer_size = 1;
     lights_buffer = device.create_buffer(sizeof(Shaders::Light) * light_buffer_size);
@@ -742,6 +784,10 @@ void VulkanApplication::draw_frame() {
     push_constants.clear_accumulated = render_clear_accumulated;
     push_constants.light_count = lights.size();
     push_constants.max_depth = ui.max_ray_depth;
+    uint32_t flags = 0;
+    if (ui.direct_lighting_enabled) flags |= 1;
+    if (ui.indirect_lighting_enabled) flags |= 2;
+    push_constants.flags = flags;
     vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
     // raytracer draw
@@ -1428,8 +1474,18 @@ void VulkanApplication::setup() {
 
     for (auto light_data : loaded_scene_data.lights) {
         Shaders::Light light;
-        light.position = light_data.position;
-        light.intensity = light_data.intensity;
+        light.uint_data[0] = light_data.type;
+        switch (light_data.type) {
+            case LightData::LightType::POINT:
+                light.float_data[0] = light_data.position.x;
+                light.float_data[1] = light_data.position.y;
+                light.float_data[2] = light_data.position.z;
+                
+                light.float_data[3] = light_data.intensity.x;
+                light.float_data[4] = light_data.intensity.y;
+                light.float_data[5] = light_data.intensity.z;
+                break;
+        }
         lights.push_back(light);
     }
     std::cout << "Loaded " << lights.size() << " lights" << std::endl;

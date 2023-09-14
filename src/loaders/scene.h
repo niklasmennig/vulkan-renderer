@@ -29,6 +29,13 @@ struct InstanceData
 };
 
 struct LightData {
+    enum LightType {
+        POINT = 0,
+        AREA = 1,
+    };
+
+    uint32_t type;
+    uint32_t instance_index;
     vec3 position;
     vec3 intensity;
 };

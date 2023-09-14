@@ -13,11 +13,7 @@ layout(set = 1, binding = 6) readonly buffer OffsetIndexData {uint data[];} mesh
 
 #define OFFSET_ENTRIES 5
 
-vec3 get_vertex_position(RayPayload payload) {
-    uint primitive = (payload.hit_primitive);
-    uint instance = (payload.hit_instance);
-    vec2 barycentrics = (payload.hit_barycentrics);
-
+void get_vertices(uint instance, uint primitive, out vec3 v0, out vec3 v1, out vec3 v2) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
@@ -25,19 +21,21 @@ vec3 get_vertex_position(RayPayload payload) {
     uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
     uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 1];
 
-    vec3 vert0 = vertices.data[data_offset + indices.data[index_offset + idx0]].xyz;
-    vec3 vert1 = vertices.data[data_offset + indices.data[index_offset + idx1]].xyz;
-    vec3 vert2 = vertices.data[data_offset + indices.data[index_offset + idx2]].xyz;
-    vec3 vert = (vert0 * (1.0 - barycentrics.x - barycentrics.y) + vert1 * barycentrics.x + vert2 * barycentrics.y);
-
-    return vec3(payload.hit_transform * vec4(vert, 1.0));
+    v0 = vertices.data[data_offset + indices.data[index_offset + idx0]].xyz;
+    v1 = vertices.data[data_offset + indices.data[index_offset + idx1]].xyz;
+    v2 = vertices.data[data_offset + indices.data[index_offset + idx2]].xyz;
 }
 
-vec3 get_vertex_normal(RayPayload payload) {
-    uint primitive = (payload.hit_primitive);
-    uint instance = (payload.hit_instance);
-    vec2 barycentrics = (payload.hit_barycentrics);
+vec3 get_vertex_position(uint instance, uint primitive, vec2 barycentrics) {
+    vec3 vert0, vert1, vert2;
+    get_vertices(instance, primitive, vert0, vert1, vert2);
+    
+    vec3 vert = (vert0 * (1.0 - barycentrics.x - barycentrics.y) + vert1 * barycentrics.x + vert2 * barycentrics.y);
 
+    return vert;
+}
+
+vec3 get_vertex_normal(uint instance, uint primitive, vec2 barycentrics) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
@@ -50,14 +48,10 @@ vec3 get_vertex_normal(RayPayload payload) {
     vec3 norm2 = normals.data[data_offset + indices.data[index_offset + idx2]].xyz;
     vec3 norm = (norm0 * (1.0 - barycentrics.x - barycentrics.y) + norm1 * barycentrics.x + norm2 * barycentrics.y);
 
-    return normalize(vec3(payload.hit_transform * vec4(norm, 0.0)));
+    return normalize(norm);
 }
 
-vec2 get_vertex_uv(RayPayload payload) {
-    uint primitive = (payload.hit_primitive);
-    uint instance = (payload.hit_instance);
-    vec2 barycentrics = (payload.hit_barycentrics);
-
+vec2 get_vertex_uv(uint instance, uint primitive, vec2 barycentrics) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
@@ -73,11 +67,7 @@ vec2 get_vertex_uv(RayPayload payload) {
     return uv;
 }
 
-vec3 get_vertex_tangent(RayPayload payload) {
-    uint primitive = (payload.hit_primitive);
-    uint instance = (payload.hit_instance);
-    vec2 barycentrics = (payload.hit_barycentrics);
-
+vec3 get_vertex_tangent(uint instance, uint primitive, vec2 barycentrics) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
@@ -90,7 +80,7 @@ vec3 get_vertex_tangent(RayPayload payload) {
     vec3 tang2 = tangents.data[data_offset + indices.data[index_offset + idx2]].xyz;
     vec3 tang = (tang0 * (1.0 - barycentrics.x - barycentrics.y) + tang1 * barycentrics.x + tang2 * barycentrics.y);
 
-    return normalize(vec3(payload.hit_transform * vec4(tang, 0.0)));
+    return normalize(tang);
 }
 
 #endif

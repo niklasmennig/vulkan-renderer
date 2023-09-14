@@ -34,35 +34,36 @@
     [instances.h1]
     object = "test"
     scale = [0.1, 0.1, 0.1]
-    position = [0.2, 0.15, 0.0]
-    rotation = [110.0, 0.0, 90.0]
+    position = [1.0, 0.15, 0.0]
+    rotation = [90.0, 0.0, 90.0]
 
-    [instances.h2]
-    object = "test"
-    scale = [0.1, 0.1, 0.1]
-    position = [-0.2, 0.15, 0.0]
-    rotation = [110.0, 0.0, -90.0]
+    # [instances.h2]
+    # object = "test"
+    # scale = [0.1, 0.1, 0.1]
+    # position = [-0.2, 0.15, 0.0]
+    # rotation = [110.0, 0.0, -90.0]
 
-    [instances.h3]
-    object = "test"
-    scale = [0.1, 0.1, 0.1]
-    position = [0.0, 0.15, 0.2]
-    rotation = [110.0, 0.0, 0.0]
+    # [instances.h3]
+    # object = "test"
+    # scale = [0.1, 0.1, 0.1]
+    # position = [0.0, 0.15, 0.2]
+    # rotation = [110.0, 0.0, 0.0]
 
-    [instances.h4]
-    object = "test"
-    scale = [0.1, 0.1, 0.1]
-    position = [0.0, 0.15, -0.2]
-    rotation = [110.0, 0.0, 0.0]
+    # [instances.h4]
+    # object = "test"
+    # scale = [0.1, 0.1, 0.1]
+    # position = [0.0, 0.15, -0.2]
+    # rotation = [110.0, 0.0, 0.0]
 
     [instances.test2]
     object = "test2"
     position = [0.0, -1.0, 0.0]
+    rotation = [0.0, 0.0, 0.0]
 
-    [instances.mosquito]
-    object = "mosquito"
-    position = [0.0, 0.2, 0.0]
-    scale = [5.0, 5.0, 5.0]
+    # [instances.mosquito]
+    # object = "mosquito"
+    # position = [0.0, 0.2, 0.0]
+    # scale = [5.0, 5.0, 5.0]
 
     # [instances.test2]
     # object = "test"
@@ -82,9 +83,11 @@
 
 [lights]
     [lights.test0]
+    type = "point"
     position = [-0.5, 1.0, 0.0]
-    intensity = [1.0, 1.0, 1.0]
+    intensity = [0.1, 0.1, 0.1]
 
-    [lights.test1]
-    position = [0.5, 1.0, 0.0]
-    intensity = [1.0, 1.0, 1.0]
+    # [lights.test1]
+    # type = "point"
+    # position = [0.5, 1.0, 0.0]
+    # intensity = [1.0, 1.0, 1.0]

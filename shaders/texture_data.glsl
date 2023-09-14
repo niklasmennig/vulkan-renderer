@@ -15,6 +15,11 @@ layout(set = 1, binding = 8) readonly buffer TextureIndexData {uint data[];} tex
 #define TEXTURE_OFFSET_TRANSMISSIVE 4
 #define TEXTURE_OFFSETS_COUNT 5
 
+bool has_texture(uint instance, uint offset) {
+    uint texture_index = texture_indices.data[instance * TEXTURE_OFFSETS_COUNT + offset];
+    return texture_index != NULL_TEXTURE_INDEX;
+}
+
 vec4 sample_texture(uint id, vec2 uv) {
     return texture(tex[nonuniformEXT(id)], uv);
 }

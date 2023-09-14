@@ -56,7 +56,7 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, bool ignore_shared
         if (shared_buffer_memory.find(alloc_info.memoryTypeIndex) == shared_buffer_memory.end()) {
             // allocate shared memory
             VkMemoryAllocateInfo shared_alloc_info = alloc_info;
-            shared_alloc_info.allocationSize = 300000000;
+            shared_alloc_info.allocationSize = shared_buffer_size;
             shared_buffer_memory.emplace(alloc_info.memoryTypeIndex, SharedDeviceMemory{});
             std::cout << "allocating shared buffer memory" << std::endl;
             if (vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &shared_buffer_memory[alloc_info.memoryTypeIndex].memory) != VK_SUCCESS) {
@@ -66,7 +66,7 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, bool ignore_shared
         SharedDeviceMemory* shared_memory = &shared_buffer_memory[alloc_info.memoryTypeIndex];
         // align memory before allocation
         shared_memory->offset = memory::align_up(shared_memory->offset, mem_requirements.alignment);
-        std::cout << "BINDING BUFFER to shared memory at offset " << shared_memory->offset << " / " << 300000000 << std::endl;
+        std::cout << "BINDING BUFFER to shared memory at offset " << shared_memory->offset << " / " << shared_buffer_size << std::endl;
         vkBindBufferMemory(vulkan_device, result.buffer_handle, shared_memory->memory, shared_memory->offset);
         result.buffer_size = alloc_info.allocationSize;
         result.device_memory = shared_memory->memory;

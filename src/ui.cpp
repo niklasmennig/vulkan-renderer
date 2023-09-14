@@ -27,6 +27,9 @@ void UI::draw() {
         changed = true;
     }
 
+    changed |= ImGui::Checkbox("Direct Lighting", &direct_lighting_enabled);
+    changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
+
     ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
     ImGui::Text("%d Samples", application->get_samples());
@@ -51,7 +54,7 @@ void UI::draw() {
             ImGui::Text("Emission Color");
             changed |= ImGui::ColorPicker3("##emissive_color_picker", (float*)&selected_instance_parameters->emissive_factor);
             ImGui::Text("Emission Strength");
-            changed |= ImGui::SliderFloat("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_factor.a, 0.0, 10.0);
+            changed |= ImGui::SliderFloat("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_factor.a, 0.0, 100.0);
             ImGui::Text("Transmission");
             changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");

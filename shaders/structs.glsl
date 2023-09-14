@@ -2,10 +2,8 @@
 #define INC_STRUCTS
 
 struct Light {
-    vec3 position;
-    float pad1;
-    vec3 intensity;
-    float pad2;
+    uint uint_data[4];
+    float float_data[16];
 };
 
 struct PushConstants {
@@ -14,6 +12,9 @@ struct PushConstants {
     uint clear_accumulated;
     uint light_count;
     uint max_depth;
+    uint flags;
+    float padding1;
+    float padding2;
 };
 
 #endif

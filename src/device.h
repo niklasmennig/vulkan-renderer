@@ -30,6 +30,7 @@ struct Device
     
 
     // maps memory type index to shared memory
+    uint32_t shared_buffer_size = 30000000;
     std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
 
 
