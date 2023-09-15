@@ -80,6 +80,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
               in vec3 baseColor, float opacity, in float metallicness, 
               in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random) 
 {
+    mat3 tbn_local = tbn;
     vec3 N = tbn[2];
 
     // handle opacity
@@ -96,10 +97,10 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     if((2.0 * random.z) < transmission) { // transmitted light
       vec3 forwardNormal = N;
       float frontFacing = dot(V, N);
-      float eta =1.0 / ior;
+      float eta = 1.0 / ior;
       if(frontFacing < 0.0) {
          forwardNormal = -N;
-         tbn[2] = forwardNormal;
+         tbn_local[2] = forwardNormal;
          eta = ior;
       } 
       
@@ -110,7 +111,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       float phi = 2.0 * PI * random.x;
       
       vec3 localH = dir_from_thetaphi(theta, phi);
-      vec3 H = tbn * localH;  
+      vec3 H = tbn_local * localH;  
       
       // compute L from sampled H
       vec3 L = refract(-V, H, eta);
@@ -137,8 +138,8 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       BSDFSample res;
       res.contribution = contrib;
       res.direction = normalize(L);
-      res.pdf = D * cos(theta) * sin(theta);
-      res.specular = false;
+      res.pdf = 1.0;
+      res.specular = true;
       return res;
       
     } else { // diffuse light
@@ -148,7 +149,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       // sampled indirect diffuse direction in normal space
       DirectionSample diffuse_sample = sample_cosine_hemisphere(random.x, random.y);
       vec3 localDiffuseDir = diffuse_sample.direction;
-      vec3 L = tbn * localDiffuseDir;
+      vec3 L = tbn_local * localDiffuseDir;
 
       float theta = acos(localDiffuseDir.z);
       
@@ -185,7 +186,7 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     float phi = 2.0 * PI * random.x;
     
     vec3 localH = dir_from_thetaphi(theta, phi);
-    vec3 H = tbn * localH;  
+    vec3 H = tbn_local * localH;  
     vec3 L = reflect(-V, H);
 
     // all required dot products

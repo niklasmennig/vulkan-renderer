@@ -74,7 +74,7 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
             vec4 emissive_factor = get_material_parameters(instance).emissive_factor;
             light_sample.intensity = (sample_texture(instance, random_values.zw, TEXTURE_OFFSET_EMISSIVE).rgb * emissive_factor.rgb) * emissive_factor.a;
 
-            light_sample.pdf = 1.0 / (pdf_area_light(instance, primitive, transform) * vertex_count);
+            light_sample.pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
             break;
     }
     return light_sample;

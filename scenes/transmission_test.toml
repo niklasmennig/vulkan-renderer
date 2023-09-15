@@ -15,5 +15,6 @@
 
 [lights]
     [lights.test0]
-    position = [0.0, 1.0, 0.0]
-    intensity = [0.2, 0.2, 0.2]
+    type = "point"
+    position = [0.0, 3.0, 3.0]
+    intensity = [10.0, 10.0, 10.0]

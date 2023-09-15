@@ -413,7 +413,7 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.transmissive = material.transmission_texture == -1 ? NULL_TEXTURE_INDEX : material.transmission_texture + texture_index_offset;
 
                 instance.material_parameters.diffuse_opacity = material.diffuse_factor;
-                instance.material_parameters.emissive_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, 1.0);
+                instance.material_parameters.emissive_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.emission_texture == -1 ? 0.0 : 1.0);
                 instance.material_parameters.roughness_metallic_transmissive_ior = vec4(material.roughness_factor, material.metallic_factor, material.transmission_factor, material.ior);
 
                 // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive

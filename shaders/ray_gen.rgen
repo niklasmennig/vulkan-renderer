@@ -25,7 +25,7 @@ layout(set = 0, binding = 1) uniform RayGenerationData {
 } raygen_data;
 layout(set = 0, binding = 2, rgba32f) uniform image2D images[];
 
-layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
+layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
 layout(std430, set = 2, binding = 0) readonly buffer LightsData {Light[] lights;} lights_data;
 
@@ -49,7 +49,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 void main() {
     uint max_depth = push_constants.constants.max_depth;
-    uint frame_samples = 4;
+    uint frame_samples = 8;
 
     uint primary_hit_instance = NULL_INSTANCE;
     vec3 primary_hit_albedo = vec3(0);
@@ -150,7 +150,7 @@ void main() {
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
-                    Light light = lights_data.lights[nonuniformEXT(light_idx)];
+                    Light light = lights_data.lights[light_idx];
                     LightSample light_sample = sample_light(position, random_values, light);
 
                     // cast shadow ray
@@ -174,12 +174,12 @@ void main() {
                         vec3 bsdf_eval = eval_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                         // vec3 bsdf_eval = eval_lambert(base_color);
                         float mis_weight = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf);
-                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_sample.direction, normal)) / (bsdf_pdf);
+                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_sample.direction, normal)) / light_sample.pdf;
                     }
                 }
 
                 // material emission
-                if (has_texture(instance, TEXTURE_OFFSET_EMISSIVE) && (push_constants.constants.flags & 2) == 2) {
+                if ((push_constants.constants.flags & 2) == 2) {
                     vec3 intensity =  (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
                     float mis_weight = 1.0;
                     if (depth > 1) {
