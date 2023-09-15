@@ -62,7 +62,7 @@ void main() {
         uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15 + frame_sample * 313;
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-        vec2 pixel_offset = vec2(seed_random(seed), seed_random(seed)) - vec2(0.5);
+        vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);
         vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
         ndc.y *= -1;
 
@@ -135,7 +135,7 @@ void main() {
                 bool front_facing = dot(ray_out, normal) > 0;
 
                 // bsdf sampling
-                vec4 random_values = vec4(seed_random(seed), seed_random(seed), seed_random(seed), seed_random(seed));
+                vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
                 BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
                 // BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
 
@@ -149,7 +149,7 @@ void main() {
 
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
-                    uint light_idx = uint(floor(push_constants.constants.light_count * seed_random(seed)));
+                    uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
                     LightSample light_sample = sample_light(position, random_values, light);
 
@@ -223,7 +223,7 @@ void main() {
             // russian roulette
             if (depth > 3 ) {
                 float rr_probability = luminance(contribution);
-                if (seed_random(seed) > rr_probability) {
+                if (random_float(seed) > rr_probability) {
                     break;
                 }
                 contribution /= rr_probability;
@@ -264,7 +264,7 @@ void main() {
     vec3 instance_color =  vec3(floor(primary_hit_instance/(255*255))/255.0, floor(primary_hit_instance/255)/255.0, (mod(primary_hit_instance,255))/255.0);
     if (primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
     imageStore(images[2], img_coord, vec4(instance_color, 1.0));
-    vec3 colored_instance_color = vec3(floatConstruct(hash(primary_hit_instance)), floatConstruct(hash(hash(primary_hit_instance))), floatConstruct(hash(hash(hash(primary_hit_instance)))));
+    vec3 colored_instance_color = vec3(prng_float(primary_hit_instance), prng_float(primary_hit_instance), prng_float(primary_hit_instance));
     if (primary_hit_instance == NULL_INSTANCE) colored_instance_color = vec3(1.0);
     imageStore(images[3], img_coord, vec4(colored_instance_color, 1.0));
 

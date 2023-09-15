@@ -1,30 +1,47 @@
-// taken from https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+#ifndef RANDOM_GLSL
+#define RANDOM_GLSL
 
-// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
-uint hash( uint x ) {
-    x += ( x << 10u );
-    x ^= ( x >>  6u );
-    x += ( x <<  3u );
-    x ^= ( x >> 11u );
-    x += ( x << 15u );
-    return x;
+const uint hash_init = 0x811C9DC5;
+
+uint hash_combine(uint h, uint d) {
+    h = (h * 16777619) ^ ( d        & 0xFF);
+    h = (h * 16777619) ^ ((d >>  8) & 0xFF);
+    h = (h * 16777619) ^ ((d >> 16) & 0xFF);
+    h = (h * 16777619) ^ ((d >> 24) & 0xFF);
+
+    return h;
 }
 
-// Construct a float with half-open range [0:1] using low 23 bits.
-// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
-float floatConstruct( uint m ) {
-    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
-    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+uint sample_tea(inout uint v0, inout uint v1) {
+    uint sum = 0;
+    sum += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + sum) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + sum) ^ ((v0 >> 5) + 0x7e95761e);
+    sum += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + sum) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + sum) ^ ((v0 >> 5) + 0x7e95761e);
+    sum += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + sum) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + sum) ^ ((v0 >> 5) + 0x7e95761e);
+    sum += 0x9e3779b9;
+    v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + sum) ^ ((v1 >> 5) + 0xc8013ea4);
+    v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + sum) ^ ((v0 >> 5) + 0x7e95761e);
 
-    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
-    m |= ieeeOne;                          // Add fractional part to 1.0
-
-    float  f = uintBitsToFloat( m );       // Range [1:2]
-    return f - 1.0;                        // Range [0:1]
+    return v1;
 }
 
-// Pseudo-random value in half-open range [0:1].
+uint prng_uint(uint seed) {
+    return hash_combine(hash_init, seed);
+}
 
-float seed_random( inout uint rnd ) { rnd = hash(rnd); return floatConstruct(rnd); }
+float prng_float(uint seed) {
+    uint x = prng_uint(seed);
+    return uintBitsToFloat((x & 0x7FFFFF) | 0x3F800000) - 1;
+}
 
-vec3 random_vec3 (inout uint rnd) { return vec3(seed_random(rnd), seed_random(rnd), seed_random(rnd)); }
+float random_float(inout uint seed) {
+    seed = prng_uint(seed);
+    return prng_float(seed);
+}
+
+#endif
