@@ -30,18 +30,18 @@ uint sample_tea(inout uint v0, inout uint v1) {
     return v1;
 }
 
-uint prng_uint(uint seed) {
-    return hash_combine(hash_init, seed);
+uint prng_uint(uint seed, uint offset) {
+    return hash_combine(hash_combine(hash_init, seed), offset);
 }
 
-float prng_float(uint seed) {
-    uint x = prng_uint(seed);
+float prng_float(uint seed, uint offset) {
+    uint x = prng_uint(seed, offset);
     return uintBitsToFloat((x & 0x7FFFFF) | 0x3F800000) - 1;
 }
 
 float random_float(inout uint seed) {
-    seed = prng_uint(seed);
-    return prng_float(seed);
+    seed = prng_uint(seed, 0);
+    return prng_float(seed, 0);
 }
 
 #endif
