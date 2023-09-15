@@ -74,6 +74,8 @@ void main() {
         vec3 color = vec3(0.0);
         vec3 contribution = vec3(1.0);
 
+        float last_bsdf_pdf = 0.0;
+
         payload.hit = false;
 
         while (depth <= max_depth) {
@@ -171,15 +173,20 @@ void main() {
                     if (!occluded && light_sample.pdf > epsilon && bsdf_pdf > epsilon) {
                         vec3 bsdf_eval = eval_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                         // vec3 bsdf_eval = eval_lambert(base_color);
-                        float w = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf);
-                        color += w * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_sample.direction, normal)) / (bsdf_pdf);
+                        float mis_weight = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf);
+                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_sample.direction, normal)) / (bsdf_pdf);
                     }
                 }
 
                 // material emission
                 if (has_texture(instance, TEXTURE_OFFSET_EMISSIVE) && (push_constants.constants.flags & 2) == 2) {
                     vec3 intensity =  (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
-                    color += intensity * contribution;
+                    float mis_weight = 1.0;
+                    if (depth > 1) {
+                        float pdf_nee = pdf_area_light(payload.hit_instance, payload.hit_primitive, payload.hit_transform);
+                        mis_weight = balance_heuristic(1.0, pdf_nee, 1.0, last_bsdf_pdf);
+                    }
+                    color += mis_weight * intensity * contribution;
                 }
 
                 if (bsdf_sample.pdf < epsilon) {break;}
@@ -188,6 +195,8 @@ void main() {
                 
                 ray_direction = bsdf_sample.direction;
                 ray_origin = position;
+
+                last_bsdf_pdf = bsdf_sample.pdf;
 
             } else {
                 // ray missed scene

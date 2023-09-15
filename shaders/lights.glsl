@@ -13,6 +13,16 @@ struct LightSample {
     float pdf;
 };
 
+float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
+    vec3 v0, v1, v2;
+    get_vertices(instance, primitive, v0, v1, v2);
+    v0 = transform * vec4(v0, 1.0);
+    v1 = transform * vec4(v1, 1.0);
+    v2 = transform * vec4(v2, 1.0);
+    float area = dot(v1-v0, v2-v0);
+    return 1.0 / area;
+}
+
 LightSample sample_light(vec3 position, vec4 random_values, Light light) {
     LightSample light_sample;
     uint type = light.uint_data[0];
@@ -33,8 +43,8 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
             uint vertex_count = light.uint_data[2];
             uint primitive_count = vertex_count / 3;
 
-            uint primitive_index = uint(floor(random_values.x * primitive_count));
-            vec3 light_position = get_vertex_position(instance, primitive_index, random_values.yz);
+            uint primitive = uint(floor(random_values.x * primitive_count));
+            vec3 light_position = get_vertex_position(instance, primitive, random_values.yz);
 
             mat4x3 transform;
             transform[0][0] = light.float_data[0];
@@ -64,16 +74,9 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
             vec4 emissive_factor = get_material_parameters(instance).emissive_factor;
             light_sample.intensity = (sample_texture(instance, random_values.zw, TEXTURE_OFFSET_EMISSIVE).rgb * emissive_factor.rgb) * emissive_factor.a;
 
-            vec3 v0, v1, v2;
-            get_vertices(instance, primitive_index, v0, v1, v2);
-            v0 = transform * vec4(v0, 1.0);
-            v1 = transform * vec4(v1, 1.0);
-            v2 = transform * vec4(v2, 1.0);
-            float area = dot(v1-v0, v2-v0);
-            light_sample.pdf = 1.0 / (vertex_count * area);
+            light_sample.pdf = 1.0 / (pdf_area_light(instance, primitive, transform) * vertex_count);
             break;
     }
     return light_sample;
 }
-
 #endif
