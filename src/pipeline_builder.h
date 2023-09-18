@@ -51,6 +51,7 @@ struct Pipeline {
     std::unordered_map<std::string, uint32_t> named_output_image_indices;
     
     std::vector<Image> output_images;
+    std::vector<VkFormat> output_image_formats;
     std::string output_image_binding_name;
 
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
@@ -85,6 +86,7 @@ struct PipelineBuilderShaderStage
 struct PipelineBuilderOutputImage
 {
     std::string name;
+    VkFormat format;
 };
 
 struct PipelineBuilder
@@ -106,7 +108,7 @@ struct PipelineBuilder
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
-    void add_output_image(std::string name);
+    void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED);
 
     public:
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);

@@ -104,7 +104,7 @@ Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
     return create_buffer(&create_info);
 }
 
-Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties) {
+Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format) {
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = width * height * 4 * array_layers;
@@ -116,6 +116,8 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     result.width = width;
     result.height = height;
 
+    if (format == VK_FORMAT_UNDEFINED) format = surface_format.format;
+
     VkImageType image_type = VK_IMAGE_TYPE_2D;
 
     VkImageCreateInfo image_info{};
@@ -126,7 +128,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = array_layers;
-    image_info.format = surface_format.format;
+    image_info.format = format;
     image_info.tiling = VK_IMAGE_TILING_LINEAR;
     image_info.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     image_info.usage = usage;
@@ -166,7 +168,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_info.image = result.image_handle;
     image_view_info.viewType = view_type;
-    image_view_info.format = surface_format.format;
+    image_view_info.format = format;
     image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_view_info.subresourceRange.baseMipLevel = 0;
     image_view_info.subresourceRange.levelCount = 1;

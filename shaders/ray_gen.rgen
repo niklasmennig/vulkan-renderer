@@ -59,7 +59,8 @@ void main() {
     vec3 color_sum = vec3(0.0);
     uint depth_sum = 0;
     for (int frame_sample = 0; frame_sample < frame_samples; frame_sample++) {
-        uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated * 15 + frame_sample * 313;
+        //uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated + frame_sample * 313;
+        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, hash_combine(uint(push_constants.constants.time), frame_sample))));
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);
@@ -246,18 +247,18 @@ void main() {
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
     vec3 accum_color;
-    if (sample_count <= 1) {
+    if (sample_count <= 2) {
         accum_color = frame_color;
         imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     } else {
-        accum_color = (imageLoad(images[1], img_coord).rgb * (sample_count - 1) + frame_color) / (sample_count);
+        accum_color = (imageLoad(images[1], img_coord).rgb  + frame_color);
         imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     }
 
     // output image
-    vec3 color_rgb = accum_color.rgb;
+    vec3 color_rgb = accum_color.rgb / sample_count;
     // apply Reinhard TMO
-    color_rgb = vec3(color_rgb.r / 1.0 + color_rgb.r, color_rgb.g / 1.0 + color_rgb.g, color_rgb.b / 1.0 + color_rgb.b);
+    color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
     // instance indices AOV
@@ -275,5 +276,5 @@ void main() {
     // roughness AOV
     imageStore(images[6], img_coord, vec4(vec3(primary_hit_roughness), 1.0));
     // ray depth AOV
-    imageStore(images[7], img_coord, vec4(float(depth_sum / frame_samples) / max_depth));
+    imageStore(images[7], img_coord, vec4(float(depth_sum) / frame_samples / max_depth));
 }

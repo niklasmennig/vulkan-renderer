@@ -413,7 +413,7 @@ void VulkanApplication::create_default_descriptor_writes() {
                 instance.texture_indices.transmissive = material.transmission_texture == -1 ? NULL_TEXTURE_INDEX : material.transmission_texture + texture_index_offset;
 
                 instance.material_parameters.diffuse_opacity = material.diffuse_factor;
-                instance.material_parameters.emissive_factor = vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, material.emission_texture == -1 ? 0.0 : 1.0);
+                instance.material_parameters.emissive_factor = material.emission_texture == -1 ? vec4(1,1,1,0) : vec4(material.emissive_factor.r, material.emissive_factor.g, material.emissive_factor.b, 1.0);
                 instance.material_parameters.roughness_metallic_transmissive_ior = vec4(material.roughness_factor, material.metallic_factor, material.transmission_factor, material.ior);
 
                 // pairs of 5 textures: diffuse, normal, roughness, emissive, transmissive
@@ -891,7 +891,7 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
 
-    if (ui.has_changed()) render_clear_accumulated = 0;
+    if (ui.has_changed()) render_clear_accumulated = 1;
     ui.draw();
 
     ImGui::Render();
@@ -1568,7 +1568,7 @@ void VulkanApplication::setup() {
             app->recreate_swapchain();
             //app->recreate_render_image();
             app->render_images_dirty = true;
-            app->render_clear_accumulated = 0;
+            app->render_clear_accumulated = 1;
         } else {
             app->minimized = true;
         }
@@ -1713,7 +1713,7 @@ void VulkanApplication::run() {
         // vertical rotation
         rotation_matrix = glm::rotate(rotation_matrix, camera_look_y, new_right);
 
-        if (camera_look_x != 0 || camera_look_y != 0) render_clear_accumulated = 0;
+        if (camera_look_x != 0 || camera_look_y != 0) render_clear_accumulated = 1;
 
         glm::vec3 new_up = camera_data.up * rotation_matrix;
         new_fwd = glm::cross(new_up, new_right);
@@ -1746,7 +1746,7 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed) render_clear_accumulated = 0;
+        if (camera_changed) render_clear_accumulated = 1;
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data);
