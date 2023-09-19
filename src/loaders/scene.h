@@ -34,6 +34,7 @@ struct LightData {
         AREA = 1,
     };
 
+    std::string name;
     uint32_t type;
     uint32_t instance_index;
     vec3 position;

@@ -103,7 +103,7 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     with_output_image_descriptor("images", 0, 2);
     add_output_image("Result Image");
     add_output_image("Accumulated Color", false, VK_FORMAT_R32G32B32A32_SFLOAT);
-    add_output_image("Instance Indices");
+    add_output_image("Instance Indices", true);
     add_output_image("Instance Indices(Colored)");
     add_output_image("Albedo");
     add_output_image("Normals");

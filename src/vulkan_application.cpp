@@ -777,6 +777,7 @@ void VulkanApplication::draw_frame() {
 
     if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
     material_parameter_buffer.set_data(material_parameters.data());
+    lights_buffer.set_data(lights.data());
 
     Shaders::PushConstants push_constants;
     push_constants.sbt_stride = pipeline.sbt_stride;
@@ -1830,4 +1831,12 @@ vec2 VulkanApplication::get_cursor_position() {
 
 Pipeline VulkanApplication::get_pipeline() {
     return pipeline;
+}
+
+SceneData& VulkanApplication::get_scene_data() {
+    return loaded_scene_data;
+}
+
+std::vector<Shaders::Light>& VulkanApplication::get_lights() {
+    return lights;
 }

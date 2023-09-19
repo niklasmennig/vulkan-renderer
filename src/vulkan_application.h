@@ -173,13 +173,17 @@ struct VulkanApplication {
     void draw_frame();
 
     public:
+
     void set_scene_path(std::string path);
     void setup();
     void run();
     void cleanup();
 
     void set_render_images_dirty();
+
     Pipeline get_pipeline();
+    SceneData& get_scene_data();
+    std::vector<Shaders::Light>& get_lights();
 
     double get_fps();
     uint32_t get_samples();

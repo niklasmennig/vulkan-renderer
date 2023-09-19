@@ -25,8 +25,10 @@ void UI::draw() {
     // output image selection
     if (ImGui::BeginCombo("##display_selector", selected_output_image.c_str())) {
         for (OutputImage img : application->get_pipeline().output_images) {
-            if (ImGui::Selectable(img.name.c_str())) {
-                selected_output_image = img.name;
+            if (!img.hidden) {
+                if (ImGui::Selectable(img.name.c_str())) {
+                    selected_output_image = img.name;
+                }
             }
         }
         ImGui::EndCombo();
@@ -47,6 +49,21 @@ void UI::draw() {
     ImGui::Text("%d Samples", application->get_samples());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
+
+    ImGui::SeparatorText("Light Sources");
+    auto scene_lights = application->get_scene_data().lights;
+    auto& light_data = application->get_lights();
+    for (int i = 0; i < scene_lights.size(); i++) {
+        auto light = scene_lights[i];
+        if (light.type == LightData::LightType::AREA) continue;
+        auto& data = light_data[i];
+        if (ImGui::CollapsingHeader(light.name.c_str())) {
+            if (light.type == LightData::LightType::POINT) {
+                changed |= ImGui::DragFloat3("Position", (float*)&data.float_data);
+                changed |= ImGui::DragFloat3("Intensity", (float*)&data.float_data[3]);
+            }
+        }
+    }
 
     ImGui::SeparatorText("Scene Instance");
     if (selected_instance == -1) {

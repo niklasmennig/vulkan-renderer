@@ -76,6 +76,7 @@ SceneData loaders::load_scene_description(std::string path) {
             auto data = scene_table["lights"][name];
             auto data_table = data.as_table();
             LightData light_data;
+            light_data.name = name;
             if (!data_table->contains("type")) std::cout << "Light definition requires 'type' parameter" << std::endl;
             std::string type_string = data["type"].as_string()->get();
             if (type_string == "point") {
