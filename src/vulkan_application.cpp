@@ -747,14 +747,14 @@ void VulkanApplication::recreate_render_image() {
     pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
 
     std::vector<VkImageMemoryBarrier> transitions;
-    for (Image& i : pipeline.output_images) {
-        transitions.push_back(i.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, i.access));
-        i.layout = VK_IMAGE_LAYOUT_GENERAL;
+    for (OutputImage& output_image : pipeline.output_images) {
+        transitions.push_back(output_image.image.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, output_image.image.access));
+        output_image.image.layout = VK_IMAGE_LAYOUT_GENERAL;
     }
     std::cout << "Transitioning " << transitions.size() << " images" << std::endl;
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
     for(int i = 0; i < pipeline.output_images.size(); i++) {
-        pipeline.set_descriptor_image_binding("images", pipeline.output_images[i], ImageType::Storage, i);
+        pipeline.set_descriptor_image_binding("images", pipeline.output_images[i].image, ImageType::Storage, i);
     }
 }
 
@@ -837,14 +837,14 @@ void VulkanApplication::draw_frame() {
     image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
     // select image to display
-    Image displayed_image = pipeline.get_output_image(ui.selected_output_image);
+    OutputImage displayed_image = pipeline.get_output_image(ui.selected_output_image);
 
-    ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
+    ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    //vkCmdCopyImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
-    vkCmdBlitImage(command_buffer, displayed_image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
-    displayed_image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
+    displayed_image.image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+    //vkCmdCopyImage(command_buffer, displayed_image.image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+    vkCmdBlitImage(command_buffer, displayed_image.image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
+    displayed_image.image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -871,7 +871,6 @@ void VulkanApplication::draw_frame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
 
-    if (ui.has_changed()) render_clear_accumulated = 1;
     ui.draw();
 
     ImGui::Render();
@@ -1563,7 +1562,7 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    vec3 hovered_instance_color = app->pipeline.get_output_image("instance_indices").get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
+                    vec3 hovered_instance_color = app->pipeline.get_output_image("Instance Indices").image.get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
                     int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
                     if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
                     
@@ -1726,7 +1725,7 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed) render_clear_accumulated = 1;
+        if (camera_changed | ui.has_changed()) render_clear_accumulated = 1;
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data);

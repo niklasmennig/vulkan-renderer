@@ -75,9 +75,15 @@ void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t bi
     });
 }
 
-void PipelineBuilder::add_output_image(std::string name, VkFormat format) {
+void PipelineBuilder::add_output_image(std::string name, bool hidden, VkFormat format) {
+    if (name.empty()) {
+        std::cerr << "unnamed output images are not allowed" << std::endl;
+        exit(1);
+    }
+
     output_images.push_back(PipelineBuilderOutputImage {
         name,
+        hidden,
         format
     });
 }
@@ -96,7 +102,7 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     with_output_image_descriptor("images", 0, 2);
     add_output_image("Result Image");
-    add_output_image("Accumulated Color", VK_FORMAT_R32G32B32A32_SFLOAT);
+    add_output_image("Accumulated Color", false, VK_FORMAT_R32G32B32A32_SFLOAT);
     add_output_image("Instance Indices");
     add_output_image("Instance Indices(Colored)");
     add_output_image("Albedo");
@@ -200,20 +206,20 @@ void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, s
 
 void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
     for (int i = 0; i < output_images.size(); i++) {
-        if (output_images[i].width > 0 && output_images[i].height > 0) output_images[i].free();
-        output_images[i] = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
-         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, output_image_formats[i]);
+        if (output_images[i].image.width > 0 && output_images[i].image.height > 0) output_images[i].image.free();
+        output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
+         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, output_images[i].format);
     }
 }
 
-Image Pipeline::get_output_image(std::string name) {
+OutputImage Pipeline::get_output_image(std::string name) {
     uint32_t index = named_output_image_indices[name];
     return output_images[index];
 }
 
 void Pipeline::free() {
     for (int i = 0; i < output_images.size(); i++) {
-        output_images[i].free();
+        output_images[i].image.free();
     }
 
     // free sbt
@@ -249,11 +255,14 @@ Pipeline PipelineBuilder::build() {
         result.output_image_binding_name = output_image_name;
     }
 
-    result.output_images.resize(output_images.size());
     for (int i = 0; i < output_images.size(); i++) {
-        result.output_image_names.push_back(output_images[i].name);
+        OutputImage output_image;
+        output_image.image = Image();
+        output_image.hidden = output_images[i].hidden;
+        output_image.name = output_images[i].name;
+        output_image.format = output_images[i].format;
+        result.output_images.push_back(output_image);
         result.named_output_image_indices[output_images[i].name] = i;
-        result.output_image_formats.push_back(output_images[i].format);
     }
 
     #pragma region DESCRIPTOR SET LAYOUT

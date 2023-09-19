@@ -241,13 +241,13 @@ void main() {
     //color = color / depth;
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
-    uint sample_count = push_constants.constants.clear_accumulated;
+    uint sample_count = max(1, push_constants.constants.clear_accumulated);
     //vec3 color = clamp(sample_sum / float(frame_samples), vec3(0,0,0), vec3(30,30,30));
 
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
     vec3 accum_color;
-    if (sample_count <= 2) {
+    if (sample_count <= 1) {
         accum_color = frame_color;
         imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     } else {

@@ -6,7 +6,7 @@
 void UI::init(VulkanApplication* app) {
     this->application = app;
 
-    selected_output_image = app->get_pipeline().output_image_names[0];
+    selected_output_image = app->get_pipeline().output_images[0].name;
 }
 
 void UI::draw() {
@@ -24,9 +24,9 @@ void UI::draw() {
 
     // output image selection
     if (ImGui::BeginCombo("##display_selector", selected_output_image.c_str())) {
-        for (std::string img_name : application->get_pipeline().output_image_names) {
-            if (ImGui::Selectable(img_name.c_str())) {
-                selected_output_image = img_name;
+        for (OutputImage img : application->get_pipeline().output_images) {
+            if (ImGui::Selectable(img.name.c_str())) {
+                selected_output_image = img.name;
             }
         }
         ImGui::EndCombo();

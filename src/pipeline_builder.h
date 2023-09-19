@@ -28,6 +28,14 @@ struct ShaderBindingTable
     VkStridedDeviceAddressRegionKHR region_callable;
 };
 
+struct OutputImage
+{
+    Image image;
+    std::string name;
+    bool hidden;
+    VkFormat format;
+};
+
 struct Pipeline {
     Device* device;
     uint32_t max_set;
@@ -49,10 +57,8 @@ struct Pipeline {
     };
     std::unordered_map<std::string, SetBinding> named_descriptors;
     std::unordered_map<std::string, uint32_t> named_output_image_indices;
-    std::vector<std::string> output_image_names;
     
-    std::vector<Image> output_images;
-    std::vector<VkFormat> output_image_formats;
+    std::vector<OutputImage> output_images;
     std::string output_image_binding_name;
 
     Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
@@ -62,7 +68,7 @@ struct Pipeline {
 
     void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent);
 
-    Image get_output_image(std::string name);
+    OutputImage get_output_image(std::string name);
 
     void free();
 };
@@ -87,6 +93,7 @@ struct PipelineBuilderShaderStage
 struct PipelineBuilderOutputImage
 {
     std::string name;
+    bool hidden;
     VkFormat format;
 };
 
@@ -109,7 +116,7 @@ struct PipelineBuilder
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
-    void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED);
+    void add_output_image(std::string name, bool hidden = false, VkFormat format = VK_FORMAT_UNDEFINED);
 
     public:
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
