@@ -104,6 +104,14 @@ ivec3 Image::get_pixel(uint32_t x, uint32_t y) {
             result.g = (unsigned char)char_data[offset+1];
             result.b = (unsigned char)char_data[offset+2];
             break;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset) * 4]));
+            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset+1) * 4]));
+            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset+2) * 4]));
+            break;
+        default:
+            std::cerr << "get_pixel not implemented for this image format" << std::endl;
+            break;
     }
 
     return result;

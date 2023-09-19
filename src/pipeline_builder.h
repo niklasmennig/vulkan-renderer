@@ -49,6 +49,7 @@ struct Pipeline {
     };
     std::unordered_map<std::string, SetBinding> named_descriptors;
     std::unordered_map<std::string, uint32_t> named_output_image_indices;
+    std::vector<std::string> output_image_names;
     
     std::vector<Image> output_images;
     std::vector<VkFormat> output_image_formats;

@@ -837,27 +837,7 @@ void VulkanApplication::draw_frame() {
     image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
     // select image to display
-    Image displayed_image;
-    switch(ui.displayed_image_index) {
-        case 0:
-            displayed_image = pipeline.get_output_image("result");
-            break;
-        case 1:
-            displayed_image = pipeline.get_output_image("instance_indices_colored");
-            break;
-        case 2:
-            displayed_image = pipeline.get_output_image("albedo");
-            break;
-        case 3:
-            displayed_image = pipeline.get_output_image("normals");
-            break;
-        case 4:
-            displayed_image = pipeline.get_output_image("roughness");
-            break;
-        case 5:
-            displayed_image = pipeline.get_output_image("ray_depth");
-            break;
-    }
+    Image displayed_image = pipeline.get_output_image(ui.selected_output_image);
 
     ui.color_under_cursor = displayed_image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
@@ -1847,4 +1827,8 @@ vec2 VulkanApplication::get_cursor_position() {
     double x, y;
     glfwGetCursorPos(window, &x, &y);
     return vec2(x, y);
+}
+
+Pipeline VulkanApplication::get_pipeline() {
+    return pipeline;
 }

@@ -5,6 +5,8 @@
 
 void UI::init(VulkanApplication* app) {
     this->application = app;
+
+    selected_output_image = app->get_pipeline().output_image_names[0];
 }
 
 void UI::draw() {
@@ -19,8 +21,18 @@ void UI::draw() {
     changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
 
     ImGui::SeparatorText("Display");
-    static const char* display_options[]{"Result Image", "Instance Indices", "Albedo", "Normals", "Roughness", "Ray Depth"};
-    changed |= ImGui::Combo("##display_selector", &displayed_image_index, display_options, sizeof(display_options) / sizeof(char *));
+
+    // output image selection
+    if (ImGui::BeginCombo("##display_selector", selected_output_image.c_str())) {
+        for (std::string img_name : application->get_pipeline().output_image_names) {
+            if (ImGui::Selectable(img_name.c_str())) {
+                selected_output_image = img_name;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+
     static const char* render_scale_options[]{"Full Resolution", "Half Resolution", "Quarter Resolution"};
     if (ImGui::Combo("##render_scale_selector", &render_scale_index, render_scale_options, sizeof(render_scale_options) / sizeof(char*))) {
         application->set_render_images_dirty();

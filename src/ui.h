@@ -14,11 +14,14 @@ private:
     bool hovered = false;
     VulkanApplication* application;
 
+    std::vector<std::string> output_image_names;
+
 public:
     int selected_instance = -1;
     InstanceData::MaterialParameters* selected_instance_parameters = nullptr;
 
-    int displayed_image_index = 0;
+    std::string selected_output_image;
+
     int render_scale_index = 0;
     ivec3 color_under_cursor = ivec3(0);
     int max_ray_depth = 5;

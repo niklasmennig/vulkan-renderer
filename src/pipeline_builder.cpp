@@ -95,14 +95,14 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     with_output_image_descriptor("images", 0, 2);
-    add_output_image("result");
-    add_output_image("color_accum", VK_FORMAT_R32G32B32A32_SFLOAT);
-    add_output_image("instance_indices");
-    add_output_image("instance_indices_colored");
-    add_output_image("albedo");
-    add_output_image("normals");
-    add_output_image("roughness");
-    add_output_image("ray_depth");
+    add_output_image("Result Image");
+    add_output_image("Accumulated Color", VK_FORMAT_R32G32B32A32_SFLOAT);
+    add_output_image("Instance Indices");
+    add_output_image("Instance Indices(Colored)");
+    add_output_image("Albedo");
+    add_output_image("Normals");
+    add_output_image("Roughness");
+    add_output_image("Ray Depth");
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -251,6 +251,7 @@ Pipeline PipelineBuilder::build() {
 
     result.output_images.resize(output_images.size());
     for (int i = 0; i < output_images.size(); i++) {
+        result.output_image_names.push_back(output_images[i].name);
         result.named_output_image_indices[output_images[i].name] = i;
         result.output_image_formats.push_back(output_images[i].format);
     }

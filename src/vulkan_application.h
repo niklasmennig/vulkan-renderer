@@ -179,6 +179,7 @@ struct VulkanApplication {
     void cleanup();
 
     void set_render_images_dirty();
+    Pipeline get_pipeline();
 
     double get_fps();
     uint32_t get_samples();
