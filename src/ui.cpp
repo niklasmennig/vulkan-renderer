@@ -19,6 +19,10 @@ void UI::draw() {
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
     changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
+    
+    if (ImGui::Button("Save Screenshot")) {
+        application->save_screenshot("screenshot.exr");
+    }
 
     ImGui::SeparatorText("Display");
 
@@ -50,11 +54,13 @@ void UI::draw() {
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
 
+    // realtime editing of light sources (point lights)
     ImGui::SeparatorText("Light Sources");
     auto scene_lights = application->get_scene_data().lights;
     auto& light_data = application->get_lights();
     for (int i = 0; i < scene_lights.size(); i++) {
         auto light = scene_lights[i];
+        // area lights are edited via the instance editor
         if (light.type == LightData::LightType::AREA) continue;
         auto& data = light_data[i];
         if (ImGui::CollapsingHeader(light.name.c_str())) {
@@ -65,6 +71,7 @@ void UI::draw() {
         }
     }
 
+    // realtime editing of instance material parameters
     ImGui::SeparatorText("Scene Instance");
     if (selected_instance == -1) {
         ImGui::Text("No instance selected");

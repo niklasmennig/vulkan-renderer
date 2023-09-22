@@ -185,6 +185,8 @@ struct VulkanApplication {
     SceneData& get_scene_data();
     std::vector<Shaders::Light>& get_lights();
 
+    void save_screenshot(std::string path);
+
     double get_fps();
     uint32_t get_samples();
     vec2 get_cursor_position();

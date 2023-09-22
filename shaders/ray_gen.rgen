@@ -254,7 +254,7 @@ void main() {
     // output image
     vec3 color_rgb = accum_color.rgb / sample_count;
     // apply Reinhard TMO
-    color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
+    //color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
     // instance indices AOV

@@ -1815,6 +1815,12 @@ void VulkanApplication::set_render_images_dirty() {
     render_images_dirty = true;
 }
 
+void VulkanApplication::save_screenshot(std::string path) {
+    Image img = pipeline.get_output_image("result").image;
+
+    loaders::save_exr_image(img, path);
+}
+
 double VulkanApplication::get_fps() {
     return 1.0 / frame_delta.count();
 }
