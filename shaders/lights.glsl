@@ -77,6 +77,8 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
 
             light_sample.pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
             break;
+        case 2: // DIRECTIONAL LIGHT
+            break;
     }
     return light_sample;
 }
