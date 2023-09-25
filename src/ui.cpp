@@ -1,5 +1,7 @@
 #include "ui.h"
 
+#include <format>
+
 #include "imgui/imgui.h"
 #include "vulkan_application.h"
 
@@ -66,6 +68,9 @@ void UI::draw() {
         if (ImGui::CollapsingHeader(light.name.c_str())) {
             if (light.type == LightData::LightType::POINT) {
                 changed |= ImGui::DragFloat3("Position", (float*)&data.float_data);
+                changed |= ImGui::DragFloat3("Intensity", (float*)&data.float_data[3]);
+            } else if (light.type == LightData::LightType::DIRECTIONAL) {
+                changed |= ImGui::DragFloat3("Direction", (float*)&data.float_data);
                 changed |= ImGui::DragFloat3("Intensity", (float*)&data.float_data[3]);
             }
         }

@@ -1465,6 +1465,14 @@ void VulkanApplication::setup() {
                 light.float_data[4] = light_data.intensity.y;
                 light.float_data[5] = light_data.intensity.z;
                 break;
+            case LightData::LightType::DIRECTIONAL:
+                light.float_data[0] = light_data.direction.x;
+                light.float_data[1] = light_data.direction.y;
+                light.float_data[2] = light_data.direction.z;
+                
+                light.float_data[3] = light_data.intensity.x;
+                light.float_data[4] = light_data.intensity.y;
+                light.float_data[5] = light_data.intensity.z;
         }
         lights.push_back(light);
     }

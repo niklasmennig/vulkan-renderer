@@ -11,6 +11,6 @@
 
 [lights]
     [lights.sun]
-    type = "point"
-    position = [0.0, 100.0, 0.0]
-    intensity = [10000.0, 10000.0, 10000.0]
+    type = "directional"
+    direction = [0.0, -1.0, 0.0]
+    intensity = [1.0, 1.0, 1.0]

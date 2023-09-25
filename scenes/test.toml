@@ -82,12 +82,12 @@
     # position = [4.0, 2.0, 0.0]
 
 [lights]
-    [lights.test0]
-    type = "point"
-    position = [-0.5, 1.0, 0.0]
-    intensity = [23.0, 17.0, 23.0]
-
-    # [lights.test1]
+    # [lights.test0]
     # type = "point"
-    # position = [0.5, 1.0, 0.0]
-    # intensity = [1.0, 1.0, 1.0]
+    # position = [-0.5, 1.0, 0.0]
+    # intensity = [23.0, 17.0, 23.0]
+
+    [lights.test1]
+    type = "directional"
+    direction = [0.0, -1.0, 0.0]
+    intensity = [1.0, 1.0, 1.0]

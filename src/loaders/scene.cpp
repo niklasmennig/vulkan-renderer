@@ -89,6 +89,16 @@ SceneData loaders::load_scene_description(std::string path) {
                 float int_y = data["intensity"][1].as_floating_point()->get();
                 float int_z = data["intensity"][2].as_floating_point()->get();
                 light_data.intensity = vec3(int_x, int_y, int_z);
+            } else if (type_string == "directional") {
+                light_data.type = LightData::LightType::DIRECTIONAL;
+                float dir_x = data["direction"][0].as_floating_point()->get();
+                float dir_y = data["direction"][1].as_floating_point()->get();
+                float dir_z = data["direction"][2].as_floating_point()->get();
+                light_data.direction = vec3(dir_x, dir_y, dir_z);
+                float int_x = data["intensity"][0].as_floating_point()->get();
+                float int_y = data["intensity"][1].as_floating_point()->get();
+                float int_z = data["intensity"][2].as_floating_point()->get();
+                light_data.intensity = vec3(int_x, int_y, int_z);
             }
             lights.push_back(light_data);
         }
