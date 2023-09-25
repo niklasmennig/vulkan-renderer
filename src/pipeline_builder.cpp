@@ -18,7 +18,7 @@ using vec4 = glm::vec4;
 namespace Shaders
 {
     using uint = uint32_t;
-    #include "../shaders/structs.glsl"
+    #include "../shaders/interface.glsl"
 }
 
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
@@ -98,9 +98,9 @@ PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, 
 
 PipelineBuilder PipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
-    add_descriptor("acceleration_structure", 0, 0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("camera_parameters", 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    with_output_image_descriptor("images", 0, 2);
+    add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    with_output_image_descriptor("images", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_IMAGES);
     add_output_image("Result Image");
     add_output_image("Accumulated Color", false, VK_FORMAT_R32G32B32A32_SFLOAT);
     add_output_image("Instance Indices", true);
@@ -109,19 +109,18 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_output_image("Normals");
     add_output_image("Roughness");
     add_output_image("Ray Depth");
+    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // object (meshes + materials + textures) descriptors (set 1)
-    add_descriptor("mesh_indices", 1, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_vertices", 1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_normals", 1, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_texcoords", 1, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_tangents", 1, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_data_offsets", 1, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_offset_indices", 1, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("textures", 1, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 128);
-    add_descriptor("texture_indices", 1, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("material_parameters", 1, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    // other scene descriptors (set 2)
-    add_descriptor("lights", 2, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_normals", DESCRIPTOR_SET_OBJECTS, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_texcoords", DESCRIPTOR_SET_OBJECTS, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_tangents", DESCRIPTOR_SET_OBJECTS, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_data_offsets", DESCRIPTOR_SET_OBJECTS, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_offset_indices", DESCRIPTOR_SET_OBJECTS, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("textures", DESCRIPTOR_SET_OBJECTS, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 128);
+    add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
     add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen");
     add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit");
@@ -131,6 +130,11 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
 
     return *this;
 }
+
+ PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
+    add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
+    return *this;
+ }
 
 Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];

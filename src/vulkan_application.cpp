@@ -337,8 +337,8 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     VkWriteDescriptorSet descriptor_write_as{};
     descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptor_write_as.dstSet = pipeline.descriptor_sets[0];
-    descriptor_write_as.dstBinding = 0;
+    descriptor_write_as.dstSet = pipeline.descriptor_sets[DESCRIPTOR_SET_FRAMEWORK];
+    descriptor_write_as.dstBinding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE;
     descriptor_write_as.dstArrayElement = 0;
     descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     descriptor_write_as.descriptorCount = 1;
@@ -1469,8 +1469,6 @@ void VulkanApplication::setup() {
         lights.push_back(light);
     }
     std::cout << "Loaded " << lights.size() << " lights" << std::endl;
-
-    // vkEndCommandBuffer(command_buffer);
     
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1478,19 +1476,6 @@ void VulkanApplication::setup() {
     submit_info.signalSemaphoreCount = 0;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffer;
-
-    // vkQueueSubmit(graphics_queue, 1, &submit_info, immediate_fence);
-
-    // vkWaitForFences(logical_device, 1, &immediate_fence, VK_TRUE, UINT64_MAX);
-    // vkResetFences(logical_device, 1, &immediate_fence);
-
-    // // BUILD TLAS
-    // vkResetCommandBuffer(command_buffer, 0);
-
-    // if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
-    // {
-    //     throw std::runtime_error("error beginning command buffer");
-    // }
 
     scene_tlas = build_tlas();
 
@@ -1816,7 +1801,7 @@ void VulkanApplication::set_render_images_dirty() {
 }
 
 void VulkanApplication::save_screenshot(std::string path) {
-    Image img = pipeline.get_output_image("result").image;
+    Image img = pipeline.get_output_image("Result").image;
 
     loaders::save_exr_image(img, path);
 }

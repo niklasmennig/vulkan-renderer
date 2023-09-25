@@ -26,8 +26,7 @@ const std::string camera_data_path = "./camera_data.toml";
 namespace Shaders
 {
     using uint = uint32_t;
-    #include "../shaders/camera.glsl"
-    #include "../shaders/structs.glsl"
+    #include "../shaders/interface.glsl"
 }
 
 struct QueueFamilyIndices

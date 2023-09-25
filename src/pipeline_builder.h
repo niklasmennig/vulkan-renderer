@@ -122,5 +122,7 @@ struct PipelineBuilder
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
     PipelineBuilder with_default_pipeline();
 
+    PipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+
     Pipeline build();
 };

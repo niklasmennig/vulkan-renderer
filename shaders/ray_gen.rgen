@@ -3,9 +3,8 @@
 #extension GL_EXT_ray_flags_primitive_culling : enable
 #extension GL_GOOGLE_include_directive : enable
 
-#include "structs.glsl"
+#include "interface.glsl"
 #include "common.glsl"
-#include "camera.glsl"
 #include "random.glsl"
 #include "payload.glsl"
 #include "texture_data.glsl"
@@ -19,15 +18,15 @@
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool occluded;
 
-layout(set = 0, binding = 0) uniform accelerationStructureEXT as;
-layout(set = 0, binding = 1) uniform RayGenerationData {
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
     CameraData camera;
 } raygen_data;
-layout(set = 0, binding = 2, rgba32f) uniform image2D images[];
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 2, rgba32f) uniform image2D images[];
+layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
 
 layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
-layout(std430, set = 2, binding = 0) readonly buffer LightsData {Light[] lights;} lights_data;
 
 
 vec3 compute_ray_direction(vec2 ndc) {

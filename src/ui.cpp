@@ -20,10 +20,6 @@ void UI::draw() {
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
     changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
     
-    if (ImGui::Button("Save Screenshot")) {
-        application->save_screenshot("screenshot.exr");
-    }
-
     ImGui::SeparatorText("Display");
 
     // output image selection
@@ -47,6 +43,10 @@ void UI::draw() {
 
     changed |= ImGui::Checkbox("Direct Lighting", &direct_lighting_enabled);
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
+    
+    if (ImGui::Button("Save Screenshot")) {
+        application->save_screenshot("screenshot.exr");
+    }
 
     ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
@@ -80,7 +80,7 @@ void UI::draw() {
     }
     if (selected_instance_parameters != nullptr) {
         if (ImGui::CollapsingHeader("Instance Editor")) {
-            ImGui::BeginChild("instance_editor");
+            //ImGui::BeginChild("instance_editor");
             ImGui::Text("Diffuse");
             changed |= ImGui::ColorPicker4("##diffuse_factor_slider", (float*)&selected_instance_parameters->diffuse_opacity);
             ImGui::Text("Roughness");
@@ -95,7 +95,7 @@ void UI::draw() {
             changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");
             changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 3.0);
-            ImGui::EndChild();
+            //ImGui::EndChild();
         }
     }
 

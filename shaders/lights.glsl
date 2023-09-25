@@ -1,7 +1,7 @@
 #ifndef LIGHTS_GLSL
 #define LIGHT_GLSL
 
-#include "structs.glsl"
+#include "interface.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "material_parameters.glsl"
