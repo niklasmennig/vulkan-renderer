@@ -1,10 +1,11 @@
-#include "vulkan.h"
-#include "device.h"
-#include "buffer.h"
+#include "core/vulkan.h"
+#include "core/device.h"
+#include "core/buffer.h"
 #include "loaders/image.h"
 #include "loaders/scene.h"
 #include "loaders/geometry_gltf.h"
 #include "loaders/toml.hpp"
+#include "processors/gltf_processor.h"
 #include "pipeline_builder.h"
 #include "ui.h"
 
@@ -125,6 +126,8 @@ struct VulkanApplication {
 
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;
+
+    GLTFProcessor* gltf_processor = nullptr;
 
     // these use loaded_mesh_index
     std::vector<MeshData> created_meshes;

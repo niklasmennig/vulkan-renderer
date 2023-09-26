@@ -1,5 +1,5 @@
 #include "image.h"
-#include "../device.h"
+#include "../core/device.h"
 
 #include <stdexcept>
 

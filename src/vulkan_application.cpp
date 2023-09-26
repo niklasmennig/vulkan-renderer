@@ -1428,6 +1428,10 @@ void VulkanApplication::setup() {
         auto full_object_path = scene_path.parent_path() / std::filesystem::path(std::get<1>(object_path));
         auto object_name = std::get<0>(object_path);
         GLTFData gltf = loaders::load_gltf(full_object_path.string());
+        if (gltf_processor) {
+            gltf_processor->set_data(gltf);
+            gltf_processor->process();
+        }
         loaded_objects[object_name] = gltf;
         loaded_mesh_index[object_name] = created_meshes.size();
         for (auto &mesh : gltf.meshes) {
@@ -1474,6 +1478,7 @@ void VulkanApplication::setup() {
                 light.float_data[3] = light_data.intensity.x;
                 light.float_data[4] = light_data.intensity.y;
                 light.float_data[5] = light_data.intensity.z;
+                break;
         }
         lights.push_back(light);
     }
@@ -1542,7 +1547,7 @@ void VulkanApplication::setup() {
             app->recreate_swapchain();
             //app->recreate_render_image();
             app->render_images_dirty = true;
-            app->render_clear_accumulated = 1;
+            app->render_clear_accumulated = 0;
         } else {
             app->minimized = true;
         }
@@ -1688,7 +1693,7 @@ void VulkanApplication::run() {
         // vertical rotation
         rotation_matrix = glm::rotate(rotation_matrix, camera_look_y, new_right);
 
-        if (camera_look_x != 0 || camera_look_y != 0) render_clear_accumulated = 1;
+        if (camera_look_x != 0 || camera_look_y != 0) camera_changed = true;
 
         glm::vec3 new_up = camera_data.up * rotation_matrix;
         new_fwd = glm::cross(new_up, new_right);
@@ -1721,17 +1726,18 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed | ui.has_changed()) render_clear_accumulated = 1;
+        if (camera_changed | ui.has_changed()) render_clear_accumulated = 0;
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data);
 
+        if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
+        
         draw_frame();
 
         camera_look_x = 0;
         camera_look_y = 0;
 
-        if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
     }
 
     // persist camera data

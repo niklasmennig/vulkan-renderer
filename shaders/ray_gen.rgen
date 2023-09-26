@@ -214,8 +214,7 @@ void main() {
                 
                 
                 // needs to sample environment map as light source
-                // float env_light = 1.0;
-                // color += contribution * base_color * env_light;
+                // color += contribution * base_color / (PI / 2.0);
                 
                 break;
             }
@@ -237,7 +236,7 @@ void main() {
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
-    uint sample_count = max(1, push_constants.constants.clear_accumulated);
+    uint sample_count = push_constants.constants.clear_accumulated;
 
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
@@ -251,7 +250,7 @@ void main() {
     }
 
     // output image
-    vec3 color_rgb = accum_color.rgb / sample_count;
+    vec3 color_rgb = accum_color.rgb / (sample_count);
     // apply Reinhard TMO
     //color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));

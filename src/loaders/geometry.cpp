@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../mikktspace/mikktspace.h"
+#include "mikktspace/mikktspace.h"
 
 int get_num_faces(const SMikkTSpaceContext* ctx) {
     GLTFPrimitive* mesh_data = (GLTFPrimitive*)ctx->m_pUserData;

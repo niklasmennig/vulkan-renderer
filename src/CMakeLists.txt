@@ -2,16 +2,16 @@ add_subdirectory(imgui)
 
 set(SRC_RENDERER
     ${SRC_IMGUI}
-    src/mikktspace/mikktspace.c
-    src/memory.cpp
-    src/image.cpp
+    src/core/memory.cpp
+    src/core/buffer.cpp
+    src/core/device.cpp
+    src/core/image.cpp
+    src/loaders/mikktspace/mikktspace.c
     src/loaders/geometry.cpp
-    #src/loaders/geometry_obj.cpp -- deprecated
     src/loaders/geometry_gltf.cpp
     src/loaders/image.cpp
     src/loaders/scene.cpp
-    src/buffer.cpp
-    src/device.cpp
+    src/processors/gltf_processor.cpp
     src/pipeline_builder.cpp
     src/ui.cpp
     src/vulkan_application.cpp

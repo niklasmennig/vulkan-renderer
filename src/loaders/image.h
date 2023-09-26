@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "../image.h"
+#include "../core/image.h"
 
 struct Device;
 

@@ -1,7 +1,7 @@
 #include "pipeline_builder.h"
 
-#include "buffer.h"
-#include "memory.h"
+#include "core/buffer.h"
+#include "core/memory.h"
 
 #include "loaders/shader_spirv.h"
 
@@ -131,10 +131,17 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     return *this;
 }
 
- PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
-    add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
-    return *this;
- }
+PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
+add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
+return *this;
+}
+
+PipelineBuilder Device::create_pipeline_builder() {
+    PipelineBuilder res;
+    res.device = this;
+
+    return res;
+}
 
 Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];

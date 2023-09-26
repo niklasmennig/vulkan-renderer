@@ -1,6 +1,6 @@
 #pragma once
 
-#include "device.h"
+#include "core/device.h"
 #include "loaders/image.h"
 
 #include <vector>
