@@ -25,6 +25,7 @@ public:
     int render_scale_index = 0;
     ivec3 color_under_cursor = ivec3(0);
     int max_ray_depth = 5;
+    int frame_samples = 4;
     bool direct_lighting_enabled;
     bool indirect_lighting_enabled;
 

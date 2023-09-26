@@ -785,6 +785,7 @@ void VulkanApplication::draw_frame() {
     push_constants.clear_accumulated = render_clear_accumulated;
     push_constants.light_count = lights.size();
     push_constants.max_depth = ui.max_ray_depth;
+    push_constants.frame_samples = ui.frame_samples;
     uint32_t flags = 0;
     if (ui.direct_lighting_enabled) flags |= 1;
     if (ui.indirect_lighting_enabled) flags |= 2;
@@ -1618,6 +1619,7 @@ void VulkanApplication::run() {
         camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
         ui.camera_fov = data["fov_x"].value_or(70.0);
     }
+
     delta_cursor_x = 0;
     delta_cursor_y = 0;
     camera_look_x = 0;
@@ -1808,9 +1810,7 @@ void VulkanApplication::set_render_images_dirty() {
     render_images_dirty = true;
 }
 
-void VulkanApplication::save_screenshot(std::string path) {
-    Image img = pipeline.get_output_image("Result").image;
-
+void VulkanApplication::save_screenshot(std::string path, Image img) {
     loaders::save_exr_image(img, path);
 }
 

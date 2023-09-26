@@ -21,6 +21,7 @@ void UI::draw() {
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);
     changed |= ImGui::SliderFloat("Camera FOV", &camera_fov, 1.0, 180.0);
     changed |= ImGui::DragInt("Max Depth", &max_ray_depth, 0.2f, 1, 16);
+    changed |= ImGui::DragInt("Frame Samples", &frame_samples, 0.2f, 1, 64);
     
     ImGui::SeparatorText("Display");
 
@@ -47,7 +48,7 @@ void UI::draw() {
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
     
     if (ImGui::Button("Save Screenshot")) {
-        application->save_screenshot("screenshot.exr");
+        application->save_screenshot("screenshot.exr", application->get_pipeline().get_output_image("Accumulated Color").image);
     }
 
     ImGui::SeparatorText("Application Information");

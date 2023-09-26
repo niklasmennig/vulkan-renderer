@@ -120,7 +120,7 @@ struct VulkanApplication {
     Buffer camera_buffer;
     bool camera_changed;
 
-    uint32_t render_clear_accumulated = 4;
+    uint32_t render_clear_accumulated;
     bool render_images_dirty;
 
     std::filesystem::path scene_path;
@@ -184,7 +184,7 @@ struct VulkanApplication {
     SceneData& get_scene_data();
     std::vector<Shaders::Light>& get_lights();
 
-    void save_screenshot(std::string path);
+    void save_screenshot(std::string path, Image img);
 
     double get_fps();
     uint32_t get_samples();

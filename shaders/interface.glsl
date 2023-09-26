@@ -31,7 +31,7 @@ struct PushConstants {
     uint light_count;
     uint max_depth;
     uint flags;
-    float padding1;
+    uint frame_samples;
     float padding2;
 };
 

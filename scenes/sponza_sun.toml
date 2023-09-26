@@ -13,4 +13,4 @@
     [lights.sun]
     type = "directional"
     direction = [0.0, -1.0, 0.0]
-    intensity = [1.0, 1.0, 1.0]
+    intensity = [25.0, 25.0, 25.0]
