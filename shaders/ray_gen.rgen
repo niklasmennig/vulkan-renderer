@@ -95,7 +95,26 @@ void main() {
                     0
                 );
 
-            if (payload.hit) {
+            if (!payload.hit) {
+                // ray missed scene
+
+                // calculate theta and phi for environment map
+                float theta = acos(ray_direction.y);
+                float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
+
+                // uv coordinates from theta and phi
+                float u = phi / (2.0 * PI);
+                float v = theta / PI;
+
+                // query environment map color
+                vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
+                
+                // needs to sample environment map as light source
+                float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
+                color = contribution * base_color * mis;
+                break;
+                
+            } else {
                 // ray intersected with scene geometry
 
                 uint instance = payload.hit_instance;
@@ -198,25 +217,6 @@ void main() {
 
                 last_bsdf_pdf = bsdf_sample.pdf;
 
-            } else {
-                // ray missed scene
-
-                // calculate theta and phi for environment map
-                float theta = acos(ray_direction.y);
-                float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
-
-                // uv coordinates from theta and phi
-                float u = phi / (2.0 * PI);
-                float v = theta / PI;
-
-                // query environment map color
-                vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
-                
-                
-                // needs to sample environment map as light source
-                // color += contribution * base_color / (PI / 2.0);
-                
-                break;
             }
 
             // russian roulette
