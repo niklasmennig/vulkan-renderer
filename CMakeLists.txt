@@ -19,7 +19,7 @@ if (MSVC)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 endif()
 
-include_directories("includes/" ${GLFW3_INCLUDE_DIR} "src/imgui" ${VULKAN_INCLUDE_DIR})
+include_directories("includes/" ${GLFW3_INCLUDE_DIR} "src/imgui" ${VULKAN_INCLUDE_DIR} "src")
 
 add_subdirectory(src)
 

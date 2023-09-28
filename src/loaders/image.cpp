@@ -88,7 +88,7 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = memory_requirements.size;
-    alloc_info.memoryTypeIndex = device->find_memory_type(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    alloc_info.memoryTypeIndex = device->find_memory_type(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     if (vkAllocateMemory(device->vulkan_device, &alloc_info, nullptr, &result.texture_memory) != VK_SUCCESS) {
         throw std::runtime_error("error allocating texture device memory");

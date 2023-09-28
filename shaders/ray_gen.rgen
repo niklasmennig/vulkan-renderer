@@ -110,8 +110,8 @@ void main() {
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
                 
                 // needs to sample environment map as light source
-                float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
-                color = contribution * base_color * mis;
+                //float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
+                //color = base_color;
                 break;
                 
             } else {
@@ -253,6 +253,7 @@ void main() {
     vec3 color_rgb = accum_color.rgb / (sample_count);
     // apply Reinhard TMO
     //color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
+
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
     // instance indices AOV

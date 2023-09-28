@@ -5,7 +5,8 @@
 #include "loaders/scene.h"
 #include "loaders/geometry_gltf.h"
 #include "loaders/toml.hpp"
-#include "processors/gltf_processor.h"
+#include "loaders/environment.h"
+#include "processors/gltf/gltf_processor.h"
 #include "pipeline_builder.h"
 #include "ui.h"
 
@@ -126,6 +127,8 @@ struct VulkanApplication {
 
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;
+
+    EnvironmentMap loaded_environment;
 
     GLTFProcessor* gltf_processor = nullptr;
 

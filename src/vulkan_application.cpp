@@ -1420,8 +1420,10 @@ void VulkanApplication::setup() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    // load hdri
-    loaded_textures.push_back(loaders::load_image(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string()));
+    // load environment map
+    loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
+    loaded_textures.push_back(loaded_environment.image);
+    //loaded_textures.push_back(loaded_environment.cdf_map);
 
     // build blas of loaded meshes
     for (auto object_path : loaded_scene_data.object_paths) {
@@ -1429,7 +1431,7 @@ void VulkanApplication::setup() {
         auto object_name = std::get<0>(object_path);
         GLTFData gltf = loaders::load_gltf(full_object_path.string());
         if (gltf_processor) {
-            gltf_processor->set_data(gltf);
+            gltf_processor->set_data(&gltf);
             gltf_processor->process();
         }
         loaded_objects[object_name] = gltf;

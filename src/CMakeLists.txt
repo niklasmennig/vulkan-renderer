@@ -11,7 +11,8 @@ set(SRC_RENDERER
     src/loaders/geometry_gltf.cpp
     src/loaders/image.cpp
     src/loaders/scene.cpp
-    src/processors/gltf_processor.cpp
+    src/loaders/environment.cpp
+    src/processors/gltf/gltf_processor.cpp
     src/pipeline_builder.cpp
     src/ui.cpp
     src/vulkan_application.cpp
