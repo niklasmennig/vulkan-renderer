@@ -12,6 +12,7 @@
 #include "ggx.glsl"
 #include "lambert.glsl"
 #include "mis.glsl"
+#include "environment.glsl"
 #include "lights.glsl"
 #include "material_parameters.glsl"
 
@@ -107,10 +108,19 @@ void main() {
 
                 // query environment map color
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
+
+                if (depth == 1) {
+                    primary_hit_albedo = base_color;
+                    color = base_color;
+                }
+
+                // TEST SAMPLE
+                vec2 random_vals = vec2(random_float(seed), random_float(seed));
+                sample_environment(random_vals, push_constants.constants.environment_cdf_dimensions);
                 
                 // needs to sample environment map as light source
                 float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
-                color += contribution * base_color;
+                //color = base_color;
                 break;
                 
             } else {
@@ -169,7 +179,8 @@ void main() {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    LightSample light_sample = sample_light(position, random_values, light);
+                    //LightSample light_sample = sample_light(position, random_values, light);
+                    LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
 
                     // cast shadow ray
                     traceRayEXT(
@@ -251,7 +262,7 @@ void main() {
     // output image
     vec3 color_rgb = accum_color.rgb / (sample_count);
     // apply Reinhard TMO
-    //color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
+    color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
 
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 

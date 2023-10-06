@@ -786,6 +786,7 @@ void VulkanApplication::draw_frame() {
     push_constants.light_count = lights.size();
     push_constants.max_depth = ui.max_ray_depth;
     push_constants.frame_samples = ui.frame_samples;
+    push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
     uint32_t flags = 0;
     if (ui.direct_lighting_enabled) flags |= 1;
     if (ui.indirect_lighting_enabled) flags |= 2;
@@ -1425,6 +1426,7 @@ void VulkanApplication::setup() {
     loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
     loaded_textures.push_back(loaded_environment.image);
     loaded_textures.push_back(loaded_environment.cdf_map);
+    loaded_textures.push_back(loaded_environment.conditional_cdf_map);
 
     // build blas of loaded meshes
     for (auto object_path : loaded_scene_data.object_paths) {

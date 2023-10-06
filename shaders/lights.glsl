@@ -1,5 +1,5 @@
 #ifndef LIGHTS_GLSL
-#define LIGHT_GLSL
+#define LIGHTS_GLSL
 
 #include "common.glsl"
 #include "interface.glsl"

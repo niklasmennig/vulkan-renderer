@@ -38,4 +38,14 @@ float luminance(vec3 color) {
     return (0.299*color.r + 0.587*color.g + 0.114*color.b);
 }
 
+vec3 dir_from_thetaphi(float theta, float phi) {
+    float s = sin(theta);
+    float c = cos(theta);
+    float x = s * cos(phi);
+    float y = s * sin(phi);
+    float z = c;
+
+    return vec3(x,y,z);
+};
+
 #endif

@@ -48,7 +48,7 @@ void UI::draw() {
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
     
     if (ImGui::Button("Save Screenshot")) {
-        application->save_screenshot("screenshot.exr", application->get_pipeline().get_output_image("Result").image);
+        application->save_screenshot("screenshot.exr", application->get_pipeline().get_output_image("Accumulated Color").image);
     }
 
     ImGui::SeparatorText("Application Information");

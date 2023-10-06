@@ -8,6 +8,7 @@
 struct EnvironmentMap {
     Image image;
     Image cdf_map;
+    Image conditional_cdf_map;
 };
 
 namespace loaders {

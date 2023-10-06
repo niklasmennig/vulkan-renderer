@@ -147,10 +147,12 @@ void loaders::save_exr_image(Image& img, const std::string& path) {
     channels[1].resize(width * height);
     channels[2].resize(width * height);
 
+    ImagePixels pixels = img.get_pixels();
+
     for (int i = 0; i < width * height; i++) {
         uint32_t x = i % width;
         uint32_t y = std::floor(i / width);
-        vec3 color = img.get_pixel(x, y);
+        vec3 color = pixels.get_pixel(x, y);
 
         channels[0][i] = (float)color.r;
         channels[1][i] = (float)color.g;

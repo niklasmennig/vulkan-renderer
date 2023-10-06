@@ -20,6 +20,7 @@ layout(set = DESCRIPTOR_SET_OBJECTS, binding = 8) readonly buffer TextureIndexDa
 // Textures at fixed positions
 // 0 - Environment map color
 // 1 - Environment map cdf
+// 2 - Environment map conditional cdf
 
 bool has_texture(uint instance, uint offset) {
     uint texture_index = texture_indices.data[instance * TEXTURE_OFFSETS_COUNT + offset];

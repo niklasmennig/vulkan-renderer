@@ -35,7 +35,7 @@ struct PushConstants {
     uint frame_samples;
     float padding;
     //
-    uvec2 environment_cdf_size;
+    uvec2 environment_cdf_dimensions;
     vec2 padding2;
 };
 

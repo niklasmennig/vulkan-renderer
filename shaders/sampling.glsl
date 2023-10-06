@@ -15,16 +15,6 @@ struct DirectionSample {
     float pdf;
 };
 
-vec3 dir_from_thetaphi(float theta, float phi) {
-    float s = sin(theta);
-    float c = cos(theta);
-    float x = s * cos(phi);
-    float y = s * sin(phi);
-    float z = c;
-
-    return vec3(x,y,z);
-};
-
 DirectionSample sample_uniform_hemisphere(float u, float v) 
 {
     float theta = u * PI * 0.5;
