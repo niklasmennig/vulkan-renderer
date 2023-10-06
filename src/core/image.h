@@ -31,6 +31,7 @@ struct Image
 
     static uint32_t bytes_per_channel(VkFormat format);
     static uint32_t pixel_byte_offset(VkFormat format, uint32_t x, uint32_t y, uint32_t widht, uint32_t height);
+    static vec3 color_from_packed_data(VkFormat, unsigned char* data);
 
     void free();
     VkImageMemoryBarrier get_layout_transition(VkImageLayout target_layout, VkAccessFlags target_access);

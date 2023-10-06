@@ -4,6 +4,8 @@
 #include "core/memory.h"
 
 #include "loaders/shader_spirv.h"
+#include "shader_interface.h"
+
 
 #include <iostream>
 #include <unordered_set>
@@ -15,11 +17,7 @@ using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 
-namespace Shaders
-{
-    using uint = uint32_t;
-    #include "../shaders/interface.glsl"
-}
+
 
 VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
 {
@@ -75,16 +73,22 @@ void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t bi
     });
 }
 
-void PipelineBuilder::add_output_image(std::string name, bool hidden, VkFormat format) {
+// adds the specified image to the pipelines' output images
+// hidden: hide in display selection UI
+// update_buffers: update internal pixel buffer, activated automatically for non-hidden images
+void PipelineBuilder::add_output_image(std::string name, VkFormat format, bool hidden, bool update_buffers) {
     if (name.empty()) {
         std::cerr << "unnamed output images are not allowed" << std::endl;
         exit(1);
     }
 
+    if (!hidden) update_buffers = true;
+
     output_images.push_back(PipelineBuilderOutputImage {
         name,
+        format,
         hidden,
-        format
+        update_buffers
     });
 }
 
@@ -102,8 +106,8 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     with_output_image_descriptor("images", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_IMAGES);
     add_output_image("Result Image");
-    add_output_image("Accumulated Color", false, VK_FORMAT_R32G32B32A32_SFLOAT);
-    add_output_image("Instance Indices", true);
+    add_output_image("Accumulated Color", VK_FORMAT_R32G32B32A32_SFLOAT);
+    add_output_image("Instance Indices", VK_FORMAT_UNDEFINED, true);
     add_output_image("Instance Indices(Colored)");
     add_output_image("Albedo");
     add_output_image("Normals");
@@ -225,7 +229,7 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
 
 void Pipeline::cmd_update_output_image_buffers(VkCommandBuffer command_buffer) {
     for (int i = 0; i < output_images.size(); i++) {
-        output_images[i].image.cmd_update_buffer(command_buffer);
+        if (output_images[i].update_buffer) output_images[i].image.cmd_update_buffer(command_buffer);
     }
 }
 

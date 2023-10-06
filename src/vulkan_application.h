@@ -9,6 +9,7 @@
 #include "processors/gltf/gltf_processor.h"
 #include "pipeline_builder.h"
 #include "ui.h"
+#include "shader_interface.h"
 
 #include <vector>
 #include <optional>
@@ -24,12 +25,6 @@ using vec4 = glm::vec4;
 
 #define NULL_TEXTURE_INDEX 10000 // needs to match index in texture_data.glsl
 const std::string camera_data_path = "./camera_data.toml";
-
-namespace Shaders
-{
-    using uint = uint32_t;
-    #include "../shaders/interface.glsl"
-}
 
 struct QueueFamilyIndices
 {

@@ -29,10 +29,14 @@ struct PushConstants {
     float time;
     uint clear_accumulated;
     uint light_count;
+    //
     uint max_depth;
     uint flags;
     uint frame_samples;
-    float padding2;
+    float padding;
+    //
+    uvec2 environment_cdf_size;
+    vec2 padding2;
 };
 
 #endif

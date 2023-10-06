@@ -17,6 +17,10 @@ layout(set = DESCRIPTOR_SET_OBJECTS, binding = 8) readonly buffer TextureIndexDa
 #define TEXTURE_OFFSET_TRANSMISSIVE 4
 #define TEXTURE_OFFSETS_COUNT 5
 
+// Textures at fixed positions
+// 0 - Environment map color
+// 1 - Environment map cdf
+
 bool has_texture(uint instance, uint offset) {
     uint texture_index = texture_indices.data[instance * TEXTURE_OFFSETS_COUNT + offset];
     return texture_index != NULL_TEXTURE_INDEX;

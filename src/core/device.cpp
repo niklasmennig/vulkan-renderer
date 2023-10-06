@@ -102,7 +102,7 @@ Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
     return create_buffer(&create_info);
 }
 
-Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format) {
+Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format, VkFilter filter) {
     if (format == VK_FORMAT_UNDEFINED) format = surface_format.format;
 
     VkBufferCreateInfo buffer_info{};
@@ -180,8 +180,8 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
 
     VkSamplerCreateInfo sampler_info{};
     sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    sampler_info.magFilter = VK_FILTER_LINEAR;
-    sampler_info.minFilter = VK_FILTER_LINEAR;
+    sampler_info.magFilter = filter;
+    sampler_info.minFilter = filter;
     sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;

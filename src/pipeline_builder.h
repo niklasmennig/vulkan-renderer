@@ -33,6 +33,7 @@ struct OutputImage
     Image image;
     std::string name;
     bool hidden;
+    bool update_buffer;
     VkFormat format;
 };
 
@@ -94,8 +95,9 @@ struct PipelineBuilderShaderStage
 struct PipelineBuilderOutputImage
 {
     std::string name;
-    bool hidden;
     VkFormat format;
+    bool hidden;
+    bool update_buffers;
 };
 
 struct PipelineBuilder
@@ -117,7 +119,7 @@ struct PipelineBuilder
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
     void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
-    void add_output_image(std::string name, bool hidden = false, VkFormat format = VK_FORMAT_UNDEFINED);
+    void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED, bool hidden = false, bool update_buffer = true);
 
     public:
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);

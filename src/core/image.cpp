@@ -20,6 +20,34 @@ uint32_t Image::pixel_byte_offset(VkFormat format, uint32_t x, uint32_t y, uint3
     return pixel_index * bytes_per_channel(format);
 }
 
+vec3 Image::color_from_packed_data(VkFormat format, unsigned char* data) {
+    vec3 result;
+
+    float* float_data = reinterpret_cast<float*>(data);
+
+    switch(format) {
+        case VK_FORMAT_B8G8R8A8_UNORM:
+            result.b = data[0 * Image::bytes_per_channel(format)];
+            result.g = data[1 * Image::bytes_per_channel(format)];
+            result.r = data[2 * Image::bytes_per_channel(format)];
+            break;
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            result.r = data[0 * Image::bytes_per_channel(format)];
+            result.g = data[1 * Image::bytes_per_channel(format)];
+            result.b = data[2 * Image::bytes_per_channel(format)];
+            break;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+            result.r = float_data[0 * Image::bytes_per_channel(format)];
+            result.g = float_data[1 * Image::bytes_per_channel(format)];
+            result.b = float_data[2 * Image::bytes_per_channel(format)];
+            break;
+        default:
+            std::cerr << "color_from_packed_data not implemented for this image format (" << format << ")" << std::endl;
+            break;
+    }
+    return result;
+}
+
 void Image::free()
 {
     vkDestroySampler(device_handle, sampler_handle, nullptr);
@@ -110,40 +138,24 @@ ImagePixels Image::get_pixels() {
 }
 
 vec3 Image::get_pixel(uint32_t x, uint32_t y) {
-    ImagePixels pixels = get_pixels();
-    return pixels.get_pixel(x,y);
+    if (x < 0 || x >= width || y < 0 || y >= height) return vec3(0);
+
+    size_t offset = Image::pixel_byte_offset(format, x, y, width, height);
+
+    unsigned char* data = new unsigned char[16];
+    buffer.get_data(data, offset, 16);
+
+    vec3 result = Image::color_from_packed_data(format, data);
+    return result;
 }
 
 vec3 ImagePixels::get_pixel(uint32_t x, uint32_t y) {
     if (x < 0 || x >= width || y < 0 || y >= height) return vec3(0);
 
-    vec3 result;
 
     size_t offset = Image::pixel_byte_offset(format, x, y, width, height);
 
-    unsigned char* char_data = reinterpret_cast<unsigned char*>(data.data() + offset);
-    float* float_data = reinterpret_cast<float*>(data.data() + offset);
-
-    switch(format) {
-        case VK_FORMAT_B8G8R8A8_UNORM:
-            result.b = char_data[0 * Image::bytes_per_channel(format)];
-            result.g = char_data[1 * Image::bytes_per_channel(format)];
-            result.r = char_data[2 * Image::bytes_per_channel(format)];
-            break;
-        case VK_FORMAT_R8G8B8A8_UNORM:
-            result.r = char_data[0 * Image::bytes_per_channel(format)];
-            result.g = char_data[1 * Image::bytes_per_channel(format)];
-            result.b = char_data[2 * Image::bytes_per_channel(format)];
-            break;
-        case VK_FORMAT_R32G32B32A32_SFLOAT:
-            result.r = float_data[0 * Image::bytes_per_channel(format)];
-            result.g = float_data[1 * Image::bytes_per_channel(format)];
-            result.b = float_data[2 * Image::bytes_per_channel(format)];
-            break;
-        default:
-            std::cerr << "get_pixel not implemented for this image format (" << format << ")" << std::endl;
-            break;
-    }
+    vec3 result = Image::color_from_packed_data(format, data.data() + offset);
 
     return result;
 }
