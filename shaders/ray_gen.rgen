@@ -58,7 +58,6 @@ void main() {
     vec3 color_sum = vec3(0.0);
     uint depth_sum = 0;
     for (int frame_sample = 0; frame_sample < frame_samples; frame_sample++) {
-        //uint seed = (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y) * uint(push_constants.constants.time) + push_constants.constants.clear_accumulated + frame_sample * 313;
         uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, hash_combine(uint(push_constants.constants.time), frame_sample))));
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
@@ -110,8 +109,8 @@ void main() {
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
                 
                 // needs to sample environment map as light source
-                //float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
-                //color = base_color;
+                float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
+                color += contribution * base_color;
                 break;
                 
             } else {

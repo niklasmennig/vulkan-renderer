@@ -103,9 +103,11 @@ Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
 }
 
 Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format) {
+    if (format == VK_FORMAT_UNDEFINED) format = surface_format.format;
+
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = width * height * 4 * array_layers;
+    buffer_info.size = width * height * 4 * Image::bytes_per_channel(format) * array_layers;
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     Image result;
@@ -113,8 +115,6 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     result.buffer = create_buffer(&buffer_info);
     result.width = width;
     result.height = height;
-
-    if (format == VK_FORMAT_UNDEFINED) format = surface_format.format;
 
     VkImageType image_type = VK_IMAGE_TYPE_2D;
 

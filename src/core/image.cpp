@@ -2,6 +2,24 @@
 
 #include <iostream>
 
+uint32_t Image::bytes_per_channel(VkFormat format) {
+    switch (format) {
+        case VK_FORMAT_B8G8R8A8_UNORM:
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            return 1;
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+        case VK_FORMAT_R32_SFLOAT:
+            return 4;
+        default:
+            std::cerr << "bytes_per_channel not implemented for this format (" << format << ")" << std::endl;
+    }
+}
+
+uint32_t Image::pixel_byte_offset(VkFormat format, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+    int pixel_index = (y * width + x) * 4;
+    return pixel_index * bytes_per_channel(format);
+}
+
 void Image::free()
 {
     vkDestroySampler(device_handle, sampler_handle, nullptr);
@@ -79,38 +97,51 @@ void Image::cmd_update_buffer(VkCommandBuffer cmd_buffer) {
     vkCmdCopyImageToBuffer(cmd_buffer, image_handle, layout, buffer.buffer_handle, 1, &texture_copy);
 }
 
-ivec3 Image::get_pixel(uint32_t x, uint32_t y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return ivec3(0);
-    ivec3 result;
+ImagePixels Image::get_pixels() {
+    ImagePixels result;
+    result.data.resize(buffer.buffer_size);
+    buffer.get_data(result.data.data(), 0, buffer.buffer_size);
+    result.format = format;
+    result.width = width;
+    result.height = height;
 
-    void *data;
-    if (vkMapMemory(device_handle, texture_memory, 0, VK_WHOLE_SIZE, 0, &data) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error mapping buffer memory");
-    }
-    vkUnmapMemory(device_handle, texture_memory);
 
-    char* char_data = reinterpret_cast<char*>(data);
+    return result;
+}
 
-    size_t offset = (y * width + x) * 4;
+vec3 Image::get_pixel(uint32_t x, uint32_t y) {
+    ImagePixels pixels = get_pixels();
+    return pixels.get_pixel(x,y);
+}
+
+vec3 ImagePixels::get_pixel(uint32_t x, uint32_t y) {
+    if (x < 0 || x >= width || y < 0 || y >= height) return vec3(0);
+
+    vec3 result;
+
+    size_t offset = Image::pixel_byte_offset(format, x, y, width, height);
+
+    unsigned char* char_data = reinterpret_cast<unsigned char*>(data.data() + offset);
+    float* float_data = reinterpret_cast<float*>(data.data() + offset);
+
     switch(format) {
         case VK_FORMAT_B8G8R8A8_UNORM:
-            result.b = (unsigned char)char_data[offset];
-            result.g = (unsigned char)char_data[offset+1];
-            result.r = (unsigned char)char_data[offset+2];
+            result.b = char_data[0 * Image::bytes_per_channel(format)];
+            result.g = char_data[1 * Image::bytes_per_channel(format)];
+            result.r = char_data[2 * Image::bytes_per_channel(format)];
             break;
         case VK_FORMAT_R8G8B8A8_UNORM:
-            result.r = (unsigned char)char_data[offset];
-            result.g = (unsigned char)char_data[offset+1];
-            result.b = (unsigned char)char_data[offset+2];
+            result.r = char_data[0 * Image::bytes_per_channel(format)];
+            result.g = char_data[1 * Image::bytes_per_channel(format)];
+            result.b = char_data[2 * Image::bytes_per_channel(format)];
             break;
         case VK_FORMAT_R32G32B32A32_SFLOAT:
-            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset) * 4]));
-            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset+1) * 4]));
-            result.r = (unsigned char)(reinterpret_cast<float*>(char_data[(offset+2) * 4]));
+            result.r = float_data[0 * Image::bytes_per_channel(format)];
+            result.g = float_data[1 * Image::bytes_per_channel(format)];
+            result.b = float_data[2 * Image::bytes_per_channel(format)];
             break;
         default:
-            std::cerr << "get_pixel not implemented for this image format" << std::endl;
+            std::cerr << "get_pixel not implemented for this image format (" << format << ")" << std::endl;
             break;
     }
 

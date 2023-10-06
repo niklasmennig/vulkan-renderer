@@ -55,7 +55,7 @@ void UI::draw() {
     ImGui::Text("%.2f FPS", application->get_fps());
     ImGui::Text("%d Samples", application->get_samples());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
-    ImGui::Text("Color: %d/%d/%d", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
+    ImGui::Text("Color: %.2f/%.2f/%.2f", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
 
     // realtime editing of light sources (point lights)
     ImGui::SeparatorText("Light Sources");

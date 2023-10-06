@@ -67,6 +67,7 @@ struct Pipeline {
     void set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count = 1);
 
     void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent);
+    void cmd_update_output_image_buffers(VkCommandBuffer command_buffer);
 
     OutputImage get_output_image(std::string name);
 

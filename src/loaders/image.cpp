@@ -41,6 +41,7 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
         result.buffer.set_data(data);
         result.width = width;
         result.height = height;
+        result.channels = channels;
         stbi_image_free(data);
     } else {
         float* data = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
@@ -58,6 +59,7 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
         result.buffer.set_data(data);
         result.width = width;
         result.height = height;
+        result.channels = channels;
         stbi_image_free(data);
     }
 
@@ -81,6 +83,7 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
 
     result.layout = VK_IMAGE_LAYOUT_UNDEFINED;
     result.access = 0;
+    result.format = format;
 
     VkMemoryRequirements memory_requirements;
     vkGetImageMemoryRequirements(device->vulkan_device, result.image_handle, &memory_requirements);
@@ -147,11 +150,11 @@ void loaders::save_exr_image(Image& img, const std::string& path) {
     for (int i = 0; i < width * height; i++) {
         uint32_t x = i % width;
         uint32_t y = std::floor(i / width);
-        ivec3 color = img.get_pixel(x, y);
+        vec3 color = img.get_pixel(x, y);
 
-        channels[0][i] = (float)color.r / 255.0;
-        channels[1][i] = (float)color.g / 255.0;
-        channels[2][i] = (float)color.b / 255.0;
+        channels[0][i] = (float)color.r;
+        channels[1][i] = (float)color.g;
+        channels[2][i] = (float)color.b;
     }
 
     float* channel_ptrs[3];

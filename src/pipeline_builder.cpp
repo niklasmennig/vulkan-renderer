@@ -223,6 +223,12 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
     }
 }
 
+void Pipeline::cmd_update_output_image_buffers(VkCommandBuffer command_buffer) {
+    for (int i = 0; i < output_images.size(); i++) {
+        output_images[i].image.cmd_update_buffer(command_buffer);
+    }
+}
+
 OutputImage Pipeline::get_output_image(std::string name) {
     uint32_t index = named_output_image_indices[name];
     return output_images[index];

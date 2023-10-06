@@ -839,12 +839,13 @@ void VulkanApplication::draw_frame() {
     image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
     // select image to display
+    pipeline.cmd_update_output_image_buffers(command_buffer);
+
     OutputImage displayed_image = pipeline.get_output_image(ui.selected_output_image);
 
     ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
     displayed_image.image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    //vkCmdCopyImage(command_buffer, displayed_image.image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
     vkCmdBlitImage(command_buffer, displayed_image.image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
     displayed_image.image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
 
@@ -1423,7 +1424,7 @@ void VulkanApplication::setup() {
     // load environment map
     loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
     loaded_textures.push_back(loaded_environment.image);
-    //loaded_textures.push_back(loaded_environment.cdf_map);
+    loaded_textures.push_back(loaded_environment.cdf_map);
 
     // build blas of loaded meshes
     for (auto object_path : loaded_scene_data.object_paths) {
@@ -1565,8 +1566,8 @@ void VulkanApplication::setup() {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
                     vec3 hovered_instance_color = app->pipeline.get_output_image("Instance Indices").image.get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
-                    int instance_index = hovered_instance_color.b + hovered_instance_color.g * 255 + hovered_instance_color.r * (255*255);
-                    if (hovered_instance_color.r == 255 && hovered_instance_color.g == 255 && hovered_instance_color.b == 255) instance_index = -1;
+                    int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
+                    if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
                     app->ui.selected_instance = instance_index;
                     if (instance_index != -1) {

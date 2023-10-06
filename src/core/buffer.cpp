@@ -15,12 +15,12 @@ void Buffer::set_data(void* data, size_t offset, size_t size) {
 }
 
 void Buffer::get_data(void* data, size_t offset, size_t size) {
-    void *buffer_data;
-    if (vkMapMemory(device_handle, device_memory, device_memory_offset + offset, size, 0, &buffer_data) != VK_SUCCESS)
+    unsigned char *buffer_data;
+    if (vkMapMemory(device_handle, device_memory, 0, VK_WHOLE_SIZE, 0, (void**)&buffer_data) != VK_SUCCESS)
     {
         throw std::runtime_error("error mapping buffer memory");
     }
-    memcpy(data, buffer_data, (size_t)buffer_size);
+    memcpy(data, buffer_data + device_memory_offset + offset, size);
     vkUnmapMemory(device_handle, device_memory);
 }
 
