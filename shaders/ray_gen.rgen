@@ -113,10 +113,6 @@ void main() {
                     primary_hit_albedo = base_color;
                     color = base_color;
                 }
-
-                // TEST SAMPLE
-                vec2 random_vals = vec2(random_float(seed), random_float(seed));
-                sample_environment(random_vals, push_constants.constants.environment_cdf_dimensions);
                 
                 // needs to sample environment map as light source
                 float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
@@ -179,8 +175,8 @@ void main() {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    //LightSample light_sample = sample_light(position, random_values, light);
-                    LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
+                    LightSample light_sample = sample_light(position, random_values, light);
+                    // LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
 
                     // cast shadow ray
                     traceRayEXT(

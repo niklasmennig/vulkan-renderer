@@ -136,9 +136,9 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
 }
 
 PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
-add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
-return *this;
-}
+    add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
+    return *this;
+    }
 
 PipelineBuilder Device::create_pipeline_builder() {
     PipelineBuilder res;
@@ -223,7 +223,7 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
     for (int i = 0; i < output_images.size(); i++) {
         if (output_images[i].image.width > 0 && output_images[i].image.height > 0) output_images[i].image.free();
         output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
-         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, output_images[i].format);
+         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, output_images[i].format, VK_FILTER_LINEAR, false);
     }
 }
 
@@ -505,7 +505,7 @@ Pipeline PipelineBuilder::build() {
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     sbt_buffer_info.size = entry_stride * (shader_stages.size());
-    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, true);
+    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, base_alignment);
 
 
     // write shader stage data to sbt buffer consecutively

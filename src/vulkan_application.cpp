@@ -149,13 +149,13 @@ BLAS VulkanApplication::build_blas(MeshData &mesh_data) {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = device.create_buffer(&as_buffer_info, true);
+    result.as_buffer = device.create_buffer(&as_buffer_info);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, true);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -248,7 +248,7 @@ TLAS VulkanApplication::build_tlas() {
     instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size();
 
     TLAS result{};
-    result.instance_buffer = device.create_buffer(&instance_buffer_info, true);
+    result.instance_buffer = device.create_buffer(&instance_buffer_info, 16);
     result.instance_buffer.set_data(instances.data());
 
     VkAccelerationStructureGeometryKHR geometry{};
@@ -277,13 +277,13 @@ TLAS VulkanApplication::build_tlas() {
     as_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     as_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
     as_buffer_info.size = acceleration_structure_size_info.accelerationStructureSize;
-    result.as_buffer = device.create_buffer(&as_buffer_info, true);
+    result.as_buffer = device.create_buffer(&as_buffer_info);
 
     VkBufferCreateInfo scratch_buffer_info{};
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, true);
+    result.scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -505,7 +505,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     int light_buffer_size = lights.size();
     if (light_buffer_size < 1) light_buffer_size = 1;
     lights_buffer = device.create_buffer(sizeof(Shaders::Light) * light_buffer_size);
-    if (lights.size() > 0) lights_buffer.set_data(lights.data());
+    if (lights.size() > 0) lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * light_buffer_size);
 
     pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
 }
@@ -776,8 +776,8 @@ void VulkanApplication::draw_frame() {
     }
 
     if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
-    material_parameter_buffer.set_data(material_parameters.data());
-    lights_buffer.set_data(lights.data());
+    material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
+    lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
     Shaders::PushConstants push_constants;
     push_constants.sbt_stride = pipeline.sbt_stride;
@@ -1158,15 +1158,15 @@ void VulkanApplication::setup() {
         device.ray_tracing_pipeline_properties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{};
         device.ray_tracing_pipeline_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
 
-        VkPhysicalDeviceAccelerationStructurePropertiesKHR as_properties = {};
-        as_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
-        device.ray_tracing_pipeline_properties.pNext = &as_properties;
+        device.acceleration_structure_properties = VkPhysicalDeviceAccelerationStructurePropertiesKHR{};
+        device.acceleration_structure_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+        device.ray_tracing_pipeline_properties.pNext = &device.acceleration_structure_properties;
 
         dev_properties.pNext = &device.ray_tracing_pipeline_properties;
 
         vkGetPhysicalDeviceProperties2(dev, &dev_properties);
 
-        std::cout << "MAX INSTANCES " << as_properties.maxInstanceCount << " | MAX PRIMITIVES " << as_properties.maxPrimitiveCount << std::endl;
+        std::cout << "MAX INSTANCES " << device.acceleration_structure_properties.maxInstanceCount << " | MAX PRIMITIVES " << device.acceleration_structure_properties.maxPrimitiveCount << " | MAX ALLOCATIONS " << dev_properties.properties.limits.maxMemoryAllocationCount << std::endl;
 
         VkPhysicalDeviceFeatures dev_features;
         vkGetPhysicalDeviceFeatures(dev, &dev_features);
@@ -1424,6 +1424,7 @@ void VulkanApplication::setup() {
 
     // load environment map
     loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
+    //loaded_textures.push_back(loaders::load_image(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string()));
     loaded_textures.push_back(loaded_environment.image);
     loaded_textures.push_back(loaded_environment.cdf_map);
     loaded_textures.push_back(loaded_environment.conditional_cdf_map);
@@ -1734,7 +1735,7 @@ void VulkanApplication::run() {
         if (camera_changed | ui.has_changed()) render_clear_accumulated = 0;
         camera_changed = false;
 
-        camera_buffer.set_data(&camera_data);
+        camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
 
         if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
         

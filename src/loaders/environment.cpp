@@ -19,11 +19,11 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     ImagePixels image_pixels = result.image.get_pixels();
 
     // generate cdf texture from image
-    result.cdf_map = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
-    float* cdf_data = new float[width * height * 4];
+    result.cdf_map = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
+    float* cdf_data = new float[width * height];
 
-    result.conditional_cdf_map = device->create_image(1, height, VK_IMAGE_USAGE_SAMPLED_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
-    float* conditional_cdf_data = new float[height * 4];
+    result.conditional_cdf_map = device->create_image(1, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
+    float* conditional_cdf_data = new float[height];
 
     float conditional_sum = 0;
     for (int v = 0; v < height; v++) {

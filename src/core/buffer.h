@@ -9,9 +9,10 @@ struct Buffer
     VkDeviceMemory device_memory;
     VkDeviceSize device_memory_offset;
     VkDeviceAddress device_address;
-    bool is_shared = false;
 
-    void set_data(void *data, size_t offset = 0, size_t size = VK_WHOLE_SIZE);
+    bool shared;
+
+    void set_data(void *data, size_t offset = 0, size_t size = 0);
     void get_data(void *data, size_t offset, size_t size);
     void free();
 };

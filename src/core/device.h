@@ -26,17 +26,21 @@ struct Device
 
     VkPhysicalDeviceMemoryProperties memory_properties{};
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_pipeline_properties{};
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties{};
 
     
 
     // maps memory type index to shared memory
-    uint32_t shared_buffer_size = 30000000;
+    uint32_t shared_buffer_size = 2000000000;
     std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
 
 
-    Buffer create_buffer(VkBufferCreateInfo *create_info, bool ignore_shared_buffers = false);
+    Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 0, bool shared = true);
     Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR);
+    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR, bool shared = true);
+
+    void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared = true);
+
     PipelineBuilder create_pipeline_builder();
 
     // function pointers

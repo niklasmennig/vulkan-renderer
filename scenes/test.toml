@@ -21,9 +21,6 @@
     # [objects.test3]
     # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
-    [objects.mosquito]
-    path = "./gltf/mosquito/MosquitoInAmber.gltf"
-
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
