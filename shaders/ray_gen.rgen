@@ -107,7 +107,7 @@ void main() {
                 float v = theta / PI;
 
                 // query environment map color
-                vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
+                vec3 base_color = sample_texture(2, vec2(u, v)).rgb;
 
                 if (depth == 1) {
                     primary_hit_albedo = base_color;

@@ -24,10 +24,10 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
     int width, height, channels;
     VkFormat format;
 
-    unsigned char* image_data;
+    uint8_t* image_data;
 
     if (!is_hdr) {
-        image_data = reinterpret_cast<unsigned char*>(stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha));
+        image_data = (stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha));
 
         std::cout << "loading non-HDR image at " << path << "| Channels: " << channels << std::endl;
         format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -39,10 +39,9 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
     }
 
 
-    Image result = device->create_image(width, height, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, format);
+    Image result = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, format);
     result.buffer.set_data(image_data);
 
-    std::cout << "TEST: " << *((float*)image_data) << std::endl;
     stbi_image_free(image_data);
 
     return result;
