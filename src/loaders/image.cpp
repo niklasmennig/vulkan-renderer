@@ -24,18 +24,18 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
     int width, height, channels;
     VkFormat format;
 
-    uint8_t* image_data;
+    unsigned char* image_data;
 
     if (!is_hdr) {
         image_data = (stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha));
+        format = VK_FORMAT_R8G8B8A8_UNORM;
 
         std::cout << "loading non-HDR image at " << path << "| Channels: " << channels << std::endl;
-        format = VK_FORMAT_R8G8B8A8_UNORM;
     } else {
         image_data = reinterpret_cast<unsigned char*>(stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha));
+        format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
         std::cout << "loading HDR image at " << path << "| Channels: " << channels << std::endl;
-        format = VK_FORMAT_R32G32B32A32_SFLOAT;
     }
 
 

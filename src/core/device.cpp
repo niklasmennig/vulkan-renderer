@@ -35,6 +35,7 @@ void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, 
             if (vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &shared.memory) != VK_SUCCESS) {
                 throw std::runtime_error("error allocating shared memory");
             }
+            shared.size = alloc_size;
             shared_buffer_memory.emplace(alloc_info.memoryTypeIndex, shared);
         }
         SharedDeviceMemory* shared_memory = &shared_buffer_memory[alloc_info.memoryTypeIndex];
@@ -42,6 +43,7 @@ void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, 
         shared_memory->offset = memory::align_up(shared_memory->offset, alignment);
         *memory = shared_memory->memory;
         *offset = shared_memory->offset;
+        if (shared_memory->offset + alloc_info.allocationSize > shared_memory->size) std::cerr << "shared memory allocation oversteps heap size" << std::endl;
         shared_memory->offset += alloc_info.allocationSize;
     } else {
         VkResult res = vkAllocateMemory(vulkan_device, &alloc_info, nullptr, memory);
@@ -89,7 +91,7 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
     size_t memory_alignment = std::max(mem_requirements.alignment, alignment);
 
     allocate_memory(alloc_info, memory_alignment, &result.device_memory, &result.device_memory_offset, shared);
-    std::cout << "Binding Buffer to shared memory at " << result.device_memory_offset << " - " << result.device_memory_offset + result.buffer_size << std::endl;
+    if (shared) std::cout << "Binding Buffer to shared memory at heap " << memtype_index << " in range "  << result.device_memory_offset << " - " << result.device_memory_offset + result.buffer_size << std::endl;
     vkBindBufferMemory(vulkan_device, result.buffer_handle, result.device_memory, result.device_memory_offset);
 
 
@@ -166,7 +168,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
 
     allocate_memory(alloc_info, 1, &result.texture_memory, &result.texture_memory_offset, shared);
 
-    std::cout << "Binding Image to shared memory at " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
+    if(shared) std::cout << "Binding Image to shared memory at " << alloc_info.memoryTypeIndex << " in range " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
     vkBindImageMemory(vulkan_device, result.image_handle, result.texture_memory, result.texture_memory_offset);
 
     result.shared_memory = shared;

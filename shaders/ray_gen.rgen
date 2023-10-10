@@ -107,7 +107,7 @@ void main() {
                 float v = theta / PI;
 
                 // query environment map color
-                vec3 base_color = sample_texture(2, vec2(u, v)).rgb;
+                vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
 
                 if (depth == 1) {
                     primary_hit_albedo = base_color;
@@ -175,8 +175,8 @@ void main() {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    LightSample light_sample = sample_light(position, random_values, light);
-                    // LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
+                    // LightSample light_sample = sample_light(position, random_values, light);
+                    LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
 
                     // cast shadow ray
                     traceRayEXT(

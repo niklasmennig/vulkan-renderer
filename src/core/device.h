@@ -12,6 +12,7 @@ struct PipelineBuilder;
 struct SharedDeviceMemory {
     VkDeviceMemory memory;
     VkDeviceSize offset = 0;
+    VkDeviceSize size = 0;
 };
 
 struct Device
