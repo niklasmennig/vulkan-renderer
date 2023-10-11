@@ -149,7 +149,6 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     image_info.queueFamilyIndexCount = 1;
     image_info.pQueueFamilyIndices = &graphics_queue_family_index;
 
-
     if (vkCreateImage(vulkan_device, &image_info, nullptr, &result.image_handle) != VK_SUCCESS)
     {
         throw std::runtime_error("error creating image");
@@ -166,7 +165,7 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     alloc_info.allocationSize = memory_requirements.size;
     alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, memory_properties);
 
-    allocate_memory(alloc_info, 1, &result.texture_memory, &result.texture_memory_offset, shared);
+    allocate_memory(alloc_info, memory_requirements.alignment, &result.texture_memory, &result.texture_memory_offset, shared);
 
     if(shared) std::cout << "Binding Image to shared memory at " << alloc_info.memoryTypeIndex << " in range " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
     vkBindImageMemory(vulkan_device, result.image_handle, result.texture_memory, result.texture_memory_offset);

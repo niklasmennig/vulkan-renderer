@@ -103,7 +103,7 @@ void main() {
                 float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
 
                 // uv coordinates from theta and phi
-                float u = phi / (2.0 * PI);
+                float u = phi / (2.0 * PI) + 0.5;
                 float v = theta / PI;
 
                 // query environment map color
