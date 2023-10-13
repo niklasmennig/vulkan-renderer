@@ -55,6 +55,8 @@ void main() {
     vec3 primary_hit_albedo = vec3(0);
     vec3 primary_hit_normal = vec3(0);
     float primary_hit_roughness = 0;
+    float primary_hit_env_cdf = 0;
+    float primary_hit_env_conditional = 0;
 
     vec3 color_sum = vec3(0.0);
     uint depth_sum = 0;
@@ -103,13 +105,16 @@ void main() {
                 float phi = sign(ray_direction.z) * acos(ray_direction.x / sqrt(ray_direction.x * ray_direction.x + ray_direction.z * ray_direction.z));
 
                 // uv coordinates from theta and phi
-                float u = phi / (2.0 * PI) + 0.5;
+                float u = phi / (2.0 * PI);
                 float v = theta / PI;
 
                 // query environment map color
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
 
                 if (depth == 1) {
+                    primary_hit_env_cdf = sample_texture(1, vec2(u,v)).r;
+                    primary_hit_env_conditional = sample_texture(2, vec2(u,v)).r;
+
                     primary_hit_albedo = base_color;
                     color = base_color;
                 }
@@ -258,7 +263,7 @@ void main() {
     // output image
     vec3 color_rgb = accum_color.rgb / (sample_count);
     // apply Reinhard TMO
-    color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
+    // color_rgb = vec3(color_rgb.r / (1.0 + color_rgb.r), color_rgb.g / (1.0 + color_rgb.g), color_rgb.b / (1.0 + color_rgb.b));
 
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 
@@ -278,4 +283,7 @@ void main() {
     imageStore(images[6], img_coord, vec4(vec3(primary_hit_roughness), 1.0));
     // ray depth AOV
     imageStore(images[7], img_coord, vec4(float(depth_sum) / frame_samples / max_depth));
+    // environment map AOVs
+    imageStore(images[8], img_coord, vec4(float(primary_hit_env_cdf)));
+    imageStore(images[9], img_coord, vec4(float(primary_hit_env_conditional)));
 }

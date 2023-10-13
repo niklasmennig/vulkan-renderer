@@ -1,11 +1,14 @@
 [environment]
-    #path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
     path = "./hdri/studio_small_03_4k.hdr"
     # path = "./hdri/vestibule_4k.hdr"
     # path = "./hdri/rural_asphalt_road_4k.hdr"
     # path = "./hdri/moonless_golf_4k.hdr"
 
 [objects]
+    [objects.test2]
+    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
+
     [objects.test]
     path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
@@ -24,10 +27,13 @@
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
-    [objects.test2]
-    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
 [instances]
+    [instances.test2]
+    object = "test2"
+    position = [0.0, -1.0, 0.0]
+    rotation = [0.0, 0.0, 0.0]
+
     [instances.h1]
     object = "test"
     scale = [0.1, 0.1, 0.1]
@@ -52,10 +58,6 @@
     # position = [0.0, 0.15, -0.2]
     # rotation = [110.0, 0.0, 0.0]
 
-    [instances.test2]
-    object = "test2"
-    position = [0.0, -1.0, 0.0]
-    rotation = [0.0, 0.0, 0.0]
 
     # [instances.mosquito]
     # object = "mosquito"

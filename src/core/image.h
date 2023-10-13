@@ -12,6 +12,7 @@ struct ImagePixels {
     std::vector<unsigned char> data;
     VkFormat format;
     uint32_t width, height;
+    float multiplier = 1.0f;
 
     vec3 get_pixel(uint32_t x, uint32_t y);
 };

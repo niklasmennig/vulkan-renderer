@@ -47,15 +47,15 @@ Image loaders::load_image(Device* device, const std::string& path, bool flip_y) 
     return result;
 }
 
-void loaders::save_exr_image(Image& img, const std::string& path) {
+void loaders::save_exr_image(ImagePixels& pixels, const std::string& path) {
     EXRHeader header;
     InitEXRHeader(&header);
 
     EXRImage exr_image;
     InitEXRImage(&exr_image);
 
-    uint32_t width = img.width;
-    uint32_t height = img.height;
+    uint32_t width = pixels.width;
+    uint32_t height = pixels.height;
 
     exr_image.num_channels = 3;
 
@@ -63,8 +63,6 @@ void loaders::save_exr_image(Image& img, const std::string& path) {
     channels[0].resize(width * height);
     channels[1].resize(width * height);
     channels[2].resize(width * height);
-
-    ImagePixels pixels = img.get_pixels();
 
     for (int i = 0; i < width * height; i++) {
         uint32_t x = i % width;
@@ -103,7 +101,7 @@ void loaders::save_exr_image(Image& img, const std::string& path) {
 
     const char* err = NULL;
 
-    std::cout << "saving" << std::endl;
+    std::cout << "saving EXR image" << std::endl;
 
     int ret = SaveEXRImageToFile(&exr_image, &header, path.c_str(), &err);
     if (ret != TINYEXR_SUCCESS) {

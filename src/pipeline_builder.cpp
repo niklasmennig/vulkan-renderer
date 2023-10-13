@@ -113,6 +113,8 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_output_image("Normals");
     add_output_image("Roughness");
     add_output_image("Ray Depth");
+    add_output_image("Environment CDF");
+    add_output_image("Environment Conditional");
     add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -223,7 +225,7 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
     for (int i = 0; i < output_images.size(); i++) {
         if (output_images[i].image.width > 0 && output_images[i].image.height > 0) output_images[i].image.free();
         output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
-         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, output_images[i].format, VK_FILTER_LINEAR, false);
+         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, output_images[i].format, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
     }
 }
 

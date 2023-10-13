@@ -1822,8 +1822,8 @@ void VulkanApplication::set_render_images_dirty() {
     render_images_dirty = true;
 }
 
-void VulkanApplication::save_screenshot(std::string path, Image img) {
-    loaders::save_exr_image(img, path);
+void VulkanApplication::save_screenshot(std::string path, ImagePixels& pixels) {
+    loaders::save_exr_image(pixels, path);
 }
 
 double VulkanApplication::get_fps() {

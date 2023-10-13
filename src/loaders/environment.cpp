@@ -13,7 +13,7 @@
 EnvironmentMap loaders::load_environment_map(Device* device, const std::string& path) {
     EnvironmentMap result {};
     int width = 100;
-    int height = 100;
+    int height = 50;
 
     result.image = loaders::load_image(device, path);
     ImagePixels image_pixels = result.image.get_pixels();
@@ -25,12 +25,21 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     result.conditional_cdf_map = device->create_image(1, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
     float* conditional_cdf_data = new float[height];
 
+    int scan_pixels_x = std::floor(result.image.width / width);
+    int scan_pixels_y = std::floor(result.image.height / height);
+
     float conditional_sum = 0;
     for (int v = 0; v < height; v++) {
         float conditional = 0;
         for (int u = 0; u < width; u++) {
-            vec3 pixel_color = image_pixels.get_pixel((float)u / width * image_pixels.width, (float)v / height * image_pixels.height);
-            float luminance = color::luminance(pixel_color);
+            float luminance_sum = 0;
+            for (int scan_x = 0; scan_x < scan_pixels_x; scan_x++) {
+                for (int scan_y = 0; scan_y < scan_pixels_y; scan_y++) {
+                    vec3 pixel_color = image_pixels.get_pixel((float)u / width * image_pixels.width + scan_x, (float)v / height * image_pixels.height + scan_y);
+                    luminance_sum += color::luminance(pixel_color);
+                }   
+            }
+            float luminance = luminance_sum / (scan_pixels_x * scan_pixels_y);
             float sin_theta = std::sin(M_PI * (v + 0.5) / height);
             float cdf_value = luminance * sin_theta;
             conditional += cdf_value;
@@ -38,7 +47,6 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
         }
         if (conditional < FLT_EPSILON) {
             for (int u = 0; u < width; u++) {
-                // normalize cdf along row to 1
                 cdf_data[u + v * width] = (float)u / (width-1);
             }
         } else {
