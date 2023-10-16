@@ -39,11 +39,9 @@ float luminance(vec3 color) {
 }
 
 vec3 dir_from_thetaphi(float theta, float phi) {
-    float s = sin(theta);
-    float c = cos(theta);
-    float x = s * cos(phi);
-    float y = s * sin(phi);
-    float z = c;
+    float x = sin(theta) * cos(phi);
+    float y = cos(theta);
+    float z = sin(theta) * sin(phi);
 
     return vec3(x,y,z);
 };

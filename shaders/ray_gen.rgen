@@ -17,7 +17,7 @@
 #include "material_parameters.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
-layout(location = 1) rayPayloadEXT bool occluded;
+layout(location = 1) rayPayloadEXT bool ray_occluded;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
@@ -118,6 +118,8 @@ void main() {
                     primary_hit_albedo = base_color;
                     color = base_color;
                 }
+
+                // color = dir_from_thetaphi(theta, phi);
                 
                 // needs to sample environment map as light source
                 float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
@@ -133,6 +135,7 @@ void main() {
 
                 vec3 position = payload.hit_transform * vec4(get_vertex_position(instance, primitive, barycentrics), 1.0);
                 vec3 normal = normalize(payload.hit_transform * vec4(get_vertex_normal(instance, primitive, barycentrics), 0.0));
+                vec3 face_normal = normalize(payload.hit_transform * vec4(get_face_normal(instance, primitive), 0.0));
                 vec2 uv = get_vertex_uv(instance, primitive, barycentrics);
                 vec3 tangent = normalize(payload.hit_transform * vec4(get_vertex_tangent(instance, primitive, barycentrics), 0.0));
 
@@ -172,7 +175,7 @@ void main() {
                 if (depth == 1) {
                     primary_hit_instance = payload.hit_instance;
                     primary_hit_albedo = base_color;
-                    primary_hit_normal = normal;
+                    primary_hit_normal = face_normal;
                     primary_hit_roughness = roughness;
                 }
 
@@ -181,7 +184,7 @@ void main() {
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
                     // LightSample light_sample = sample_light(position, random_values, light);
-                    LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);
+                    LightSample light_sample = sample_environment(random_values.xy, push_constants.constants.environment_cdf_dimensions);                    
 
                     // cast shadow ray
                     traceRayEXT(
@@ -191,12 +194,15 @@ void main() {
                         1,
                         push_constants.constants.sbt_stride,
                         1,
-                        position + normal * epsilon,
-                        0,
+                        position,
+                        epsilon,
                         light_sample.direction,
                         light_sample.distance - 2 * epsilon,
                         1
                     );
+
+                    bool occluded = ray_occluded;
+                    occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
 
                     float bsdf_pdf = pdf_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                     // float bsdf_pdf = 1.0 / PI;
@@ -204,7 +210,7 @@ void main() {
                         vec3 bsdf_eval = eval_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                         // vec3 bsdf_eval = eval_lambert(base_color);
                         float mis_weight = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf);
-                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_sample.direction, normal)) / light_sample.pdf;
+                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0.0, 1.0) / light_sample.pdf;
                     }
                 }
 
@@ -217,11 +223,11 @@ void main() {
                         mis_weight = balance_heuristic(1.0, pdf_nee, 1.0, last_bsdf_pdf);
                     }
                     color += mis_weight * intensity * contribution;
+
+                    if (bsdf_sample.pdf < epsilon) {break;}
+
+                    contribution *= bsdf_sample.contribution * abs(dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
                 }
-
-                if (bsdf_sample.pdf < epsilon) {break;}
-
-                contribution *= bsdf_sample.contribution * abs(dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
                 
                 ray_direction = bsdf_sample.direction;
                 ray_origin = position;

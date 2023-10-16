@@ -20,7 +20,7 @@ LightSample sample_environment(vec2 random_values, uvec2 map_dimensions) {
     float conditional_low = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y)).r;
     float conditional_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y + y_step)).r;
 
-    while (!(conditional_target <= conditional_hi && conditional_target > conditional_low)) {
+    while (!(conditional_target < conditional_hi && conditional_target >= conditional_low)) {
         conditional_low = conditional_hi;
         conditional_y += y_step;
         conditional_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y)).r;
@@ -50,8 +50,8 @@ LightSample sample_environment(vec2 random_values, uvec2 map_dimensions) {
     float sample_pdf_cdf = cdf_hi - cdf_low;
     float sample_pdf_conditional = conditional_hi - conditional_low;
 
-    float theta = conditional_y * PI;
     float phi = cdf_x * 2.0 * PI;
+    float theta = conditional_y * PI;
 
     float sample_pdf = sample_pdf_cdf * sample_pdf_conditional * 2.0 * PI * PI * sin(theta);
     

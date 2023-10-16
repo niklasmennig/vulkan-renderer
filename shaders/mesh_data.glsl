@@ -52,6 +52,13 @@ vec3 get_vertex_normal(uint instance, uint primitive, vec2 barycentrics) {
     return normalize(norm);
 }
 
+vec3 get_face_normal(uint instance, uint primitive) {
+    vec3 v0, v1, v2;
+    get_vertices(instance, primitive, v0, v1, v2);
+
+    return normalize(cross(v1-v0, v2-v0));
+}
+
 vec2 get_vertex_uv(uint instance, uint primitive, vec2 barycentrics) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
