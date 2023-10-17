@@ -110,20 +110,16 @@ void main() {
 
                 // query environment map color
                 vec3 base_color = sample_texture(0, vec2(u, v)).rgb;
+                // color += contribution * base_color;
 
                 if (depth == 1) {
                     primary_hit_env_cdf = sample_texture(1, vec2(u,v)).r;
                     primary_hit_env_conditional = sample_texture(2, vec2(u,v)).r;
 
                     primary_hit_albedo = base_color;
-                    color = base_color;
                 }
 
-                // color = dir_from_thetaphi(theta, phi);
-                
-                // needs to sample environment map as light source
-                float mis = balance_heuristic(1.0, 1.0 / (4.0 * PI), 1.0, last_bsdf_pdf);
-                //color = base_color;
+                color += contribution * base_color;
                 break;
                 
             } else {
@@ -150,8 +146,7 @@ void main() {
                 //normal mapping
                 vec3 normal_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
                 vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
-                normal = normalize(tbn * sampled_normal);
-                tbn[2] = normal;
+                normal = normalize(sampled_normal);
                 
                 // material properties
                 vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
@@ -164,18 +159,18 @@ void main() {
                 float transmission = material_parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
                 float ior = material_parameters.roughness_metallic_transmissive_ior.a;
                 float fresnel_reflect = 0.5;
-                bool front_facing = dot(ray_out, normal) > 0;
+                
 
                 // bsdf sampling
+                mat3 shading_frame = basis(normal) * tbn;
                 vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
-                BSDFSample bsdf_sample = sample_ggx(ray_out, tbn,base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
-                // BSDFSample bsdf_sample = sample_lambert(ray_out, tbn, base_color, random_values);
+                BSDFSample bsdf_sample = sample_ggx(ray_out, shading_frame, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
 
                 // AOV data
                 if (depth == 1) {
                     primary_hit_instance = payload.hit_instance;
                     primary_hit_albedo = base_color;
-                    primary_hit_normal = face_normal;
+                    primary_hit_normal = shading_frame[2];
                     primary_hit_roughness = roughness;
                 }
 
@@ -202,17 +197,18 @@ void main() {
                     );
 
                     bool occluded = ray_occluded;
-                    occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
+                    // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
 
                     float bsdf_pdf = pdf_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
-                    // float bsdf_pdf = 1.0 / PI;
                     if (!occluded && light_sample.pdf > epsilon && bsdf_pdf > epsilon) {
                         vec3 bsdf_eval = eval_ggx(light_sample.direction, bsdf_sample.direction, tbn, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
-                        // vec3 bsdf_eval = eval_lambert(base_color);
                         float mis_weight = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf);
                         color += mis_weight * contribution * bsdf_eval * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0.0, 1.0) / light_sample.pdf;
                     }
                 }
+
+                if (bsdf_sample.pdf < epsilon) {break;}
+                contribution *= bsdf_sample.contribution * abs(dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
 
                 // material emission
                 if ((push_constants.constants.flags & 2) == 2) {
@@ -223,11 +219,8 @@ void main() {
                         mis_weight = balance_heuristic(1.0, pdf_nee, 1.0, last_bsdf_pdf);
                     }
                     color += mis_weight * intensity * contribution;
-
-                    if (bsdf_sample.pdf < epsilon) {break;}
-
-                    contribution *= bsdf_sample.contribution * abs(dot(bsdf_sample.direction, normal)) / bsdf_sample.pdf;
                 }
+
                 
                 ray_direction = bsdf_sample.direction;
                 ray_origin = position;
@@ -268,7 +261,7 @@ void main() {
 
     // output image
     vec3 color_rgb = accum_color.rgb / (sample_count);
-    // apply Reinhard TMO
+    // apply extended Reinhard TMO
     float white_point = 4.0;
     vec3 color_xyY = rgb_to_xyY(color_rgb);
     float l = color_xyY.b;
