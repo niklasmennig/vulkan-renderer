@@ -8,7 +8,7 @@
 #define TEXTURE_ID_ENVIRONMENT_CDF 1
 #define TEXTURE_ID_ENVIRONMENT_CONDITIONAL 2
 
-LightSample sample_environment(vec2 random_values, uvec2 map_dimensions) {
+LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
     uint width = map_dimensions.x;
     uint height = map_dimensions.y;
 
@@ -50,14 +50,18 @@ LightSample sample_environment(vec2 random_values, uvec2 map_dimensions) {
     float sample_pdf_cdf = cdf_hi - cdf_low;
     float sample_pdf_conditional = conditional_hi - conditional_low;
 
-    float phi = cdf_x * 2.0 * PI;
-    float theta = conditional_y * PI;
+    // sample pixel offset for environment map intensity sample
+    vec2 offset = random_values.zw * vec2(x_step, y_step);
+    vec2 sample_uv = vec2(cdf_x, conditional_y) + offset;
+
+    float phi = sample_uv.x * 2.0 * PI;
+    float theta = sample_uv.y * PI;
 
     float sample_pdf = sample_pdf_cdf * sample_pdf_conditional * 2.0 * PI * PI * sin(theta);
     
     LightSample result;
     result.pdf = sample_pdf;
-    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(cdf_x, conditional_y)).rgb;
+    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, sample_uv).rgb;
     result.distance = FLT_MAX;
     result.direction = dir_from_thetaphi(theta, phi);
     return result;

@@ -30,8 +30,8 @@ float g_smith(float NoV, float NoL, float roughness) {
   return g1_l * g1_v;
 }
 
-vec3 eval_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
-  vec3 normal = tbn[2];
+vec3 eval_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+  vec3 normal = vec3(0,1,0);
   vec3 h = normalize(ray_in + ray_out);
 
   float no = clamp(dot(normal, ray_out), 0.0, 1.0);
@@ -56,8 +56,8 @@ vec3 eval_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacit
   return (diff + spec) * opacity;
 }
 
-float pdf_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
-  vec3 normal = tbn[2];
+float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
+  vec3 normal = vec3(0,1,0);
   vec3 h = normalize(ray_in + ray_out);
 
   float no = clamp(dot(normal, ray_out), 0.0, 1.0);
@@ -76,31 +76,31 @@ float pdf_ggx(vec3 ray_in, vec3 ray_out, mat3 tbn, vec3 base_color, float opacit
   return (pdf_diffuse + pdf_specular) / 2.0;
 }
 
-BSDFSample sample_ggx(in vec3 V, in mat3 tbn, 
+BSDFSample sample_ggx(in vec3 out_dir, 
               in vec3 baseColor, float opacity, in float metallicness, 
               in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random) 
 {
+    vec3 normal = vec3(0,1,0);
+
     float eta = 1.0 / ior;
-    if (dot(V, tbn[2]) < 0) {
-      tbn[2] *= -1;
-      // eta = 1.0 / eta;
-    }
-
-    vec3 v_local = inverse(tbn) * V;
-    vec3 n_local = vec3(0,1,0);
-
+    // if (dot(-out_dir, normal) < 0) {
+    //   normal *= -1;
+    //   eta = 1.0 / eta;
+    // }
 
     // handle opacity
-    if (random.w > opacity) {
-      BSDFSample res;
-      res.contribution = vec3(1.0);
-      res.direction = -V;
-      res.pdf = 1.0;
-      res.specular = true;
-      return res;
-    }
+    // if (random.w > opacity) {
+    //   BSDFSample res;
+    //   res.contribution = vec3(1.0);
+    //   res.direction = -out_dir;
+    //   res.pdf = 1.0 / opacity;
+    //   res.specular = true;
+    //   return res;
+    // }
+    // pdf *= opacity;
 
-    if(random.z < 0.5) { // non-specular light
+
+    if(random.z < 1.0) { // non-specular light
     if((2.0 * random.z) < transmission) { // transmitted light
            
       // important sample GGX
@@ -112,13 +112,13 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       vec3 h_local = dir_from_thetaphi(theta, phi);
       
       // compute L from sampled H
-      vec3 l_local = refract(-v_local, h_local, eta);
+      vec3 l_local = refract(-out_dir, h_local, eta);
       
       // all required dot products
-      float NoV = clamp(dot(n_local, v_local), 0.0, 1.0);
-      float NoL = clamp(dot(n_local, l_local), 0.0, 1.0);
-      float NoH = clamp(dot(n_local, h_local), 0.0, 1.0);
-      float VoH = clamp(dot(v_local, h_local), 0.0, 1.0);     
+      float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
+      float NoL = clamp(dot(normal, l_local), 0.0, 1.0);
+      float NoH = clamp(dot(normal, h_local), 0.0, 1.0);
+      float VoH = clamp(dot(out_dir, h_local), 0.0, 1.0);     
       
       // F0 for dielectics in range [0.0, 0.16] 
       // default FO is (0.16 * 0.5^2) = 0.04
@@ -135,8 +135,8 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = normalize(tbn * l_local);
-      res.pdf = 1.0;
+      res.direction = normalize(l_local);
+      res.pdf = D * cos(theta) * sin(theta);
       res.specular = true;
       return res;
       
@@ -151,8 +151,8 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       float theta = thetaphi_from_dir(l_local).x;
       
        // half vector
-      vec3 h_local = normalize(v_local + l_local);
-      float VoH = clamp(dot(v_local, h_local), 0.0, 1.0);     
+      vec3 h_local = normalize(out_dir + l_local);
+      float VoH = clamp(dot(out_dir, h_local), 0.0, 1.0);     
       
       // F0 for dielectics in range [0.0, 0.16] 
       // default FO is (0.16 * 0.5^2) = 0.04
@@ -165,11 +165,11 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
       vec3 contrib = notSpec * baseColor;
-      contrib *= 2.0; // compensate for splitting diffuse and specular
+      contrib *= 1.0; // compensate for splitting diffuse and specular
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = normalize(tbn * l_local);
+      res.direction = normalize(l_local);
       res.pdf = diffuse_sample.pdf;
       res.specular = false;
       return res;
@@ -178,18 +178,16 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     
     // important sample GGX
     // pdf = D * cos(theta) * sin(theta)
-    float a = roughness * roughness;
-    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-    float phi = 2.0 * PI * random.x;
-    
-    vec3 h_local = dir_from_thetaphi(theta, phi);
-    vec3 l_local = reflect(-v_local, h_local);
+    DirectionSample hemisphere_sample = sample_cosine_hemisphere(random.x, random.y);
+
+    vec3 h_local = hemisphere_sample.direction;
+    vec3 l_local = reflect(out_dir, h_local);
 
     // all required dot products
-    float NoV = clamp(dot(n_local, v_local), 0.0, 1.0);
-    float NoL = clamp(dot(n_local, l_local), 0.0, 1.0);
-    float NoH = clamp(dot(n_local, h_local), 0.0, 1.0);
-    float VoH = clamp(dot(v_local, h_local), 0.0, 1.0);     
+    float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
+    float NoL = clamp(dot(normal, l_local), 0.0, 1.0);
+    float NoH = clamp(dot(normal, h_local), 0.0, 1.0);
+    float VoH = clamp(dot(out_dir, h_local), 0.0, 1.0);     
     
     // F0 for dielectics in range [0.0, 0.16] 
     // default FO is (0.16 * 0.5^2) = 0.04
@@ -207,9 +205,9 @@ BSDFSample sample_ggx(in vec3 V, in mat3 tbn,
     
     BSDFSample res;
     res.contribution = contrib;
-    res.direction = normalize(tbn * l_local);
-    res.pdf = 1.0;
-    res.specular = true;
+    res.direction = normalize(l_local);
+    res.pdf = hemisphere_sample.pdf;
+    res.specular = false;
     return res;
   } 
 }
