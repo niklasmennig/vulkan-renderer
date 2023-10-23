@@ -179,7 +179,7 @@ void main() {
                 // AOV data
                 if (depth == 1) {
                     primary_hit_instance = payload.hit_instance;
-                    primary_hit_albedo = vec3(inner_reflection);
+                    primary_hit_albedo = base_color;
                     primary_hit_normal = normal;
                     primary_hit_roughness = roughness;
                 }
@@ -218,7 +218,7 @@ void main() {
                     if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
                         vec3 bsdf_eval = eval_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                         float mis_weight = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf);
-                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * clamp(dot(light_dir, normal), 0.0, 1.0) / (light_pdf);
+                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_dir, normal)) / (light_pdf);
                     }
                 }
 

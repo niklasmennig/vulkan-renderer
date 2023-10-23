@@ -204,7 +204,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     res.contribution = contrib;
     res.direction = normalize(l_local);
     res.pdf = hemisphere_sample.pdf / (1.0 - diff_spec_split);
-    res.specular = true;
+    res.specular = false;
     return res;
   } 
 }
