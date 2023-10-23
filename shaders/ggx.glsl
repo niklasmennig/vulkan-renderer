@@ -78,29 +78,29 @@ float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
 
 BSDFSample sample_ggx(in vec3 out_dir, 
               in vec3 baseColor, float opacity, in float metallicness, 
-              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random) 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random, bool inner_reflection) 
 {
     vec3 normal = vec3(0,1,0);
 
     float eta = 1.0 / ior;
-    // if (dot(-out_dir, normal) < 0) {
-    //   normal *= -1;
-    //   eta = 1.0 / eta;
-    // }
+    if (inner_reflection) {
+      normal = -normal;
+      eta = 1.0 / eta;
+    }
 
     // handle opacity
-    // if (random.w > opacity) {
-    //   BSDFSample res;
-    //   res.contribution = vec3(1.0);
-    //   res.direction = -out_dir;
-    //   res.pdf = 1.0 / opacity;
-    //   res.specular = true;
-    //   return res;
-    // }
-    // pdf *= opacity;
+    if (random.w > opacity) {
+      BSDFSample res;
+      res.contribution = vec3(1.0);
+      res.direction = -out_dir;
+      // if (inner_reflection) res.direction = -out_dir;
+      res.pdf = 1.0;
+      res.specular = false;
+      return res;
+    }
 
-
-    if(random.z < 1.0) { // non-specular light
+    float diff_spec_split = 1.0;
+    if(random.z < diff_spec_split) { // non-specular light
     if((2.0 * random.z) < transmission) { // transmitted light
            
       // important sample GGX
@@ -169,7 +169,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       BSDFSample res;
       res.contribution = contrib;
       res.direction = normalize(l_local);
-      res.pdf = diffuse_sample.pdf;
+      res.pdf = diffuse_sample.pdf / diff_spec_split;
       res.specular = false;
       return res;
     }
@@ -200,13 +200,11 @@ BSDFSample sample_ggx(in vec3 out_dir,
     float G = g_smith(NoV, NoL, roughness);
     vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001);
     
-    contrib *= 2.0; // compensate for splitting diffuse and specular
-    
     BSDFSample res;
     res.contribution = contrib;
     res.direction = normalize(l_local);
-    res.pdf = hemisphere_sample.pdf;
-    res.specular = false;
+    res.pdf = hemisphere_sample.pdf / (1.0 - diff_spec_split);
+    res.specular = true;
     return res;
   } 
 }

@@ -14,5 +14,6 @@ void main() {
     payload.hit_primitive = gl_PrimitiveID;
     payload.hit_transform_world = gl_ObjectToWorldEXT;
     payload.hit_transform_object = gl_WorldToObjectEXT;
+    payload.hit_t = gl_HitTEXT;
     payload.hit_barycentrics = barycentrics;
 }

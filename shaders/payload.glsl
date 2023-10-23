@@ -8,6 +8,7 @@ struct RayPayload
     uint hit_primitive;
     mat4x3 hit_transform_world;
     mat4x3 hit_transform_object;
+    float hit_t;
     vec2 hit_barycentrics;
 };
 

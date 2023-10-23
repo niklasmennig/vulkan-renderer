@@ -6,8 +6,8 @@
 #define PI 3.1415926
 #define NULL_INSTANCE 999999
 
-float epsilon = 0.0001f;
-float ray_max = 100000.0f;
+#define EPSILON 0.001
+#define RAY_LEN_MAX 100000.0
 
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)

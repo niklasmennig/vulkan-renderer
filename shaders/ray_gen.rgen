@@ -77,7 +77,7 @@ void main() {
         vec3 color = vec3(0.0);
         vec3 contribution = vec3(1.0);
 
-        float last_bsdf_pdf = 0.0;
+        float last_bsdf_pdf = 1.0;
 
         payload.hit = false;
 
@@ -92,9 +92,9 @@ void main() {
                     push_constants.constants.sbt_stride,
                     0,
                     ray_origin,
-                    epsilon,
+                    EPSILON,
                     ray_direction,
-                    ray_max,
+                    RAY_LEN_MAX,
                     0
                 );
 
@@ -117,10 +117,11 @@ void main() {
                     primary_hit_env_conditional = sample_texture(2, vec2(u,v)).r;
 
                     primary_hit_albedo = base_color;
-                    color = base_color;
                 }
 
-                // color += contribution * base_color;
+                if ((push_constants.constants.flags & 2) == 2) {
+                    color += contribution * base_color / last_bsdf_pdf;
+                }
                 break;
                 
             } else {
@@ -167,9 +168,10 @@ void main() {
                 mat3 to_shading_space = inverse(to_world_space);
 
                 vec3 ray_out_local = normalize(to_shading_space * ray_out);
+                bool inner_reflection = dot(ray_out, tbn[1]) < 0;
 
                 vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
-                BSDFSample bsdf_sample = sample_ggx(ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
+                BSDFSample bsdf_sample = sample_ggx(ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, inner_reflection); 
 
                 vec3 ray_in_local = normalize(bsdf_sample.direction);
                 vec3 ray_in = normalize(to_world_space * ray_in_local);
@@ -177,13 +179,13 @@ void main() {
                 // AOV data
                 if (depth == 1) {
                     primary_hit_instance = payload.hit_instance;
-                    primary_hit_albedo = base_color;
-                    primary_hit_normal = to_shading_space * normal;
+                    primary_hit_albedo = vec3(inner_reflection);
+                    primary_hit_normal = normal;
                     primary_hit_roughness = roughness;
                 }
 
-                if (bsdf_sample.pdf < epsilon) {break;}
-                contribution *= bsdf_sample.contribution * clamp(dot(ray_in, normal), 0.0, 1.0) / bsdf_sample.pdf;
+                if (bsdf_sample.pdf < EPSILON) {break;}
+                contribution *= bsdf_sample.contribution * abs(dot(ray_in, normal)) / bsdf_sample.pdf;
 
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
@@ -203,9 +205,9 @@ void main() {
                         push_constants.constants.sbt_stride,
                         1,
                         position,
-                        epsilon,
+                        EPSILON,
                         light_dir,
-                        light_sample.distance - 2 * epsilon,
+                        light_sample.distance - 2 * EPSILON,
                         1
                     );
 
@@ -213,7 +215,7 @@ void main() {
                     // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
                     float light_pdf = light_sample.pdf * push_constants.constants.light_count;
                     float bsdf_pdf = pdf_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
-                    if (!occluded && light_sample.pdf > epsilon && bsdf_pdf > epsilon) {
+                    if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
                         vec3 bsdf_eval = eval_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                         float mis_weight = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf);
                         color += mis_weight * contribution * bsdf_eval * light_sample.intensity * clamp(dot(light_dir, normal), 0.0, 1.0) / (light_pdf);
@@ -233,8 +235,8 @@ void main() {
                 }
 
                 
+                ray_origin = ray_origin + ray_direction * payload.hit_t;
                 ray_direction = ray_in;
-                ray_origin = position;
 
                 last_bsdf_pdf = bsdf_sample.pdf;
 
