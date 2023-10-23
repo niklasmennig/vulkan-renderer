@@ -38,7 +38,7 @@ DirectionSample sample_cosine_hemisphere(float u, float v)
 
     DirectionSample dir_sample;
     dir_sample.direction = dir_from_thetaphi(theta, phi);
-    dir_sample.pdf = pdf_cosine_hemisphere(dir_sample.direction.z);
+    dir_sample.pdf = pdf_cosine_hemisphere(dir_sample.direction.y);
 
     return dir_sample;
 }
@@ -55,7 +55,7 @@ DirectionSample sample_power_hemisphere(float u, float v, float n)
 
     DirectionSample dir_sample;
     dir_sample.direction = dir_from_thetaphi(theta, phi);
-    dir_sample.pdf = pdf_power_hemisphere(dir_sample.direction.z, n);
+    dir_sample.pdf = pdf_power_hemisphere(dir_sample.direction.y, n);
 
     return dir_sample;
 }

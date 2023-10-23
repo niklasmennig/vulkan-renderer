@@ -165,7 +165,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
       vec3 contrib = notSpec * baseColor;
-      contrib *= 1.0; // compensate for splitting diffuse and specular
       
       BSDFSample res;
       res.contribution = contrib;

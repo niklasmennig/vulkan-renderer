@@ -145,9 +145,9 @@ void main() {
                 mat3 tbn = basis(normal);
                 
                 //normal mapping
-                vec3 normal_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_NORMAL).rgb;
+                vec3 normal_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_NORMAL).rbg;
                 vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
-                normal = tbn * sampled_normal;
+                normal = normalize(tbn * sampled_normal);
                 
                 // material properties
                 vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
@@ -163,22 +163,22 @@ void main() {
                 
 
                 // bsdf sampling
-                mat4x3 to_world_space = payload.hit_transform_world;
-                mat4x3 to_shading_space = payload.hit_transform_object;
+                mat3 to_world_space = basis(normal);
+                mat3 to_shading_space = inverse(to_world_space);
 
-                vec3 ray_out_local = normalize(to_shading_space * vec4(ray_out, 0));
+                vec3 ray_out_local = normalize(to_shading_space * ray_out);
 
                 vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
                 BSDFSample bsdf_sample = sample_ggx(ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values); 
 
                 vec3 ray_in_local = normalize(bsdf_sample.direction);
-                vec3 ray_in = normalize(to_world_space * vec4(ray_in_local, 0));
+                vec3 ray_in = normalize(to_world_space * ray_in_local);
 
                 // AOV data
                 if (depth == 1) {
                     primary_hit_instance = payload.hit_instance;
                     primary_hit_albedo = base_color;
-                    primary_hit_normal = normal;
+                    primary_hit_normal = to_shading_space * normal;
                     primary_hit_roughness = roughness;
                 }
 
@@ -192,7 +192,7 @@ void main() {
                     LightSample light_sample = sample_light(position, random_values, light);
                     // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
                     vec3 light_dir = normalize(light_sample.direction);
-                    vec3 light_dir_local = normalize(to_shading_space * vec4(light_dir, 0));                   
+                    vec3 light_dir_local = normalize(to_shading_space * light_dir);                   
 
                     // cast shadow ray
                     traceRayEXT(

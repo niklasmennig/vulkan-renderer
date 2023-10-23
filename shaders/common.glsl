@@ -29,8 +29,9 @@ mat3 basis(in vec3 n)
 
     f = normalize(f);
     r = normalize(r);
+    n = normalize(n);
 
-    return mat3(f, r, n);
+    return mat3(f, n, r);
 }
 
 // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
