@@ -93,15 +93,13 @@ BSDFSample sample_ggx(in vec3 out_dir,
       BSDFSample res;
       res.contribution = vec3(1.0);
       res.direction = -out_dir;
-      // if (inner_reflection) res.direction = -out_dir;
       res.pdf = 1.0;
-      res.specular = false;
+      res.specular = true;
       return res;
     }
 
-    float diff_spec_split = 1.0;
-    if(random.z < diff_spec_split) { // non-specular light
-    if((2.0 * random.z) < transmission) { // transmitted light
+    if(random.z < 0.5) { // non-specular light
+    if(/* (2.0 * random.z) < transmission */ false) { // transmitted light
            
       // important sample GGX
       // pdf = D * cos(theta) * sin(theta)
@@ -164,12 +162,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-      vec3 contrib = notSpec * baseColor;
+      vec3 contrib = notSpec * baseColor * 2.0;
       
       BSDFSample res;
       res.contribution = contrib;
       res.direction = normalize(l_local);
-      res.pdf = diffuse_sample.pdf / diff_spec_split;
+      res.pdf = diffuse_sample.pdf;
       res.specular = false;
       return res;
     }
@@ -177,9 +175,16 @@ BSDFSample sample_ggx(in vec3 out_dir,
     
     // important sample GGX
     // pdf = D * cos(theta) * sin(theta)
-    DirectionSample hemisphere_sample = sample_cosine_hemisphere(random.x, random.y);
 
-    vec3 h_local = hemisphere_sample.direction;
+    // float a = roughness * roughness;
+    // float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+    // float phi = 2.0 * PI * random.x;
+    // vec3 h_local = dir_from_thetaphi(theta, phi);
+
+    float a = roughness * roughness;
+    DirectionSample hemisphere_sample = sample_power_hemisphere(random.x, random.y, a*a);
+    vec3 h_local = hemisphere_sample.direction;    
+
     vec3 l_local = reflect(out_dir, h_local);
 
     // all required dot products
@@ -198,13 +203,13 @@ BSDFSample sample_ggx(in vec3 out_dir,
     vec3 F = fresnel_schlick(VoH, f0);
     float D = d_ggx(NoH, roughness);
     float G = g_smith(NoV, NoL, roughness);
-    vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001);
+    vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001) * 2.0;
     
     BSDFSample res;
     res.contribution = contrib;
     res.direction = normalize(l_local);
-    res.pdf = hemisphere_sample.pdf / (1.0 - diff_spec_split);
-    res.specular = false;
+    res.pdf = hemisphere_sample.pdf / D;
+    res.specular = true;
     return res;
   } 
 }

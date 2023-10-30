@@ -43,21 +43,20 @@ DirectionSample sample_cosine_hemisphere(float u, float v)
     return dir_sample;
 }
 
-float pdf_power_hemisphere(float cos, float n) {
-    return ((n+1) * pow(cos, n)) / (2.0 * PI);
+float pdf_power_hemisphere(float cos, float alpha) {
+    return ((alpha+1) * pow(cos, alpha)) / (2.0 * PI);
 }
 
 // taken from https://ameye.dev/notes/sampling-the-hemisphere/
-DirectionSample sample_power_hemisphere(float u, float v, float n)
+DirectionSample sample_power_hemisphere(float u, float v, float alpha)
 {
-    float theta = acos(pow(u, (1.0 / n + 1)));
+    float theta = acos(pow(u, (1.0 / (alpha + 1))));
     float phi = 2.0 * PI * v;
 
     DirectionSample dir_sample;
     dir_sample.direction = dir_from_thetaphi(theta, phi);
-    dir_sample.pdf = pdf_power_hemisphere(dir_sample.direction.y, n);
+    dir_sample.pdf = pdf_power_hemisphere(dir_sample.direction.y, alpha);
 
     return dir_sample;
 }
-
 #endif

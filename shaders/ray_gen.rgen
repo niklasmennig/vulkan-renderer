@@ -185,14 +185,13 @@ void main() {
                 }
 
                 if (bsdf_sample.pdf < EPSILON) {break;}
-                contribution *= bsdf_sample.contribution * abs(dot(ray_in, normal)) / bsdf_sample.pdf;
 
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    LightSample light_sample = sample_light(position, random_values, light);
-                    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+                    // LightSample light_sample = sample_light(position, random_values, light);
+                    LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
                     vec3 light_dir = normalize(light_sample.direction);
                     vec3 light_dir_local = normalize(to_shading_space * light_dir);                   
 
@@ -213,15 +212,16 @@ void main() {
 
                     bool occluded = ray_occluded;
                     // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
-                    float light_pdf = light_sample.pdf * push_constants.constants.light_count;
+                    float light_pdf = light_sample.pdf;
                     float bsdf_pdf = pdf_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                     if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
-                        vec3 bsdf_eval = eval_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
-                        float mis_weight = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf);
-                        color += mis_weight * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_dir, normal)) / (light_pdf);
+                        vec3 bsdf_eval = eval_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);  
+                        float mis = balance_heuristic(1.0f, bsdf_pdf, 1.0f, light_pdf);                      
+                        color += mis * contribution * bsdf_eval * light_sample.intensity * abs(dot(light_dir, normal)) / (light_pdf);
                     }
                 }
 
+                contribution *= bsdf_sample.contribution * abs(dot(ray_in, normal)) / bsdf_sample.pdf;
 
                 // material emission
                 if ((push_constants.constants.flags & 2) == 2) {

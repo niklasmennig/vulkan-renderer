@@ -54,8 +54,8 @@ LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
     vec2 offset = random_values.zw * vec2(x_step, y_step);
     vec2 sample_uv = vec2(cdf_x, conditional_y) + offset;
 
-    float phi = sample_uv.x * 2.0 * PI;
     float theta = sample_uv.y * PI;
+    float phi = sample_uv.x * 2.0 * PI;
 
     float sample_pdf = sample_pdf_cdf * sample_pdf_conditional * 2.0 * PI * PI * sin(theta);
     
