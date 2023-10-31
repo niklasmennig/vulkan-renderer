@@ -786,6 +786,7 @@ void VulkanApplication::draw_frame() {
     push_constants.light_count = lights.size();
     push_constants.max_depth = ui.max_ray_depth;
     push_constants.frame_samples = ui.frame_samples;
+    push_constants.exposure = ui.exposure;
     push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
     uint32_t flags = 0;
     if (ui.direct_lighting_enabled) flags |= 1;

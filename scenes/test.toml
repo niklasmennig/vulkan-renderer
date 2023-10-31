@@ -1,19 +1,19 @@
 [environment]
     # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
-    path = "./hdri/studio_small_03_4k.hdr"
-    # path = "./hdri/vestibule_4k.hdr"
+    # path = "./hdri/studio_small_03_4k.hdr"
+    path = "./hdri/vestibule_4k.hdr"
     # path = "./hdri/rural_asphalt_road_4k.hdr"
     # path = "./hdri/moonless_golf_4k.hdr"
 
 [objects]
-    [objects.test2]
-    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
-
-    [objects.test]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    # [objects.test2]
+    # path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
     # [objects.test]
-    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+
+    [objects.test]
+    path = "./gltf/plane/untitled.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
@@ -32,10 +32,10 @@
 
 
 [instances]
-    [instances.test2]
-    object = "test2"
-    position = [0.0, -1.0, 0.0]
-    rotation = [0.0, 0.0, 0.0]
+    # [instances.test2]
+    # object = "test2"
+    # position = [0.0, -1.0, 0.0]
+    # rotation = [0.0, 0.0, 0.0]
 
     [instances.h1]
     object = "test"
@@ -84,12 +84,12 @@
     # position = [4.0, 2.0, 0.0]
 
 [lights]
-    # [lights.test0]
-    # type = "point"
-    # position = [-0.5, 1.0, 0.0]
-    # intensity = [23.0, 17.0, 23.0]
+    [lights.test0]
+    type = "point"
+    position = [-0.5, 1.0, 0.0]
+    intensity = [23.0, 17.0, 23.0]
 
-    [lights.test1]
-    type = "directional"
-    direction = [0.0, -1.0, 0.0]
-    intensity = [200.0, 200.0, 200.0]
+    # [lights.test1]
+    # type = "directional"
+    # direction = [1.0, -1.0, 0.0]
+    # intensity = [1.0, 1.0, 1.0]

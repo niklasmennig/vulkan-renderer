@@ -29,6 +29,7 @@ public:
     bool direct_lighting_enabled;
     bool indirect_lighting_enabled;
 
+    float exposure = 0.0f;
     float camera_speed = 1.0f;
     float camera_fov = 70.0f;
 

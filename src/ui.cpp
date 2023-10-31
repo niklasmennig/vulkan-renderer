@@ -16,6 +16,7 @@ void UI::draw() {
     hovered = false;
     ImGui::Begin("Scene Inspector");
     hovered |= ImGui::IsWindowHovered();
+    changed |= ImGui::DragFloat("Exposure", &exposure, 0.1);
 
     ImGui::SeparatorText("Camera");
     ImGui::DragFloat("Camera Speed", &camera_speed, camera_speed * 1e-3, 100.0f);

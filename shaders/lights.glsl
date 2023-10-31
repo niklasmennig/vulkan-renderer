@@ -10,7 +10,7 @@
 struct LightSample {
     vec3 direction;
     float distance;
-    vec3 intensity;
+    vec3 intensity; // already divided by PDF
     float pdf;
 };
 
@@ -72,17 +72,19 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
 
             light_sample.direction = direction / distance;
             light_sample.distance = distance;
+
+            float pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
+
             vec4 emissive_factor = get_material_parameters(instance).emissive_factor;
             vec2 uv = get_vertex_uv(instance, primitive, random_values.yz);
-            light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * emissive_factor.rgb) * emissive_factor.a;
-
-            light_sample.pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
+            light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * emissive_factor.rgb) * emissive_factor.a / pdf;
+            light_sample.pdf = pdf;
             break;
         case 2: // DIRECTIONAL LIGHT
             light_sample.direction = -normalize(vec3(light.float_data[0], light.float_data[1], light.float_data[2]));
             light_sample.distance = FLT_MAX;
             light_sample.intensity = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]));
-            light_sample.pdf = 1.0;
+            light_sample.pdf = FLT_MAX;
             break;
     }
     return light_sample;

@@ -33,7 +33,7 @@ struct PushConstants {
     uint max_depth;
     uint flags;
     uint frame_samples;
-    float padding;
+    float exposure;
     //
     uvec2 environment_cdf_dimensions;
     vec2 padding2;

@@ -98,7 +98,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       return res;
     }
 
-    if(random.z < 0.5) { // non-specular light
+    if(random.z < 1.0) { // non-specular light
     if(/* (2.0 * random.z) < transmission */ false) { // transmitted light
            
       // important sample GGX
@@ -162,7 +162,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-      vec3 contrib = notSpec * baseColor * 2.0;
+      vec3 contrib = notSpec * baseColor;
       
       BSDFSample res;
       res.contribution = contrib;
@@ -185,7 +185,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     DirectionSample hemisphere_sample = sample_power_hemisphere(random.x, random.y, a*a);
     vec3 h_local = hemisphere_sample.direction;    
 
-    vec3 l_local = reflect(out_dir, h_local);
+    vec3 l_local = h_local;
 
     // all required dot products
     float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
