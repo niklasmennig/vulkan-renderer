@@ -120,7 +120,7 @@ void main() {
                 }
 
                 if ((push_constants.constants.flags & 2) == 2) {
-                    color += contribution * base_color / last_bsdf_pdf;
+                    color += contribution * base_color;
                 }
                 break;
                 
