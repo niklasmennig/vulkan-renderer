@@ -98,7 +98,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       return res;
     }
 
-    if(random.z < 1.0) { // non-specular light
+    if(random.z < 0.5) { // non-specular light
     if(/* (2.0 * random.z) < transmission */ false) { // transmitted light
            
       // important sample GGX
@@ -162,7 +162,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-      vec3 contrib = notSpec * baseColor;
+      vec3 contrib = notSpec * baseColor * 2.0;
       
       BSDFSample res;
       res.contribution = contrib;
@@ -176,16 +176,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
     // important sample GGX
     // pdf = D * cos(theta) * sin(theta)
 
-    // float a = roughness * roughness;
-    // float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-    // float phi = 2.0 * PI * random.x;
-    // vec3 h_local = dir_from_thetaphi(theta, phi);
-
     float a = roughness * roughness;
-    DirectionSample hemisphere_sample = sample_power_hemisphere(random.x, random.y, a*a);
-    vec3 h_local = hemisphere_sample.direction;    
+    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+    float phi = 2.0 * PI * random.x;
+    vec3 h_local = dir_from_thetaphi(theta, phi);
 
-    vec3 l_local = h_local;
+    vec3 l_local = reflect(-out_dir, h_local);
 
     // all required dot products
     float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
@@ -208,7 +204,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     BSDFSample res;
     res.contribution = contrib;
     res.direction = normalize(l_local);
-    res.pdf = hemisphere_sample.pdf / D;
+    res.pdf = (h_local.y / (PI / 2.0));
     res.specular = true;
     return res;
   } 
