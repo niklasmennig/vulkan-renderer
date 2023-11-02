@@ -57,7 +57,7 @@ LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
     float theta = sample_uv.y * PI;
     float phi = sample_uv.x * 2.0 * PI;
 
-    float sample_pdf = sample_pdf_cdf * sample_pdf_conditional / (4.0 * PI);
+    float sample_pdf = sample_pdf_cdf * sample_pdf_conditional / (4.0 * PI) * sin(theta);
     
     LightSample result;
     result.pdf = sample_pdf;

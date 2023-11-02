@@ -12,8 +12,11 @@
     # [objects.test]
     # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
+    # [objects.test]
+    # path = "./gltf/plane/untitled.gltf"
+
     [objects.test]
-    path = "./gltf/plane/untitled.gltf"
+    path = "./gltf/test_sphere/slate_floor_2k.gltf"
 
     # [objects.test]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"

@@ -50,7 +50,7 @@ void UI::draw() {
     
     if (ImGui::Button("Save Screenshot")) {
         ImagePixels pixels =  application->get_pipeline().get_output_image(selected_output_image).image.get_pixels();
-        pixels.multiplier = 1.0f / application->get_samples();
+        if (selected_output_image == "Accumulated Color") pixels.multiplier = 1.0f / application->get_samples();
         application->save_screenshot("screenshot.exr", pixels);
     }
 
