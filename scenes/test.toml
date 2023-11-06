@@ -10,7 +10,7 @@
     path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
     [objects.test]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
     # [objects.test]
     # path = "./gltf/plane/untitled.gltf"
@@ -42,7 +42,7 @@
 
     [instances.h1]
     object = "test"
-    scale = [0.1, 0.1, 0.1]
+    scale = [5.0, 5.0, 5.0]
     position = [0.5, 0.15, 0.0]
     rotation = [90.0, 0.0, 90.0]
 

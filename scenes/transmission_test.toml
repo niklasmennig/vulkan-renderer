@@ -14,7 +14,7 @@
     object = "test"
 
 [lights]
-    # [lights.test0]
-    # type = "point"
-    # position = [0.0, 3.0, 3.0]
-    # intensity = [5000.0, 5000.0, 5000.0]
+    [lights.test0]
+    type = "point"
+    position = [0.0, 3.0, 3.0]
+    intensity = [100.0, 100.0, 100.0]

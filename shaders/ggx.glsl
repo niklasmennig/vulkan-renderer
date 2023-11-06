@@ -99,7 +99,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     }
 
     if(random.z < 0.5) { // non-specular light
-    if(/* (2.0 * random.z) < transmission */ false) { // transmitted light
+    if((2.0 * random.w) < transmission) { // transmitted light
            
       // important sample GGX
       // pdf = D * cos(theta) * sin(theta)
@@ -127,14 +127,15 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 F = fresnel_schlick(VoH, f0);
       float D = d_ggx(NoH, roughness);
       float G = g_smith(NoV, NoL, roughness);
-      vec3 contrib = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
+      // vec3 contrib = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
+      vec3 contrib = baseColor * D * G * (vec3(1.0) - F);
     
       contrib *= 2.0; // compensate for splitting diffuse and specular
       
       BSDFSample res;
       res.contribution = contrib;
       res.direction = normalize(l_local);
-      res.pdf = D * cos(theta) * sin(theta);
+      res.pdf = abs(h_local.y) / PI;
       res.specular = true;
       return res;
       
@@ -176,10 +177,13 @@ BSDFSample sample_ggx(in vec3 out_dir,
     // important sample GGX
     // pdf = D * cos(theta) * sin(theta)
 
-    float a = roughness * roughness;
-    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-    float phi = 2.0 * PI * random.x;
-    vec3 h_local = dir_from_thetaphi(theta, phi);
+    vec3 h_local = vec3(0,1,0);
+    if (roughness > EPSILON) {
+      float a = roughness * roughness;
+      float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+      float phi = 2.0 * PI * random.x;
+      h_local = dir_from_thetaphi(theta, phi);
+    }
 
     vec3 l_local = reflect(-out_dir, h_local);
 
@@ -204,7 +208,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     BSDFSample res;
     res.contribution = contrib;
     res.direction = normalize(l_local);
-    res.pdf = (h_local.y / (PI / 2.0));
+    res.pdf = (h_local.y / PI);
     res.specular = true;
     return res;
   } 
