@@ -53,6 +53,7 @@ vec3 eval_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
   rho *= (1.0 - metallic) * (1.0 - transmission);
   vec3 diff = rho * base_color / PI;
 
+
   return (diff + spec) * opacity;
 }
 
@@ -84,8 +85,8 @@ BSDFSample sample_ggx(in vec3 out_dir,
 
     float eta = 1.0 / ior;
     if (inner_reflection) {
-      normal = -normal;
       eta = 1.0 / eta;
+      normal = -normal;
     }
 
     // handle opacity
@@ -99,16 +100,15 @@ BSDFSample sample_ggx(in vec3 out_dir,
     }
 
     if(random.z < 0.5) { // non-specular light
-    if((2.0 * random.w) < transmission) { // transmitted light
+    if(random.w * 2.0 < transmission) { // transmitted light
            
-      // important sample GGX
-      // pdf = D * cos(theta) * sin(theta)
       float a = roughness * roughness;
       float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
       float phi = 2.0 * PI * random.x;
       
       vec3 h_local = dir_from_thetaphi(theta, phi);
-      
+      if (inner_reflection) h_local = -h_local;
+
       // compute L from sampled H
       vec3 l_local = refract(-out_dir, h_local, eta);
       
@@ -135,14 +135,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
       BSDFSample res;
       res.contribution = contrib;
       res.direction = normalize(l_local);
-      res.pdf = abs(h_local.y) / PI;
+      res.pdf = D * sin(theta) * cos(theta);
       res.specular = true;
       return res;
       
     } else { // diffuse light
       
-      // important sampling diffuse
-      // pdf = cos(theta) * sin(theta) / PI
       // sampled indirect diffuse direction in normal space
       DirectionSample diffuse_sample = sample_cosine_hemisphere(random.x, random.y);
       vec3 l_local = diffuse_sample.direction;
@@ -173,17 +171,11 @@ BSDFSample sample_ggx(in vec3 out_dir,
       return res;
     }
   } else {// specular light
-    
-    // important sample GGX
-    // pdf = D * cos(theta) * sin(theta)
 
-    vec3 h_local = vec3(0,1,0);
-    if (roughness > EPSILON) {
-      float a = roughness * roughness;
-      float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-      float phi = 2.0 * PI * random.x;
-      h_local = dir_from_thetaphi(theta, phi);
-    }
+    float a = roughness * roughness;
+    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
+    float phi = 2.0 * PI * random.x;
+    vec3 h_local = dir_from_thetaphi(theta, phi);
 
     vec3 l_local = reflect(-out_dir, h_local);
 
@@ -208,7 +200,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     BSDFSample res;
     res.contribution = contrib;
     res.direction = normalize(l_local);
-    res.pdf = (h_local.y / PI);
+    res.pdf = h_local.y / PI;
     res.specular = true;
     return res;
   } 

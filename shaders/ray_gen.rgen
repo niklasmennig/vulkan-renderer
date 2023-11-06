@@ -51,6 +51,7 @@ vec3 compute_ray_direction(vec2 ndc) {
 void main() {
     uint max_depth = push_constants.constants.max_depth;
     uint frame_samples = push_constants.constants.frame_samples;
+    uint sample_count = push_constants.constants.clear_accumulated;
 
     uint primary_hit_instance = NULL_INSTANCE;
     vec3 primary_hit_albedo = vec3(0);
@@ -168,7 +169,7 @@ void main() {
                 mat3 to_shading_space = inverse(to_world_space);
 
                 vec3 ray_out_local = normalize(to_shading_space * ray_out);
-                bool inner_reflection = dot(ray_out, tbn[1]) < 0;
+                bool inner_reflection = dot(ray_out, tbn[1]) < -EPSILON;
 
                 vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
                 BSDFSample bsdf_sample = sample_ggx(ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, inner_reflection); 
@@ -190,8 +191,8 @@ void main() {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    LightSample light_sample = sample_light(position, random_values, light);
-                    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+                    // LightSample light_sample = sample_light(position, random_values, light);
+                    LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
                     vec3 light_dir = light_sample.direction;
                     vec3 light_dir_local = normalize(to_shading_space * light_dir);                   
 
@@ -212,12 +213,12 @@ void main() {
 
                     bool occluded = ray_occluded;
                     // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
-                    float light_pdf = light_sample.pdf;
-                    float bsdf_pdf = pdf_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                    float light_pdf = light_sample.pdf * push_constants.constants.light_count;
+                    float bsdf_pdf = pdf_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
                     if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
-                        vec3 bsdf_eval = eval_ggx(ray_in_local, light_dir_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);  
-                        // float mis = balance_heuristic(1.0f, bsdf_pdf, 1.0f, light_pdf); 
-                        float mis = 1.0;                     
+                        vec3 bsdf_eval = eval_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);  
+                        float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
+                        // float mis = 1.0;                     
                         color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
                     }
                 }
@@ -261,10 +262,19 @@ void main() {
     }
 
     ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
-    uint sample_count = push_constants.constants.clear_accumulated;
 
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
+
+    // TODO
+    // Find another way to deal with fireflies
+    //
+    // frame_color = clamp(frame_color, vec3(0,0,0), vec3(10,10,10));
+    //
+    //
+    // !!!!
+    
+    
     vec3 accum_color;
     if (sample_count <= 1) {
         accum_color = frame_color;

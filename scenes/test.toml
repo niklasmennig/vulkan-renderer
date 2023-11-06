@@ -9,8 +9,11 @@
     [objects.test2]
     path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
 
+    # [objects.test]
+    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
+
     [objects.test]
-    path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.test]
     # path = "./gltf/plane/untitled.gltf"
@@ -27,8 +30,8 @@
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
 
-    # [objects.test3]
-    # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+    [objects.test3]
+    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
@@ -42,15 +45,15 @@
 
     [instances.h1]
     object = "test"
-    scale = [5.0, 5.0, 5.0]
-    position = [0.5, 0.15, 0.0]
+    scale = [0.1, 0.1, 0.1]
+    position = [0.0, 0.2, 0.0]
     rotation = [90.0, 0.0, 90.0]
 
-    # [instances.h2]
-    # object = "test"
-    # scale = [0.1, 0.1, 0.1]
-    # position = [-0.2, 0.15, 0.0]
-    # rotation = [110.0, 0.0, -90.0]
+    [instances.h2]
+    object = "test3"
+    scale = [0.3, 0.3, 0.3]
+    position = [-0.2, 0.15, 0.0]
+    rotation = [0.0, 0.0, 0.0]
 
     # [instances.h3]
     # object = "test"
