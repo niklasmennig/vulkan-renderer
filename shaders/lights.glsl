@@ -75,9 +75,9 @@ LightSample sample_light(vec3 position, vec4 random_values, Light light) {
 
             float pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
 
-            vec4 emissive_factor = get_material_parameters(instance).emissive_factor;
+            MaterialParameters material_parameters = get_material_parameters(instance);
             vec2 uv = get_vertex_uv(instance, primitive, random_values.yz);
-            light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * emissive_factor.rgb) * emissive_factor.a / pdf;
+            light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength / pdf;
             light_sample.pdf = pdf;
             break;
         case 2: // DIRECTIONAL LIGHT

@@ -54,6 +54,10 @@ void UI::draw() {
         application->save_screenshot("screenshot.exr", pixels);
     }
 
+    if (ImGui::Button("Rebuild Pipeline")) {
+        application->rebuild_pipeline();
+    }
+
     ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
     ImGui::Text("%d Samples", application->get_samples());

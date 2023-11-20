@@ -1524,7 +1524,7 @@ void VulkanApplication::setup() {
 
 
     // create pipeline
-    PipelineBuilder pipeline_builder = device.create_pipeline_builder()
+    pipeline_builder = device.create_pipeline_builder()
                    .with_default_pipeline();
 
     pipeline = pipeline_builder.build();
@@ -1813,6 +1813,13 @@ void VulkanApplication::cleanup() {
     glfwDestroyWindow(window);
 
     glfwTerminate();
+}
+
+void VulkanApplication::rebuild_pipeline() {
+    Pipeline new_pipeline = pipeline_builder.build();
+    pipeline = new_pipeline;
+    create_default_descriptor_writes();
+    recreate_render_image();
 }
 
 void VulkanApplication::set_scene_path(std::string path) {

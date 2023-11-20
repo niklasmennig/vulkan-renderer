@@ -15,7 +15,6 @@
 #include "mis.glsl"
 #include "environment.glsl"
 #include "lights.glsl"
-#include "material_parameters.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool ray_occluded;
@@ -141,7 +140,7 @@ void main() {
                 vec3 ray_out = normalize(-ray_direction);
                 vec3 new_origin = position;
 
-                MaterialParameters material_parameters = get_material_parameters(payload.hit_instance);
+                MaterialParameters material_parameters = get_material_parameters(instance);
 
                 vec3 bitangent = normalize(cross(normal, tangent));
                 mat3 tbn = basis(normal);
@@ -153,14 +152,14 @@ void main() {
                 
                 // material properties
                 vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
-                vec3 base_color = material_parameters.diffuse_opacity.rgb * base_color_tex.rgb;
-                float opacity = material_parameters.diffuse_opacity.a * base_color_tex.a;
+                vec3 base_color = material_parameters.diffuse * base_color_tex.rgb;
+                float opacity = material_parameters.opacity * base_color_tex.a;
                 vec3 arm = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-                float roughness = material_parameters.roughness_metallic_transmissive_ior.x * arm.y;
-                float metallic = material_parameters.roughness_metallic_transmissive_ior.y * arm.z;
+                float roughness = material_parameters.roughness * arm.y;
+                float metallic = material_parameters.metallic * arm.z;
                 vec4 transmission_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-                float transmission = material_parameters.roughness_metallic_transmissive_ior.z * (1.0 - transmission_tex.x);
-                float ior = material_parameters.roughness_metallic_transmissive_ior.a;
+                float transmission = material_parameters.transmissive * (1.0 - transmission_tex.x);
+                float ior = material_parameters.ior;
                 float fresnel_reflect = 0.5;
                 
 
@@ -191,8 +190,8 @@ void main() {
                     // direct light
                     uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
                     Light light = lights_data.lights[light_idx];
-                    // LightSample light_sample = sample_light(position, random_values, light);
-                    LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+                    LightSample light_sample = sample_light(position, random_values, light);
+                    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
                     vec3 light_dir = light_sample.direction;
                     vec3 light_dir_local = normalize(to_shading_space * light_dir);                   
 
@@ -228,7 +227,7 @@ void main() {
 
                 // material emission
                 if ((push_constants.constants.flags & 2) == 2) {
-                    vec3 intensity =  (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive_factor.rgb) * material_parameters.emissive_factor.a;
+                    vec3 intensity =  (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength;
                     float mis_weight = 1.0;
                     if (depth > 1) {
                         float pdf_nee = pdf_area_light(payload.hit_instance, payload.hit_primitive, payload.hit_transform_world);

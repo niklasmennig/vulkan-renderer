@@ -3,11 +3,16 @@
 
 struct MaterialParameters {
     // diffuse rgb, opacity a
-    vec4 diffuse_opacity;
+    vec3 diffuse;
+    float opacity;
     // emissive rgb, emission strength a
-    vec4 emissive_factor;
+    vec3 emissive;
+    float emission_strength;
     // roughness x, metallic y, transmissive z, ior a
-    vec4 roughness_metallic_transmissive_ior;
+    float roughness;
+    float metallic;
+    float transmissive;
+    float ior;
 };
 
 layout(std430, set = 1, binding = 9) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;

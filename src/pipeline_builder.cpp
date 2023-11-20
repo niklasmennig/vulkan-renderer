@@ -97,6 +97,8 @@ PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, 
     output_image_set = set;
     output_image_binding = binding;
 
+    add_descriptor(output_image_name, output_image_set, output_image_binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 1);
+
     return *this;
 }
 
@@ -270,13 +272,10 @@ Pipeline PipelineBuilder::build() {
     result.max_set = max_set;
 
     // apply output image descriptor
-    if (output_image_name == "") {
-        // no output image descriptor is set
-        throw std::runtime_error("no output image descriptor is set");
-    } else {
-        add_descriptor(output_image_name, output_image_set, output_image_binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR, output_images.size());
-        result.output_image_binding_name = output_image_name;
+    for (auto &descriptor: descriptors) {
+        if (descriptor.set == output_image_set && descriptor.binding == output_image_binding) descriptor.descriptor_count = output_images.size();
     }
+    result.output_image_binding_name = output_image_name;
 
     for (int i = 0; i < output_images.size(); i++) {
         OutputImage output_image;

@@ -97,6 +97,7 @@ struct VulkanApplication {
     VkExtent2D render_image_extent;
 
     VkRenderPass render_pass;
+    PipelineBuilder pipeline_builder;
     Pipeline pipeline;
 
     VkCommandPool command_pool;
@@ -180,6 +181,7 @@ struct VulkanApplication {
     void cleanup();
 
     void set_render_images_dirty();
+    void rebuild_pipeline();
 
     Pipeline get_pipeline();
     SceneData& get_scene_data();

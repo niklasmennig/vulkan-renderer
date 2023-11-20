@@ -54,7 +54,7 @@ vec3 eval_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
   vec3 diff = rho * base_color / PI;
 
 
-  return (diff + spec) * opacity;
+  return (diff+spec) * opacity;
 }
 
 float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
