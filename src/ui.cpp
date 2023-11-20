@@ -56,6 +56,7 @@ void UI::draw() {
 
     if (ImGui::Button("Rebuild Pipeline")) {
         application->rebuild_pipeline();
+        changed = true;
     }
 
     ImGui::SeparatorText("Application Information");

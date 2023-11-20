@@ -335,21 +335,7 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     camera_buffer.set_data(&camera_data);
 
-    VkWriteDescriptorSet descriptor_write_as{};
-    descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptor_write_as.dstSet = pipeline.descriptor_sets[DESCRIPTOR_SET_FRAMEWORK];
-    descriptor_write_as.dstBinding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE;
-    descriptor_write_as.dstArrayElement = 0;
-    descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    descriptor_write_as.descriptorCount = 1;
-
-    VkWriteDescriptorSetAccelerationStructureKHR descriptor_write_as_data{};
-    descriptor_write_as_data.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-    descriptor_write_as_data.accelerationStructureCount = 1;
-    descriptor_write_as_data.pAccelerationStructures = &scene_tlas.acceleration_structure;
-
-    descriptor_write_as.pNext = &descriptor_write_as_data;
-    vkUpdateDescriptorSets(logical_device, 1, &descriptor_write_as, 0, nullptr);
+    pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
 
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
@@ -1817,9 +1803,23 @@ void VulkanApplication::cleanup() {
 
 void VulkanApplication::rebuild_pipeline() {
     Pipeline new_pipeline = pipeline_builder.build();
+    Pipeline old_pipeline = pipeline;
     pipeline = new_pipeline;
-    create_default_descriptor_writes();
-    recreate_render_image();
+    pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
+    pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
+    pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
+    pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
+    set_render_images_dirty();
+    vkDeviceWaitIdle(device.vulkan_device);
 }
 
 void VulkanApplication::set_scene_path(std::string path) {

@@ -12,6 +12,8 @@
 #include <sstream>
 #include <filesystem>
 
+struct TLAS;
+
 #include "glm/glm.hpp"
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
@@ -155,6 +157,24 @@ Pipeline::SetBinding Pipeline::get_descriptor_set_binding(std::string name) {
     return named_descriptors[name];
 }
 
+void Pipeline::set_descriptor_acceleration_structure_binding(VkAccelerationStructureKHR acceleration_structure) {
+    VkWriteDescriptorSet descriptor_write_as{};
+    descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_write_as.dstSet = descriptor_sets[DESCRIPTOR_SET_FRAMEWORK];
+    descriptor_write_as.dstBinding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE;
+    descriptor_write_as.dstArrayElement = 0;
+    descriptor_write_as.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    descriptor_write_as.descriptorCount = 1;
+
+    VkWriteDescriptorSetAccelerationStructureKHR descriptor_write_as_data{};
+    descriptor_write_as_data.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    descriptor_write_as_data.accelerationStructureCount = 1;
+    descriptor_write_as_data.pAccelerationStructures = &acceleration_structure;
+
+    descriptor_write_as.pNext = &descriptor_write_as_data;
+    vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_as, 0, nullptr);
+}
+
 void Pipeline::set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index) {
     SetBinding set_binding = get_descriptor_set_binding(name);
 
@@ -254,7 +274,7 @@ void Pipeline::free() {
     for (auto layout : descriptor_set_layouts) {
         vkDestroyDescriptorSetLayout(device->vulkan_device, layout, nullptr);
     }
-
+    
     vkDestroyPipeline(device->vulkan_device, pipeline_handle, nullptr);
     vkDestroyPipelineLayout(device->vulkan_device, pipeline_layout_handle, nullptr);
     vkDestroyPipelineCache(device->vulkan_device, pipeline_cache_handle, nullptr);

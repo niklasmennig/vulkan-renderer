@@ -4,7 +4,7 @@
 struct Buffer
 {
     size_t buffer_size;
-    VkBuffer buffer_handle;
+    VkBuffer buffer_handle = VK_NULL_HANDLE;
     VkDevice device_handle;
     VkDeviceMemory device_memory;
     VkDeviceSize device_memory_offset;
