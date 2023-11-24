@@ -37,32 +37,24 @@ struct OutputImage
     VkFormat format;
 };
 
+struct DescriptorSetBinding {
+    uint32_t set;
+    uint32_t binding;
+};
+
 struct Pipeline {
     Device* device;
-    uint32_t max_set;
+    PipelineBuilder* builder;
 
     VkPipeline pipeline_handle;
-    VkPipelineLayout pipeline_layout_handle;
     VkPipelineCache pipeline_cache_handle;
-
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-    VkDescriptorPool descriptor_pool;
-    std::vector<VkDescriptorSet> descriptor_sets;
 
     ShaderBindingTable sbt;
     VkDeviceSize sbt_stride;
 
-    struct SetBinding {
-        uint32_t set;
-        uint32_t binding;
-    };
-    std::unordered_map<std::string, SetBinding> named_descriptors;
-    std::unordered_map<std::string, uint32_t> named_output_image_indices;
-    
-    std::vector<OutputImage> output_images;
     std::string output_image_binding_name;
 
-    Pipeline::SetBinding get_descriptor_set_binding(std::string descriptor_name);
+    DescriptorSetBinding get_descriptor_set_binding(std::string descriptor_name);
     void set_descriptor_acceleration_structure_binding(VkAccelerationStructureKHR acceleration_structure);
     void set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index = 0);
     void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
@@ -122,11 +114,21 @@ struct PipelineBuilder
     void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
     void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED, bool hidden = false, bool update_buffer = true);
 
+
     public:
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    uint8_t max_set = 0;
+    std::vector<OutputImage> created_output_images;
+    std::unordered_map<std::string, uint32_t> named_output_image_indices;
+    std::unordered_map<std::string, DescriptorSetBinding> named_descriptors;
+    std::vector<VkDescriptorSet> descriptor_sets;
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+    VkDescriptorPool descriptor_pool;
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
     PipelineBuilder with_default_pipeline();
 
     PipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
     Pipeline build();
+    void free();
 };

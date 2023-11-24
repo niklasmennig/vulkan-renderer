@@ -733,14 +733,14 @@ void VulkanApplication::recreate_render_image() {
     pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
 
     std::vector<VkImageMemoryBarrier> transitions;
-    for (OutputImage& output_image : pipeline.output_images) {
+    for (OutputImage& output_image : pipeline.builder->created_output_images) {
         transitions.push_back(output_image.image.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, output_image.image.access));
         output_image.image.layout = VK_IMAGE_LAYOUT_GENERAL;
     }
     std::cout << "Transitioning " << transitions.size() << " images" << std::endl;
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
-    for(int i = 0; i < pipeline.output_images.size(); i++) {
-        pipeline.set_descriptor_image_binding("images", pipeline.output_images[i].image, ImageType::Storage, i);
+    for(int i = 0; i < pipeline.builder->created_output_images.size(); i++) {
+        pipeline.set_descriptor_image_binding("images", pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 }
 
@@ -750,6 +750,10 @@ void VulkanApplication::draw_frame() {
 
     vkResetCommandPool(logical_device, command_pool, 0);
 
+    if (pipeline_dirty) {
+        rebuild_pipeline();
+        pipeline_dirty = false;
+    }
 
     // command buffer begin
     VkCommandBufferBeginInfo begin_info{};
@@ -778,10 +782,10 @@ void VulkanApplication::draw_frame() {
     if (ui.direct_lighting_enabled) flags |= 1;
     if (ui.indirect_lighting_enabled) flags |= 2;
     push_constants.flags = flags;
-    vkCmdPushConstants(command_buffer, pipeline.pipeline_layout_handle, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+    vkCmdPushConstants(command_buffer, pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
     // raytracer draw
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_layout_handle, 0, pipeline.max_set + 1, pipeline.descriptor_sets.data(), 0, nullptr);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.builder->pipeline_layout, 0, pipeline.builder->max_set + 1, pipeline.builder->descriptor_sets.data(), 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
     device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
@@ -865,7 +869,6 @@ void VulkanApplication::draw_frame() {
     ui.draw();
 
     ImGui::Render();
-
     vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     ImDrawData* draw_data = ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
@@ -1775,6 +1778,7 @@ void VulkanApplication::cleanup() {
     texture_index_buffer.free();
     material_parameter_buffer.free();
     pipeline.free();
+    pipeline_builder.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);
@@ -1820,6 +1824,7 @@ void VulkanApplication::rebuild_pipeline() {
     pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
     set_render_images_dirty();
     vkDeviceWaitIdle(device.vulkan_device);
+    old_pipeline.free();
 }
 
 void VulkanApplication::set_scene_path(std::string path) {
@@ -1828,6 +1833,10 @@ void VulkanApplication::set_scene_path(std::string path) {
 
 void VulkanApplication::set_render_images_dirty() {
     render_images_dirty = true;
+}
+
+void VulkanApplication::set_pipeline_dirty() {
+    pipeline_dirty = true;
 }
 
 void VulkanApplication::save_screenshot(std::string path, ImagePixels& pixels) {

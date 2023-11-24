@@ -119,7 +119,9 @@ struct VulkanApplication {
     bool camera_changed;
 
     uint32_t render_clear_accumulated;
+
     bool render_images_dirty;
+    bool pipeline_dirty;
 
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;
@@ -169,6 +171,7 @@ struct VulkanApplication {
     void create_framebuffers();
     void recreate_swapchain();
     void recreate_render_image();
+    void rebuild_pipeline();
     void create_default_descriptor_writes();
     void create_synchronization();
     void draw_frame();
@@ -181,7 +184,7 @@ struct VulkanApplication {
     void cleanup();
 
     void set_render_images_dirty();
-    void rebuild_pipeline();
+    void set_pipeline_dirty();
 
     Pipeline get_pipeline();
     SceneData& get_scene_data();
