@@ -120,8 +120,8 @@ struct VulkanApplication {
 
     uint32_t render_clear_accumulated;
 
-    bool render_images_dirty;
-    bool pipeline_dirty;
+    bool render_images_dirty = false;
+    bool pipeline_dirty = false;
 
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;
