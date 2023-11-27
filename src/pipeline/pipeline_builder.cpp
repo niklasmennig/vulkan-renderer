@@ -6,6 +6,7 @@
 #include "loaders/shader_spirv.h"
 #include "shader_interface.h"
 
+#include "pipeline/pipeline_stage_simple.h"
 
 #include <iostream>
 #include <unordered_set>
@@ -39,9 +40,10 @@ VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &co
     return shader_module;
 }
 
-void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::string code_path) {
+void PipelineBuilder::add_stage(std::shared_ptr<PipelineStage> stage) {
     auto insert_position = shader_stages.begin();
-    switch(stage) {
+    auto stage_flag = stage->get_shader_stage();
+    switch(stage_flag) {
         case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
             break;
         case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
@@ -58,10 +60,7 @@ void PipelineBuilder::add_stage(VkShaderStageFlagBits stage, std::string code_pa
             break;
     }
 
-    shader_stages.insert(insert_position, PipelineBuilderShaderStage{
-        stage,
-        code_path
-    });
+    shader_stages.insert(insert_position, stage);
 }
 
 void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
@@ -132,11 +131,11 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
-    add_stage(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen");
-    add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit");
-    add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss");
-    add_stage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit");
-    add_stage(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss");
+    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")));
+    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")));
+    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss")));
+    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit")));
+    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss")));
 
     return *this;
 }
@@ -144,7 +143,7 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
 PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
     add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
     return *this;
-    }
+}
 
 PipelineBuilder Device::create_pipeline_builder() {
     PipelineBuilder res;
@@ -397,11 +396,12 @@ Pipeline PipelineBuilder::build() {
 
     std::cout << "Building pipeline with " << shader_stages.size() << " stages" << std::endl;
 
-    for (auto stage : shader_stages)
+    for (auto stage = shader_stages.begin(); stage != shader_stages.end(); stage++)
     {
         // compile shader
-        std::filesystem::path shader_path(stage.shader_code_path);
-        std::filesystem::path shader_out_path(stage.shader_code_path);
+        std::filesystem::path shader_path((*stage)->get_shader_code_path());
+        std::filesystem::path shader_out_path((*stage)->get_shader_code_path());
+        std::cout << "TEST " << shader_path << std::endl;
         shader_path.make_preferred();
         shader_out_path.replace_extension(".spv");
         shader_out_path.make_preferred();
@@ -416,15 +416,15 @@ Pipeline PipelineBuilder::build() {
 
         VkPipelineShaderStageCreateInfo stage_create_info{};
         stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stage_create_info.stage = stage.stage;
+        stage_create_info.stage = (*stage)->get_shader_stage();
         stage_create_info.module = module;
-        stage_create_info.pName = stage.shader_entry_point;
+        stage_create_info.pName = (*stage)->get_entry_point();
         stage_create_info.pSpecializationInfo = nullptr;
         stage_create_info.flags = 0;
         stage_create_info.pNext = nullptr;
 
         uint32_t stage_index = (uint32_t)stage_create_infos.size();
-        std::cout << "Stage " << stage_index << ": " << stage.stage << " with code at " << shader_out_path.string() << ". Entry point: " << stage.shader_entry_point << std::endl;
+        std::cout << "Stage " << stage_index << ": " << (*stage)->get_shader_stage() << " with code at " << shader_out_path.string() << ". Entry point: " << (*stage)->get_entry_point() << std::endl;
         stage_create_infos.push_back(stage_create_info);
 
         VkRayTracingShaderGroupCreateInfoKHR group_create_info{};
@@ -436,7 +436,7 @@ Pipeline PipelineBuilder::build() {
         group_create_info.intersectionShader = VK_SHADER_UNUSED_KHR;
         group_create_info.pNext = nullptr;
 
-        switch (stage.stage)
+        switch ((*stage)->get_shader_stage())
         {
         case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
         case VK_SHADER_STAGE_MISS_BIT_KHR:

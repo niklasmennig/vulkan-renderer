@@ -6,6 +6,9 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <memory>
+
+#include "pipeline/pipeline_stage.h"
 
 enum class BufferType
 {
@@ -78,13 +81,6 @@ struct PipelineBuilderDescriptor
     VkShaderStageFlags stage_flags;
 };
 
-struct PipelineBuilderShaderStage
-{
-    VkShaderStageFlagBits stage;
-    std::string shader_code_path;
-    const char *shader_entry_point = "main";
-};
-
 struct PipelineBuilderOutputImage
 {
     std::string name;
@@ -96,7 +92,7 @@ struct PipelineBuilderOutputImage
 struct PipelineBuilder
 {
     Device* device;
-    std::vector<PipelineBuilderShaderStage> shader_stages;
+    std::vector<std::shared_ptr<PipelineStage>> shader_stages;
     std::vector<PipelineBuilderDescriptor> descriptors;
     std::vector<PipelineBuilderOutputImage> output_images;
 
@@ -111,7 +107,7 @@ struct PipelineBuilder
     uint32_t callable_stages = 0;
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
-    void add_stage(VkShaderStageFlagBits stage, std::string shader_code_path);
+    void add_stage(std::shared_ptr<PipelineStage> stage);
     void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED, bool hidden = false, bool update_buffer = true);
 
 
