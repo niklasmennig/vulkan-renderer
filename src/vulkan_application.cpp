@@ -1541,7 +1541,6 @@ void VulkanApplication::setup() {
         if (width > 0 && height > 0) {
             app->minimized = false;
             app->recreate_swapchain();
-            //app->recreate_render_image();
             app->render_images_dirty = true;
             app->render_clear_accumulated = 0;
         } else {

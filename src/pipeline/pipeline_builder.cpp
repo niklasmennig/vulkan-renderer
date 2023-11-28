@@ -120,16 +120,16 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_output_image("Environment Conditional");
     add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // object (meshes + materials + textures) descriptors (set 1)
-    add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_normals", DESCRIPTOR_SET_OBJECTS, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_texcoords", DESCRIPTOR_SET_OBJECTS, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_tangents", DESCRIPTOR_SET_OBJECTS, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_data_offsets", DESCRIPTOR_SET_OBJECTS, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_offset_indices", DESCRIPTOR_SET_OBJECTS, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("textures", DESCRIPTOR_SET_OBJECTS, 7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 128);
-    add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, 9, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_normals", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_NORMALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_texcoords", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TEXCOORDS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_tangents", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TANGENTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_data_offsets", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_DATA_OFFSETS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_offset_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_OFFSET_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("textures", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 128);
+    add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURE_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MATERIAL_PARAMETERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
     add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")));
     add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")));
@@ -401,7 +401,6 @@ Pipeline PipelineBuilder::build() {
         // compile shader
         std::filesystem::path shader_path((*stage)->get_shader_code_path());
         std::filesystem::path shader_out_path((*stage)->get_shader_code_path());
-        std::cout << "TEST " << shader_path << std::endl;
         shader_path.make_preferred();
         shader_out_path.replace_extension(".spv");
         shader_out_path.make_preferred();

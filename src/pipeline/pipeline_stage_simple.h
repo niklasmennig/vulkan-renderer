@@ -7,7 +7,6 @@ class PipelineStageSimple : public PipelineStage  {
 public:
     VkShaderStageFlagBits get_shader_stage();
     std::string get_shader_code_path();
-    const char* get_entry_point();
     void initialize();
     PipelineStageSimple(VkShaderStageFlagBits shader_stage, std::string code_path);
 };
