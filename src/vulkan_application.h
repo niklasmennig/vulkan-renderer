@@ -97,8 +97,8 @@ struct VulkanApplication {
     VkExtent2D render_image_extent;
 
     VkRenderPass render_pass;
-    PipelineBuilder pipeline_builder;
-    Pipeline pipeline;
+    PipelineBuilder rt_pipeline_builder;
+    Pipeline rt_pipeline;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;

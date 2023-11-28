@@ -1,7 +1,5 @@
 #include "pipeline_stage_simple.h"
 
-void RaytracingPipelineStageSimple::initialize() {}
-
 VkShaderStageFlagBits RaytracingPipelineStageSimple::get_shader_stage() {
     return shader_stage;
 }

@@ -12,7 +12,7 @@ public:
     virtual ~RaytracingPipelineStage() = default;
 
     // initialize data bindings if needed
-    virtual void initialize() = 0;
+    virtual void initialize() {};
 
     // return shader flag bit that this pipeline stage should occupy
     // can be either VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_SHADER_STAGE_MISS_BIT_KHR or VK_SHADER_STAGE_CALLABLE_BIT_KHR

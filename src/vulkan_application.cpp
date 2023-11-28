@@ -337,9 +337,9 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     camera_buffer.set_data(&camera_data);
 
-    pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
+    rt_pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
 
-    pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
+    rt_pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
     // prepare mesh data for buffers
     std::vector<uint32_t> indices;
@@ -437,16 +437,16 @@ void VulkanApplication::create_default_descriptor_writes() {
     texture_index_buffer.set_data(texture_indices.data());
     material_parameter_buffer = device.create_buffer(sizeof(InstanceData::MaterialParameters) * material_parameters.size());
 
-    pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
-    pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
+    rt_pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
 
     int created_area_lights = 0;
     for (int instance_index = 0; instance_index < loaded_scene_data.instances.size(); instance_index++) {
@@ -495,7 +495,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     lights_buffer = device.create_buffer(sizeof(Shaders::Light) * light_buffer_size);
     if (lights.size() > 0) lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * light_buffer_size);
 
-    pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -732,17 +732,17 @@ void VulkanApplication::recreate_render_image() {
             break;
     }
     render_image_extent = {(uint32_t)(swap_chain_extent.width * render_scale), (uint32_t)(swap_chain_extent.height * render_scale)};
-    pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
+    rt_pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
 
     std::vector<VkImageMemoryBarrier> transitions;
-    for (OutputImage& output_image : pipeline.builder->created_output_images) {
+    for (OutputImage& output_image : rt_pipeline.builder->created_output_images) {
         transitions.push_back(output_image.image.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, output_image.image.access));
         output_image.image.layout = VK_IMAGE_LAYOUT_GENERAL;
     }
     std::cout << "Transitioning " << transitions.size() << " images" << std::endl;
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
-    for(int i = 0; i < pipeline.builder->created_output_images.size(); i++) {
-        pipeline.set_descriptor_image_binding("images", pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
+    for(int i = 0; i < rt_pipeline.builder->created_output_images.size(); i++) {
+        rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 }
 
@@ -772,7 +772,7 @@ void VulkanApplication::draw_frame() {
     lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
     Shaders::PushConstants push_constants;
-    push_constants.sbt_stride = pipeline.sbt_stride;
+    push_constants.sbt_stride = rt_pipeline.sbt_stride;
     push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
     push_constants.clear_accumulated = render_clear_accumulated;
     push_constants.light_count = lights.size();
@@ -784,12 +784,12 @@ void VulkanApplication::draw_frame() {
     if (ui.direct_lighting_enabled) flags |= 1;
     if (ui.indirect_lighting_enabled) flags |= 2;
     push_constants.flags = flags;
-    vkCmdPushConstants(command_buffer, pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+    vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
     // raytracer draw
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.builder->pipeline_layout, 0, pipeline.builder->max_set + 1, pipeline.builder->descriptor_sets.data(), 0, nullptr);
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline.pipeline_handle);
-    device.vkCmdTraceRaysKHR(command_buffer, &pipeline.sbt.region_raygen, &pipeline.sbt.region_miss, &pipeline.sbt.region_hit, &pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
+    device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
@@ -833,9 +833,9 @@ void VulkanApplication::draw_frame() {
     image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
     // select image to display
-    pipeline.cmd_update_output_image_buffers(command_buffer);
+    rt_pipeline.cmd_update_output_image_buffers(command_buffer);
 
-    OutputImage displayed_image = pipeline.get_output_image(ui.selected_output_image);
+    OutputImage displayed_image = rt_pipeline.get_output_image(ui.selected_output_image);
 
     ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
@@ -1029,7 +1029,7 @@ void VulkanApplication::init_imgui() {
     init_info.ImageCount = device.image_count;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.ColorAttachmentFormat = device.surface_format.format;
-    init_info.PipelineCache = pipeline.pipeline_cache_handle;
+    init_info.PipelineCache = rt_pipeline.pipeline_cache_handle;
     init_info.QueueFamily = queue_family_indices.graphics.value();
     init_info.Subpass = 0;
     init_info.CheckVkResultFn = check_vk_result;
@@ -1514,12 +1514,15 @@ void VulkanApplication::setup() {
     }
 
 
-    // create pipeline
-    pipeline_builder = device.create_pipeline_builder()
+    // create raytracing pipeline
+    rt_pipeline_builder = device.create_pipeline_builder()
                    .with_default_pipeline()
                    .with_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/test.rcall")));
 
-    pipeline = pipeline_builder.build();
+    rt_pipeline = rt_pipeline_builder.build();
+
+    // create process pipeline
+    
 
     std::cout << "RENDER IMAGE" << std::endl;
     recreate_render_image();
@@ -1560,7 +1563,7 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    vec3 hovered_instance_color = app->pipeline.get_output_image("Instance Indices").image.get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
+                    vec3 hovered_instance_color = app->rt_pipeline.get_output_image("Instance Indices").image.get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
                     int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
                     if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
@@ -1779,8 +1782,8 @@ void VulkanApplication::cleanup() {
     mesh_offset_index_buffer.free();
     texture_index_buffer.free();
     material_parameter_buffer.free();
-    pipeline.free();
-    pipeline_builder.free();
+    rt_pipeline.free();
+    rt_pipeline_builder.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);
@@ -1808,22 +1811,22 @@ void VulkanApplication::cleanup() {
 }
 
 void VulkanApplication::rebuild_pipeline() {
-    Pipeline new_pipeline = pipeline_builder.build();
-    Pipeline old_pipeline = pipeline;
-    pipeline = new_pipeline;
-    pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
-    pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
-    pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
-    pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
+    Pipeline new_pipeline = rt_pipeline_builder.build();
+    Pipeline old_pipeline = rt_pipeline;
+    rt_pipeline = new_pipeline;
+    rt_pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_normals", normal_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_texcoords", texcoord_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_tangents", tangent_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_data_offsets", mesh_data_offset_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("mesh_offset_indices", mesh_offset_index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_sampler_binding("textures", loaded_textures.data(), loaded_textures.size());
+    rt_pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
+    rt_pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
     set_render_images_dirty();
     vkDeviceWaitIdle(device.vulkan_device);
     old_pipeline.free();
@@ -1860,7 +1863,7 @@ vec2 VulkanApplication::get_cursor_position() {
 }
 
 Pipeline VulkanApplication::get_pipeline() {
-    return pipeline;
+    return rt_pipeline;
 }
 
 SceneData& VulkanApplication::get_scene_data() {

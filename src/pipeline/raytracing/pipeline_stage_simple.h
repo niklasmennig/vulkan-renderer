@@ -10,6 +10,5 @@ class RaytracingPipelineStageSimple : public RaytracingPipelineStage  {
 public:
     VkShaderStageFlagBits get_shader_stage();
     std::string get_shader_code_path();
-    void initialize();
     RaytracingPipelineStageSimple(VkShaderStageFlagBits shader_stage, std::string code_path);
 };
