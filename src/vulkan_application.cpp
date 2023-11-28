@@ -14,6 +14,8 @@
 #include "imgui/backends/imgui_impl_vulkan.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 
+#include "pipeline/raytracing/pipeline_stage_simple.h"
+
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
     "VK_LAYER_KHRONOS_validation"
@@ -1514,7 +1516,8 @@ void VulkanApplication::setup() {
 
     // create pipeline
     pipeline_builder = device.create_pipeline_builder()
-                   .with_default_pipeline();
+                   .with_default_pipeline()
+                   .with_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/test.rcall")));
 
     pipeline = pipeline_builder.build();
 

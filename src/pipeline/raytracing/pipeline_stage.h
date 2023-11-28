@@ -3,14 +3,13 @@
 #include "core/vulkan.h"
 #include <string>
 
-// a single stage in the render pipeline
+// a single stage in the raytracing pipeline
 // this might be a ray generation shader, closest hit shader etc.
-// can also be a post-processing step
-class PipelineStage {
+class RaytracingPipelineStage {
 
 public:
     // needed for polymorphic usage of stages
-    virtual ~PipelineStage() = default;
+    virtual ~RaytracingPipelineStage() = default;
 
     // initialize data bindings if needed
     virtual void initialize() = 0;

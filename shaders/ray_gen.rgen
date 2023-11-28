@@ -264,15 +264,6 @@ void main() {
 
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
-
-    // TODO
-    // Find another way to deal with fireflies
-    //
-    // frame_color = clamp(frame_color, vec3(0,0,0), vec3(10,10,10));
-    //
-    //
-    // !!!!
-    
     
     vec3 accum_color;
     if (sample_count <= 1) {

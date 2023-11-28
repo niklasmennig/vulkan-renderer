@@ -6,7 +6,7 @@
 #include "loaders/shader_spirv.h"
 #include "shader_interface.h"
 
-#include "pipeline/pipeline_stage_simple.h"
+#include "pipeline/raytracing/pipeline_stage_simple.h"
 
 #include <iostream>
 #include <unordered_set>
@@ -40,7 +40,7 @@ VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &co
     return shader_module;
 }
 
-void PipelineBuilder::add_stage(std::shared_ptr<PipelineStage> stage) {
+void PipelineBuilder::add_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
     auto insert_position = shader_stages.begin();
     auto stage_flag = stage->get_shader_stage();
     switch(stage_flag) {
@@ -131,17 +131,22 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURE_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MATERIAL_PARAMETERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
-    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")));
-    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")));
-    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss")));
-    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit")));
-    add_stage(std::make_shared<PipelineStageSimple>(PipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss")));
 
     return *this;
 }
 
 PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
     add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
+    return *this;
+}
+
+PipelineBuilder PipelineBuilder::with_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
+    add_stage(stage);
     return *this;
 }
 
@@ -402,7 +407,7 @@ Pipeline PipelineBuilder::build() {
         std::filesystem::path shader_path((*stage)->get_shader_code_path());
         std::filesystem::path shader_out_path((*stage)->get_shader_code_path());
         shader_path.make_preferred();
-        shader_out_path.replace_extension(".spv");
+        shader_out_path.concat(".spv");
         shader_out_path.make_preferred();
         std::stringstream compile_command;
         compile_command << GLSLC_EXE << " --target-env=vulkan1.3 -O -o " << std::filesystem::absolute(shader_out_path) << " " << std::filesystem::absolute(shader_path);

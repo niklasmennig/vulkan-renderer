@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <memory>
 
-#include "pipeline/pipeline_stage.h"
+#include "pipeline/raytracing/pipeline_stage.h"
 
 enum class BufferType
 {
@@ -92,7 +92,7 @@ struct PipelineBuilderOutputImage
 struct PipelineBuilder
 {
     Device* device;
-    std::vector<std::shared_ptr<PipelineStage>> shader_stages;
+    std::vector<std::shared_ptr<RaytracingPipelineStage>> shader_stages;
     std::vector<PipelineBuilderDescriptor> descriptors;
     std::vector<PipelineBuilderOutputImage> output_images;
 
@@ -107,8 +107,8 @@ struct PipelineBuilder
     uint32_t callable_stages = 0;
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
-    void add_stage(std::shared_ptr<PipelineStage> stage);
     void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED, bool hidden = false, bool update_buffer = true);
+    void add_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
 
     public:
@@ -122,6 +122,7 @@ struct PipelineBuilder
     VkDescriptorPool descriptor_pool;
     PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
     PipelineBuilder with_default_pipeline();
+    PipelineBuilder with_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
     PipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 

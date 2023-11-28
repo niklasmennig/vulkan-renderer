@@ -7,7 +7,7 @@
 #include "loaders/toml.hpp"
 #include "loaders/environment.h"
 #include "processors/gltf/gltf_processor.h"
-#include "pipeline/pipeline_builder.h"
+#include "pipeline/raytracing/pipeline_builder.h"
 #include "ui.h"
 #include "shader_interface.h"
 
