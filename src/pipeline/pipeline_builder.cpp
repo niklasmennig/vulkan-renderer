@@ -447,6 +447,10 @@ Pipeline PipelineBuilder::build() {
             group_create_info.closestHitShader = stage_index;
             group_create_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
             break;
+        case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
+            group_create_info.anyHitShader = stage_index;
+            group_create_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+            break;
         }
 
         group_create_infos.push_back(group_create_info);
