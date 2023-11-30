@@ -1234,6 +1234,8 @@ void VulkanApplication::setup() {
             VK_KHR_RAY_QUERY_EXTENSION_NAME,
             // dependencies for raytracing functionality
             VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+            // dependencies for compute shader functionality
+            VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
         };
 
         uint32_t extension_count = 0;
@@ -1304,6 +1306,11 @@ void VulkanApplication::setup() {
         ray_query_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
         ray_query_features.rayQuery = VK_TRUE;
         descriptor_indexing_features.pNext = &ray_query_features;
+
+        VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4_features = {};
+        maintenance4_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
+        maintenance4_features.maintenance4 = VK_TRUE;
+        ray_query_features.pNext = &maintenance4_features;
 
         device_create_info.pNext = &physical_features2;
 
