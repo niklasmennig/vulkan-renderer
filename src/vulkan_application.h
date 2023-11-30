@@ -8,6 +8,7 @@
 #include "loaders/environment.h"
 #include "processors/gltf/gltf_processor.h"
 #include "pipeline/raytracing/pipeline_builder.h"
+#include "pipeline/processing/pipeline_builder.h"
 #include "ui.h"
 #include "shader_interface.h"
 
@@ -97,8 +98,11 @@ struct VulkanApplication {
     VkExtent2D render_image_extent;
 
     VkRenderPass render_pass;
-    PipelineBuilder rt_pipeline_builder;
-    Pipeline rt_pipeline;
+    RaytracingPipelineBuilder rt_pipeline_builder;
+    RaytracingPipeline rt_pipeline;
+
+    ProcessingPipelineBuilder p_pipeline_builder;
+    ProcessingPipeline p_pipeline;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
@@ -186,7 +190,7 @@ struct VulkanApplication {
     void set_render_images_dirty();
     void set_pipeline_dirty();
 
-    Pipeline get_pipeline();
+    RaytracingPipeline get_pipeline();
     SceneData& get_scene_data();
     std::vector<Shaders::Light>& get_lights();
 

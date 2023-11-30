@@ -3,6 +3,7 @@
 #include "core/buffer.h"
 #include "core/memory.h"
 
+#include "shader_compiler.h"
 #include "loaders/shader_spirv.h"
 #include "shader_interface.h"
 
@@ -21,26 +22,7 @@ using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 
 
-
-VkShaderModule PipelineBuilder::create_shader_module(const std::vector<char> &code)
-{
-    VkShaderModuleCreateInfo create_info{};
-    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
-    create_info.flags = 0;
-    create_info.pNext = nullptr;
-
-    VkShaderModule shader_module;
-    if (vkCreateShaderModule(device->vulkan_device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
-    {
-        throw std::runtime_error("error creating shader module");
-    }
-
-    return shader_module;
-}
-
-void PipelineBuilder::add_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
+void RaytracingPipelineBuilder::add_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
     auto insert_position = shader_stages.begin();
     auto stage_flag = stage->get_shader_stage();
     switch(stage_flag) {
@@ -63,8 +45,8 @@ void PipelineBuilder::add_stage(std::shared_ptr<RaytracingPipelineStage> stage) 
     shader_stages.insert(insert_position, stage);
 }
 
-void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
-    descriptors.push_back(PipelineBuilderDescriptor {
+void RaytracingPipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count) {
+    descriptors.push_back(RaytracingPipelineBuilderDescriptor {
         name,
         set,
         binding,
@@ -77,7 +59,7 @@ void PipelineBuilder::add_descriptor(std::string name, uint32_t set, uint32_t bi
 // adds the specified image to the pipelines' output images
 // hidden: hide in display selection UI
 // update_buffers: update internal pixel buffer, activated automatically for non-hidden images
-void PipelineBuilder::add_output_image(std::string name, VkFormat format, bool hidden, bool update_buffers) {
+void RaytracingPipelineBuilder::add_output_image(std::string name, VkFormat format, bool hidden, bool update_buffers) {
     if (name.empty()) {
         std::cerr << "unnamed output images are not allowed" << std::endl;
         exit(1);
@@ -85,7 +67,7 @@ void PipelineBuilder::add_output_image(std::string name, VkFormat format, bool h
 
     if (!hidden) update_buffers = true;
 
-    output_images.push_back(PipelineBuilderOutputImage {
+    output_images.push_back(RaytracingPipelineBuilderOutputImage {
         name,
         format,
         hidden,
@@ -93,7 +75,7 @@ void PipelineBuilder::add_output_image(std::string name, VkFormat format, bool h
     });
 }
 
-PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding) {
+RaytracingPipelineBuilder RaytracingPipelineBuilder::with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding) {
     output_image_name = name;
     output_image_set = set;
     output_image_binding = binding;
@@ -103,7 +85,7 @@ PipelineBuilder PipelineBuilder::with_output_image_descriptor(std::string name, 
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::with_default_pipeline() {
+RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
     add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -131,37 +113,37 @@ PipelineBuilder PipelineBuilder::with_default_pipeline() {
     add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURE_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MATERIAL_PARAMETERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // shader stages
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/ray_gen.rgen")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/closest_hit.rchit")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/miss.rmiss")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/occlusion_hit.rchit")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/occlusion_miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/raytracing/ray_gen.rgen")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/closest_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/occlusion_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/occlusion_miss.rmiss")));
 
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
+RaytracingPipelineBuilder RaytracingPipelineBuilder::with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage) {
     add_descriptor(name, DESCRIPTOR_SET_CUSTOM, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, stage);
     return *this;
 }
 
-PipelineBuilder PipelineBuilder::with_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
+RaytracingPipelineBuilder RaytracingPipelineBuilder::with_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
     add_stage(stage);
     return *this;
 }
 
-PipelineBuilder Device::create_pipeline_builder() {
-    PipelineBuilder res;
+RaytracingPipelineBuilder Device::create_raytracing_pipeline_builder() {
+    RaytracingPipelineBuilder res;
     res.device = this;
 
     return res;
 }
 
-DescriptorSetBinding Pipeline::get_descriptor_set_binding(std::string name) {
+DescriptorSetBinding RaytracingPipeline::get_descriptor_set_binding(std::string name) {
     return builder->named_descriptors[name];
 }
 
-void Pipeline::set_descriptor_acceleration_structure_binding(VkAccelerationStructureKHR acceleration_structure) {
+void RaytracingPipeline::set_descriptor_acceleration_structure_binding(VkAccelerationStructureKHR acceleration_structure) {
     VkWriteDescriptorSet descriptor_write_as{};
     descriptor_write_as.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptor_write_as.dstSet = builder->descriptor_sets[DESCRIPTOR_SET_FRAMEWORK];
@@ -179,7 +161,7 @@ void Pipeline::set_descriptor_acceleration_structure_binding(VkAccelerationStruc
     vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_as, 0, nullptr);
 }
 
-void Pipeline::set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index) {
+void RaytracingPipeline::set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index) {
     DescriptorSetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorImageInfo image_info{};
@@ -198,7 +180,7 @@ void Pipeline::set_descriptor_image_binding(std::string name, Image image, Image
     vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_image, 0, nullptr);
 }
 
-void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type) {
+void RaytracingPipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type) {
     DescriptorSetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorBufferInfo buffer_write_info{};
@@ -218,7 +200,7 @@ void Pipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, B
     vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_buffer, 0, nullptr);
 }
 
-void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count) {
+void RaytracingPipeline::set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count) {
     DescriptorSetBinding set_binding = get_descriptor_set_binding(name);
 
     for (int i = 0; i < 128; i++) {
@@ -247,7 +229,7 @@ void Pipeline::set_descriptor_sampler_binding(std::string name, Image* images, s
     }
 }
 
-void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
+void RaytracingPipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
     for (int i = 0; i < builder->created_output_images.size(); i++) {
         if (builder->created_output_images[i].image.width > 0 && builder->created_output_images[i].image.height > 0) builder->created_output_images[i].image.free();
         builder->created_output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
@@ -255,18 +237,18 @@ void Pipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExte
     }
 }
 
-void Pipeline::cmd_update_output_image_buffers(VkCommandBuffer command_buffer) {
+void RaytracingPipeline::cmd_update_output_image_buffers(VkCommandBuffer command_buffer) {
     for (int i = 0; i < builder->created_output_images.size(); i++) {
         if (builder->created_output_images[i].update_buffer) builder->created_output_images[i].image.cmd_update_buffer(command_buffer);
     }
 }
 
-OutputImage Pipeline::get_output_image(std::string name) {
+OutputImage RaytracingPipeline::get_output_image(std::string name) {
     uint32_t index = builder->named_output_image_indices[name];
     return builder->created_output_images[index];
 }
 
-void Pipeline::free() {
+void RaytracingPipeline::free() {
     // free sbt
     sbt.buffer.free();
     
@@ -274,8 +256,8 @@ void Pipeline::free() {
     vkDestroyPipelineCache(device->vulkan_device, pipeline_cache_handle, nullptr);
 }
 
-Pipeline PipelineBuilder::build() {
-    Pipeline result;
+RaytracingPipeline RaytracingPipelineBuilder::build() {
+    RaytracingPipeline result;
     result.device = device;
     result.builder = this;
 
@@ -404,18 +386,9 @@ Pipeline PipelineBuilder::build() {
     for (auto stage = shader_stages.begin(); stage != shader_stages.end(); stage++)
     {
         // compile shader
-        std::filesystem::path shader_path((*stage)->get_shader_code_path());
-        std::filesystem::path shader_out_path((*stage)->get_shader_code_path());
-        shader_path.make_preferred();
-        shader_out_path.concat(".spv");
-        shader_out_path.make_preferred();
-        std::stringstream compile_command;
-        compile_command << GLSLC_EXE << " --target-env=vulkan1.3 -O -o " << std::filesystem::absolute(shader_out_path) << " " << std::filesystem::absolute(shader_path);
-        std::cout << "COMPILING SHADER: " << compile_command.str() << std::endl;
-        system(compile_command.str().c_str());
+        std::filesystem::path shader_out_path = compile_shader((*stage)->get_shader_code_path());
 
-        auto code = loaders::read_spirv(shader_out_path.string());
-        VkShaderModule module = create_shader_module(code);
+        VkShaderModule module = loaders::load_shader_module(device->vulkan_device, shader_out_path.string());
         generated_shader_modules.push_back(module);
 
         VkPipelineShaderStageCreateInfo stage_create_info{};
@@ -550,7 +523,7 @@ Pipeline PipelineBuilder::build() {
     
 }
 
-void PipelineBuilder::free() {
+void RaytracingPipelineBuilder::free() {
     vkDestroyPipelineLayout(device->vulkan_device, pipeline_layout, nullptr);
     for (OutputImage o: created_output_images) {
         o.image.free();

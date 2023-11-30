@@ -8,5 +8,5 @@ namespace Shaders
     using uvec2 = glm::uvec2;
     using vec2 = glm::vec2;
     using vec4 = glm::vec4;
-    #include "../shaders/interface.glsl"
+    #include "../shaders/raytracing/interface.glsl"
 }

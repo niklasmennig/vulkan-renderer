@@ -1515,13 +1515,16 @@ void VulkanApplication::setup() {
 
 
     // create raytracing pipeline
-    rt_pipeline_builder = device.create_pipeline_builder()
+    rt_pipeline_builder = device.create_raytracing_pipeline_builder()
                    .with_default_pipeline()
-                   .with_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/test.rcall")));
+                   .with_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CALLABLE_BIT_KHR, "./shaders/raytracing/test.rcall")));
 
     rt_pipeline = rt_pipeline_builder.build();
 
     // create process pipeline
+    p_pipeline_builder = device.create_processing_pipeline_builder();
+
+    p_pipeline = p_pipeline_builder.build();
     
 
     std::cout << "RENDER IMAGE" << std::endl;
@@ -1784,6 +1787,8 @@ void VulkanApplication::cleanup() {
     material_parameter_buffer.free();
     rt_pipeline.free();
     rt_pipeline_builder.free();
+    p_pipeline.free();
+    p_pipeline_builder.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);
@@ -1811,8 +1816,8 @@ void VulkanApplication::cleanup() {
 }
 
 void VulkanApplication::rebuild_pipeline() {
-    Pipeline new_pipeline = rt_pipeline_builder.build();
-    Pipeline old_pipeline = rt_pipeline;
+    RaytracingPipeline new_pipeline = rt_pipeline_builder.build();
+    RaytracingPipeline old_pipeline = rt_pipeline;
     rt_pipeline = new_pipeline;
     rt_pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
     rt_pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
@@ -1862,7 +1867,7 @@ vec2 VulkanApplication::get_cursor_position() {
     return vec2(x, y);
 }
 
-Pipeline VulkanApplication::get_pipeline() {
+RaytracingPipeline VulkanApplication::get_pipeline() {
     return rt_pipeline;
 }
 

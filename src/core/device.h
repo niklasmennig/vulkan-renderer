@@ -7,7 +7,8 @@
 
 #include <unordered_map>
 
-struct PipelineBuilder;
+struct RaytracingPipelineBuilder;
+struct ProcessingPipelineBuilder;
 
 struct SharedDeviceMemory {
     VkDeviceMemory memory;
@@ -42,7 +43,8 @@ struct Device
 
     void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared = true);
 
-    PipelineBuilder create_pipeline_builder();
+    RaytracingPipelineBuilder create_raytracing_pipeline_builder();
+    ProcessingPipelineBuilder create_processing_pipeline_builder();
 
     // function pointers
     PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;

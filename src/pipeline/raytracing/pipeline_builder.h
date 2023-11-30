@@ -45,9 +45,9 @@ struct DescriptorSetBinding {
     uint32_t binding;
 };
 
-struct Pipeline {
+struct RaytracingPipeline {
     Device* device;
-    PipelineBuilder* builder;
+    RaytracingPipelineBuilder* builder;
 
     VkPipeline pipeline_handle;
     VkPipelineCache pipeline_cache_handle;
@@ -71,7 +71,7 @@ struct Pipeline {
     void free();
 };
 
-struct PipelineBuilderDescriptor
+struct RaytracingPipelineBuilderDescriptor
 {
     std::string name;
     uint32_t set;
@@ -81,7 +81,7 @@ struct PipelineBuilderDescriptor
     VkShaderStageFlags stage_flags;
 };
 
-struct PipelineBuilderOutputImage
+struct RaytracingPipelineBuilderOutputImage
 {
     std::string name;
     VkFormat format;
@@ -89,17 +89,15 @@ struct PipelineBuilderOutputImage
     bool update_buffers;
 };
 
-struct PipelineBuilder
+struct RaytracingPipelineBuilder
 {
     Device* device;
     std::vector<std::shared_ptr<RaytracingPipelineStage>> shader_stages;
-    std::vector<PipelineBuilderDescriptor> descriptors;
-    std::vector<PipelineBuilderOutputImage> output_images;
+    std::vector<RaytracingPipelineBuilderDescriptor> descriptors;
+    std::vector<RaytracingPipelineBuilderOutputImage> output_images;
 
     std::string output_image_name = "";
     uint32_t output_image_set, output_image_binding;
-
-    VkShaderModule create_shader_module(const std::vector<char>& code);
 
     private:
     uint32_t hit_stages = 0;
@@ -120,12 +118,12 @@ struct PipelineBuilder
     std::vector<VkDescriptorSet> descriptor_sets;
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
     VkDescriptorPool descriptor_pool;
-    PipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
-    PipelineBuilder with_default_pipeline();
-    PipelineBuilder with_stage(std::shared_ptr<RaytracingPipelineStage> stage);
+    RaytracingPipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
+    RaytracingPipelineBuilder with_default_pipeline();
+    RaytracingPipelineBuilder with_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
-    PipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    RaytracingPipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
-    Pipeline build();
+    RaytracingPipeline build();
     void free();
 };

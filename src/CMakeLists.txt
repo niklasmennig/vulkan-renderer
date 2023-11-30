@@ -2,6 +2,7 @@ add_subdirectory(imgui)
 
 set(SRC_RENDERER
     ${SRC_IMGUI}
+    src/shader_compiler.cpp
     src/core/memory.cpp
     src/core/buffer.cpp
     src/core/device.cpp
@@ -16,6 +17,7 @@ set(SRC_RENDERER
     src/pipeline/raytracing/pipeline_stage.cpp
     src/pipeline/raytracing/pipeline_stage_simple.cpp
     src/pipeline/raytracing/pipeline_builder.cpp
+    src/pipeline/processing/pipeline_builder.cpp
     src/ui.cpp
     src/vulkan_application.cpp
     src/main.cpp
