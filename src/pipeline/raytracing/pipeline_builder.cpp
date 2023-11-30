@@ -260,6 +260,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     RaytracingPipeline result;
     result.device = device;
     result.builder = this;
+    result.output_image_binding_name = output_image_name;
 
     if (pipeline_layout == VK_NULL_HANDLE) {
         // scan for highest descriptor set number

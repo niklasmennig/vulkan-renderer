@@ -1,6 +1,9 @@
 #version 460
 
-layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
-void main() {
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
+layout(set = 0, binding = 0, rgba32f) uniform image2D image;
+
+void main() {
+    imageStore(image, ivec2(gl_GlobalInvocationID.xy + vec2(100, 100)), vec4(0.0));
 }

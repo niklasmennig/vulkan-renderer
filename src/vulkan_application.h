@@ -29,7 +29,7 @@ const std::string camera_data_path = "./camera_data.toml";
 
 struct QueueFamilyIndices
 {
-    std::optional<uint32_t> graphics;
+    std::optional<uint32_t> graphics_compute;
     std::optional<uint32_t> present;
 };
 

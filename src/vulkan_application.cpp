@@ -593,9 +593,9 @@ void VulkanApplication::create_swapchain() {
         create_info.imageArrayLayers = 1;
         create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        uint32_t queue_family_indices_int[] = {queue_family_indices.graphics.value(), queue_family_indices.present.value()};
+        uint32_t queue_family_indices_int[] = {queue_family_indices.graphics_compute.value(), queue_family_indices.present.value()};
 
-        if (queue_family_indices.graphics != queue_family_indices.present)
+        if (queue_family_indices.graphics_compute != queue_family_indices.present)
         {
             create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
             create_info.queueFamilyIndexCount = 2;
@@ -744,6 +744,21 @@ void VulkanApplication::recreate_render_image() {
     for(int i = 0; i < rt_pipeline.builder->created_output_images.size(); i++) {
         rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
+
+    VkDescriptorImageInfo compute_descriptor_image_info{};
+    compute_descriptor_image_info.imageLayout = rt_pipeline.builder->created_output_images[0].image.layout;
+    compute_descriptor_image_info.imageView = rt_pipeline.builder->created_output_images[0].image.view_handle;
+
+    VkWriteDescriptorSet compute_descriptor_write{};
+    compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    compute_descriptor_write.dstSet = p_pipeline.builder->descriptor_set;
+    compute_descriptor_write.dstBinding = 0;
+    compute_descriptor_write.dstArrayElement = 0;
+    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    compute_descriptor_write.descriptorCount = 1;
+    compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
+
+    vkUpdateDescriptorSets(logical_device, 1, &compute_descriptor_write, 0, nullptr);
 }
 
 void VulkanApplication::draw_frame() {
@@ -791,6 +806,13 @@ void VulkanApplication::draw_frame() {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
     device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
+    // compute dispatch
+   
+
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, p_pipeline.builder->layout, 0, 1, &p_pipeline.builder->descriptor_set, 0, nullptr);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, p_pipeline.pipeline);
+    vkCmdDispatch(command_buffer, 1, 1, 1);
+
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
     image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -808,17 +830,6 @@ void VulkanApplication::draw_frame() {
     image_barrier.dstAccessMask = 0;
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
-
-    VkImageCopy image_copy{};
-    image_copy.extent.width = render_image_extent.width;
-    image_copy.extent.height = render_image_extent.height;
-    image_copy.extent.depth = 1;
-    image_copy.srcSubresource.layerCount = 1;
-    image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.srcSubresource.baseArrayLayer = 0;
-    image_copy.dstSubresource.layerCount = 1;
-    image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_copy.dstSubresource.baseArrayLayer = 0;
 
     VkImageBlit image_blit{};
     image_blit.srcSubresource.layerCount = 1;
@@ -927,7 +938,7 @@ void VulkanApplication::setup_device() {
     device.vulkan_instance = vulkan_instance;
     device.vulkan_device = logical_device;
 
-    device.graphics_queue_family_index = queue_family_indices.graphics.value();
+    device.graphics_queue_family_index = queue_family_indices.graphics_compute.value();
 
     // load function pointers
     device.vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetAccelerationStructureBuildSizesKHR");
@@ -1030,7 +1041,7 @@ void VulkanApplication::init_imgui() {
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.ColorAttachmentFormat = device.surface_format.format;
     init_info.PipelineCache = rt_pipeline.pipeline_cache_handle;
-    init_info.QueueFamily = queue_family_indices.graphics.value();
+    init_info.QueueFamily = queue_family_indices.graphics_compute.value();
     init_info.Subpass = 0;
     init_info.CheckVkResultFn = check_vk_result;
 
@@ -1184,10 +1195,10 @@ void VulkanApplication::setup() {
     int family_index = 0;
     for (const auto &queue_family : queue_families)
     {
-        // check for graphics family
-        if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        // find queue family that supports graphics and compute
+        if ((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT))
         {
-            queue_family_indices.graphics = std::make_optional(family_index);
+            queue_family_indices.graphics_compute = std::make_optional(family_index);
         }
         VkBool32 present_support = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, family_index, surface, &present_support);
@@ -1196,7 +1207,7 @@ void VulkanApplication::setup() {
             queue_family_indices.present = std::make_optional(family_index);
         }
 
-        if (queue_family_indices.graphics && queue_family_indices.present) {
+        if (queue_family_indices.graphics_compute && queue_family_indices.present) {
             break;
         }
 
@@ -1208,7 +1219,7 @@ void VulkanApplication::setup() {
     // create logical device
     {
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-        std::set<uint32_t> unique_queue_families = {queue_family_indices.graphics.value(), queue_family_indices.present.value()};
+        std::set<uint32_t> unique_queue_families = {queue_family_indices.graphics_compute.value(), queue_family_indices.present.value()};
         float queue_priority = 1.0f;
 
         for (uint32_t unique_family : unique_queue_families)
@@ -1320,10 +1331,10 @@ void VulkanApplication::setup() {
         }
     }
 
-    std::cout << "QUEUE FAMILY INDICES | GRAPHICS: " << queue_family_indices.graphics.value() << " | PRESENT: " << queue_family_indices.present.value() << std::endl;
+    std::cout << "QUEUE FAMILY INDICES | GRAPHICS: " << queue_family_indices.graphics_compute.value() << " | PRESENT: " << queue_family_indices.present.value() << std::endl;
 
     // retrieve queue handles
-    vkGetDeviceQueue(logical_device, queue_family_indices.graphics.value(), 0, &graphics_queue);
+    vkGetDeviceQueue(logical_device, queue_family_indices.graphics_compute.value(), 0, &graphics_queue);
 
     vkGetDeviceQueue(logical_device, queue_family_indices.present.value(), 0, &present_queue);
 
@@ -1333,7 +1344,7 @@ void VulkanApplication::setup() {
     VkCommandPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    pool_info.queueFamilyIndex = queue_family_indices.graphics.value();
+    pool_info.queueFamilyIndex = queue_family_indices.graphics_compute.value();
 
     if (vkCreateCommandPool(logical_device, &pool_info, nullptr, &command_pool) != VK_SUCCESS)
     {
