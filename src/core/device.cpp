@@ -206,4 +206,4 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     }
 
     return result;
-} 
+}

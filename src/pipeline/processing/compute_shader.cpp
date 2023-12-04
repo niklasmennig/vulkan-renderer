@@ -1,13 +1,17 @@
 #include "compute_shader.h"
 
-#include <string>
 #include <filesystem>
 #include <array>
 #include <iostream>
+#include <sstream>
 
 #include "core/device.h"
 #include "loaders/shader_spirv.h"
 #include "shader_compiler.h"
+
+ComputeShader Device::create_compute_shader(std::string code_path) {
+    return ComputeShader(this, code_path);
+}
 
 void ComputeShader::set_image(int binding, Image& img) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
@@ -27,9 +31,7 @@ void ComputeShader::set_image(int binding, Image& img) {
 }
 
 void ComputeShader::build() {
-    std::string shader_path = "shaders/processing/test.comp";
-
-    std::filesystem::path compiled_shader_path = compile_shader(shader_path);
+    std::filesystem::path compiled_shader_path = compile_shader(code_path);
 
     std::cout << "before load" << std::endl;
 
@@ -98,9 +100,13 @@ void ComputeShader::build() {
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
+    dispatch(command_buffer, image_extent.width / local_dispatch_size_x, image_extent.height / local_dispatch_size_y, 1);
+}
+
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) {
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descriptor_set, 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-    vkCmdDispatch(command_buffer, image_extent.width / local_dispatch_size_x, image_extent.height / local_dispatch_size_y, 1);
+    vkCmdDispatch(command_buffer, groups_x, groups_y, groups_z);
 }
 
 void ComputeShader::free() {
@@ -110,3 +116,42 @@ void ComputeShader::free() {
     vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout, nullptr);
     vkDestroyPipelineLayout(device->vulkan_device, layout, nullptr);
 }
+
+ComputeShader::ComputeShader(Device* device, std::string path) {
+    this->device = device;
+    this->code_path = path;
+
+    // preprocess shader code
+    std::cout << "detecting compute shader group sizes" << std::endl;
+    std::ifstream in_file(path);
+    std::string line;
+    while(std::getline(in_file, line)) {
+        if (line.find("layout") != std::string::npos) {
+            size_t size_x_pos = line.find("local_size_x");
+            size_t size_y_pos = line.find("local_size_y");
+            size_t size_z_pos = line.find("local_size_z");
+            if (size_x_pos != std::string::npos && size_y_pos != std::string::npos && size_z_pos != std::string::npos) {
+                size_t size_x_string_start = line.find("=", size_x_pos) + 1;
+                size_t size_x_string_end = line.find(",", size_x_string_start);
+                size_t size_y_string_start = line.find("=", size_y_pos) + 1;
+                size_t size_y_string_end = line.find(",", size_y_string_start);
+                size_t size_z_string_start = line.find("=", size_z_pos) + 1;
+                size_t size_z_string_end = line.find(")", size_z_string_start);
+                
+                std::string size_x_string = line.substr(size_x_string_start, size_x_string_end - size_x_string_start);
+                std::string size_y_string = line.substr(size_y_string_start, size_y_string_end - size_y_string_start);
+                std::string size_z_string = line.substr(size_z_string_start, size_z_string_end - size_z_string_start);
+
+                local_dispatch_size_x = std::stoi(size_x_string);
+                local_dispatch_size_y = std::stoi(size_y_string);
+                local_dispatch_size_z = std::stoi(size_z_string);
+
+                std::cout << "shader group sizes detected: " << (int)local_dispatch_size_x << ", " << (int)local_dispatch_size_y << ", " << (int)local_dispatch_size_z << std::endl;
+                return;
+            }
+        }
+    }
+}
+
+// TODE: Remove
+ComputeShader::ComputeShader() {}

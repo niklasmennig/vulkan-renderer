@@ -1531,7 +1531,7 @@ void VulkanApplication::setup() {
 
     p_pipeline = p_pipeline_builder.build();
 
-    compute_shader.device = &device;
+    compute_shader = device.create_compute_shader("./shaders/processing/test.comp");
     compute_shader.build();
     
 
