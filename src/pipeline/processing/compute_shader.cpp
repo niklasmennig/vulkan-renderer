@@ -96,7 +96,7 @@ void ComputeShader::build() {
 
     vkDestroyShaderModule(device->vulkan_device, stage_create_info.module, nullptr);
 
-    std::cout << "Comput Shader built" << std::endl;
+    std::cout << "compute shader built" << std::endl;
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
@@ -122,9 +122,9 @@ ComputeShader::ComputeShader(Device* device, std::string path) {
     this->code_path = path;
 
     // preprocess shader code
-    std::cout << "detecting compute shader group sizes" << std::endl;
     std::ifstream in_file(path);
     std::string line;
+    std::cout << "detecting compute shader group sizes" << std::endl;
     while(std::getline(in_file, line)) {
         if (line.find("layout") != std::string::npos) {
             size_t size_x_pos = line.find("local_size_x");
@@ -151,6 +151,7 @@ ComputeShader::ComputeShader(Device* device, std::string path) {
             }
         }
     }
+    std::cout << "shader group sizes could not be detected" << std::endl;
 }
 
 // TODE: Remove
