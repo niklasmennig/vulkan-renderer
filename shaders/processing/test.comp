@@ -5,5 +5,12 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0, rgba32f) uniform image2D image;
 
 void main() {
-    imageStore(image, ivec2(gl_GlobalInvocationID.xy + vec2(100, 100)), vec4(0.0));
+    ivec2 pixel_position = ivec2(gl_GlobalInvocationID.xy);
+
+    vec4 pix0 = imageLoad(image, pixel_position + ivec2( 0, -10));
+    vec4 pix1 = imageLoad(image, pixel_position + ivec2( 0, -5));
+    vec4 pix2 = imageLoad(image, pixel_position + ivec2( 0,  5));
+    vec4 pix3 = imageLoad(image, pixel_position + ivec2( 0,  10));
+
+    imageStore(image, ivec2(gl_GlobalInvocationID.xy), (pix0 + pix1 + pix2 + pix3) / 4.0);
 }

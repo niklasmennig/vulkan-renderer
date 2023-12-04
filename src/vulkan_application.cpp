@@ -745,20 +745,7 @@ void VulkanApplication::recreate_render_image() {
         rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 
-    VkDescriptorImageInfo compute_descriptor_image_info{};
-    compute_descriptor_image_info.imageLayout = rt_pipeline.builder->created_output_images[0].image.layout;
-    compute_descriptor_image_info.imageView = rt_pipeline.builder->created_output_images[0].image.view_handle;
-
-    VkWriteDescriptorSet compute_descriptor_write{};
-    compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    compute_descriptor_write.dstSet = p_pipeline.builder->descriptor_set;
-    compute_descriptor_write.dstBinding = 0;
-    compute_descriptor_write.dstArrayElement = 0;
-    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    compute_descriptor_write.descriptorCount = 1;
-    compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
-
-    vkUpdateDescriptorSets(logical_device, 1, &compute_descriptor_write, 0, nullptr);
+    compute_shader.set_image(0, rt_pipeline.builder->created_output_images[0].image);
 }
 
 void VulkanApplication::draw_frame() {
@@ -806,13 +793,6 @@ void VulkanApplication::draw_frame() {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
     device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
-    // compute dispatch
-   
-
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, p_pipeline.builder->layout, 0, 1, &p_pipeline.builder->descriptor_set, 0, nullptr);
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, p_pipeline.pipeline);
-    vkCmdDispatch(command_buffer, 1, 1, 1);
-
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
     image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -829,7 +809,14 @@ void VulkanApplication::draw_frame() {
     image_barrier.srcAccessMask = 0;
     image_barrier.dstAccessMask = 0;
 
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+
+    // compute dispatch
+    compute_shader.dispatch(command_buffer, render_image_extent);
+
+    image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     VkImageBlit image_blit{};
     image_blit.srcSubresource.layerCount = 1;
@@ -1543,6 +1530,9 @@ void VulkanApplication::setup() {
     p_pipeline_builder = device.create_processing_pipeline_builder();
 
     p_pipeline = p_pipeline_builder.build();
+
+    compute_shader.device = &device;
+    compute_shader.build();
     
 
     std::cout << "RENDER IMAGE" << std::endl;
@@ -1807,6 +1797,7 @@ void VulkanApplication::cleanup() {
     rt_pipeline_builder.free();
     p_pipeline.free();
     p_pipeline_builder.free();
+    compute_shader.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);

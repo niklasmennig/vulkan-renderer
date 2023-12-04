@@ -9,6 +9,7 @@
 #include "processors/gltf/gltf_processor.h"
 #include "pipeline/raytracing/pipeline_builder.h"
 #include "pipeline/processing/pipeline_builder.h"
+#include "pipeline/processing/compute_shader.h"
 #include "ui.h"
 #include "shader_interface.h"
 
@@ -103,6 +104,7 @@ struct VulkanApplication {
 
     ProcessingPipelineBuilder p_pipeline_builder;
     ProcessingPipeline p_pipeline;
+    ComputeShader compute_shader;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;

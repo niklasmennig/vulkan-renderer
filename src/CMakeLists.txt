@@ -17,6 +17,7 @@ set(SRC_RENDERER
     src/pipeline/raytracing/pipeline_stage.cpp
     src/pipeline/raytracing/pipeline_stage_simple.cpp
     src/pipeline/raytracing/pipeline_builder.cpp
+    src/pipeline/processing/compute_shader.cpp
     src/pipeline/processing/pipeline_builder.cpp
     src/ui.cpp
     src/vulkan_application.cpp

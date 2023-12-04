@@ -10,20 +10,11 @@ struct ProcessingPipeline {
 
     ProcessingPipelineBuilder* builder;
 
-    VkPipeline pipeline;
-    VkPipelineCache cache;
-
     void free();
 };
 
 struct ProcessingPipelineBuilder {
     Device* device;
-
-    VkDescriptorSetLayout descriptor_set_layout;
-    VkDescriptorPool descriptor_pool;
-    VkDescriptorSet descriptor_set;
-
-    VkPipelineLayout layout;
 
     ProcessingPipeline build();
 
