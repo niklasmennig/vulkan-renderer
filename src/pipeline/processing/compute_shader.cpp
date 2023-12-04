@@ -33,7 +33,7 @@ void ComputeShader::set_image(int binding, Image& img) {
 void ComputeShader::build() {
     std::filesystem::path compiled_shader_path = compile_shader(code_path);
 
-    std::cout << "before load" << std::endl;
+    std::cout << "before load" << code_path << std::endl;
 
     VkPipelineShaderStageCreateInfo stage_create_info{};
     stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -124,7 +124,7 @@ ComputeShader::ComputeShader(Device* device, std::string path) {
     // preprocess shader code
     std::ifstream in_file(path);
     std::string line;
-    std::cout << "detecting compute shader group sizes" << std::endl;
+    std::cout << "detecting shader information for compute shader at " << this->code_path << std::endl;
     while(std::getline(in_file, line)) {
         if (line.find("layout") != std::string::npos) {
             size_t size_x_pos = line.find("local_size_x");
@@ -153,6 +153,3 @@ ComputeShader::ComputeShader(Device* device, std::string path) {
     }
     std::cout << "shader group sizes could not be detected" << std::endl;
 }
-
-// TODE: Remove
-ComputeShader::ComputeShader() {}

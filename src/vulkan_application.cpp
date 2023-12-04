@@ -15,6 +15,7 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 
 #include "pipeline/raytracing/pipeline_stage_simple.h"
+#include "pipeline/processing/pipeline_stage_simple.h"
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -745,7 +746,8 @@ void VulkanApplication::recreate_render_image() {
         rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 
-    compute_shader.set_image(0, rt_pipeline.builder->created_output_images[0].image);
+    p_pipeline_builder.input_image = &rt_pipeline_builder.created_output_images[0].image;
+    p_pipeline_builder.on_resize(render_image_extent);
 }
 
 void VulkanApplication::draw_frame() {
@@ -811,8 +813,8 @@ void VulkanApplication::draw_frame() {
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
-    // compute dispatch
-    compute_shader.dispatch(command_buffer, render_image_extent);
+    // run processing pipeline
+    p_pipeline.run(command_buffer);
 
     image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
@@ -1527,12 +1529,10 @@ void VulkanApplication::setup() {
     rt_pipeline = rt_pipeline_builder.build();
 
     // create process pipeline
-    p_pipeline_builder = device.create_processing_pipeline_builder();
+    p_pipeline_builder = device.create_processing_pipeline_builder()
+                    .with_stage(std::make_shared<ProcessingPipelineStageSimple>(ProcessingPipelineStageSimple()));
 
     p_pipeline = p_pipeline_builder.build();
-
-    compute_shader = device.create_compute_shader("./shaders/processing/test.comp");
-    compute_shader.build();
     
 
     std::cout << "RENDER IMAGE" << std::endl;
@@ -1797,7 +1797,6 @@ void VulkanApplication::cleanup() {
     rt_pipeline_builder.free();
     p_pipeline.free();
     p_pipeline_builder.free();
-    compute_shader.free();
     vkDestroySemaphore(logical_device, image_available_semaphore, nullptr);
     vkDestroySemaphore(logical_device, render_finished_semaphore, nullptr);
     vkDestroyFence(logical_device, in_flight_fence, nullptr);

@@ -104,7 +104,6 @@ struct VulkanApplication {
 
     ProcessingPipelineBuilder p_pipeline_builder;
     ProcessingPipeline p_pipeline;
-    ComputeShader compute_shader;
 
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;

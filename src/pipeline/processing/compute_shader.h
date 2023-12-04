@@ -29,6 +29,5 @@ struct ComputeShader {
     void dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z);
     void free();
 
-    ComputeShader(); // placeholder, should be deleted
     ComputeShader(Device* device, std::string code_path);
 };
