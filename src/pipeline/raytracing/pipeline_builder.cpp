@@ -232,7 +232,7 @@ void RaytracingPipeline::set_descriptor_sampler_binding(std::string name, Image*
 void RaytracingPipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
     for (int i = 0; i < builder->created_output_images.size(); i++) {
         if (builder->created_output_images[i].image.width > 0 && builder->created_output_images[i].image.height > 0) builder->created_output_images[i].image.free();
-        builder->created_output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 1,
+        builder->created_output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1,
          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, builder->created_output_images[i].format, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
     }
 }

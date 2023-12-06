@@ -747,7 +747,7 @@ void VulkanApplication::recreate_render_image() {
     }
 
     p_pipeline_builder.input_image = &rt_pipeline_builder.created_output_images[0].image;
-    p_pipeline_builder.on_resize(render_image_extent);
+    p_pipeline_builder.cmd_on_resize(command_buffer, render_image_extent);
 }
 
 void VulkanApplication::draw_frame() {

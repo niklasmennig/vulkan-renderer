@@ -44,6 +44,9 @@ struct Image
     void cmd_setup_texture(VkCommandBuffer cmd_buffer);
     void cmd_update_buffer(VkCommandBuffer cmd_buffer);
     void cmd_update_image(VkCommandBuffer cmd_buffer);
+    void cmd_blit_image(VkCommandBuffer cmd_buffer, Image src_image);
+
+    VkExtent2D get_extents();
     vec3 get_pixel(uint32_t x, uint32_t y);
     ImagePixels get_pixels();
 };

@@ -43,12 +43,17 @@ void ComputeShader::build() {
 
     std::cout << "after load" << std::endl;
 
-    std::array<VkDescriptorSetLayoutBinding, 1> layout_bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 2> layout_bindings{};
 
     layout_bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     layout_bindings[0].binding = 0;
     layout_bindings[0].descriptorCount = 1;
     layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+    layout_bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layout_bindings[1].binding = 1;
+    layout_bindings[1].descriptorCount = 1;
+    layout_bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
     descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -59,7 +64,7 @@ void ComputeShader::build() {
 
     VkDescriptorPoolSize pool_size{};
     pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    pool_size.descriptorCount = 1;
+    pool_size.descriptorCount = 2;
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{};
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

@@ -19,21 +19,28 @@ struct ProcessingPipeline {
     void free();
 };
 
+struct CreatedPipelineImage {
+    Image image;
+    VkExtent2D target_size;
+
+    void resize(unsigned int width, unsigned int height);
+};
+
 struct ProcessingPipelineBuilder {
     Device* device;
 
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
     Image* input_image;
-    std::vector<Image> created_images;
+    std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader> created_compute_shaders;
 
-    Image* create_image(int width, int height);
+    CreatedPipelineImage* create_image(unsigned int width, unsigned int height);
     ComputeShader* create_compute_shader(std::string path);
 
     ProcessingPipelineBuilder with_stage(std::shared_ptr<ProcessingPipelineStage> stage);
 
-    void on_resize(VkExtent2D image_extent);
+    void cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent);
     ProcessingPipeline build();
 
     void free();

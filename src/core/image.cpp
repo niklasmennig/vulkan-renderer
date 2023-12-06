@@ -144,6 +144,29 @@ void Image::cmd_update_image(VkCommandBuffer cmd_buffer) {
     vkCmdCopyBufferToImage(cmd_buffer, buffer.buffer_handle, image_handle, layout, 1, &texture_copy);
 }
 
+void Image::cmd_blit_image(VkCommandBuffer cmd_buffer, Image src_image) {
+    VkImageBlit blit{};
+    blit.srcSubresource.layerCount = 1;
+    blit.srcSubresource.baseArrayLayer = 0;
+    blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    blit.dstSubresource.layerCount = 1;
+    blit.dstSubresource.baseArrayLayer = 0;
+    blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    blit.srcOffsets[0] = {0,0,0};
+    blit.srcOffsets[1] = {(int32_t)src_image.width, (int32_t)src_image.height, 1};
+    blit.dstOffsets[0] = {0,0,0};
+    blit.dstOffsets[1] = {(int32_t)width, (int32_t)height, 1};
+
+    vkCmdBlitImage(cmd_buffer, src_image.image_handle, src_image.layout, image_handle, layout, 1, &blit, VK_FILTER_LINEAR);
+}
+
+VkExtent2D Image::get_extents() {
+    return VkExtent2D{
+        width,
+        height
+    };
+}
+
 ImagePixels Image::get_pixels() {
     ImagePixels result;
     result.data.resize(buffer.buffer_size);
