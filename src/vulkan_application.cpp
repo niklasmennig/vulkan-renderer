@@ -722,7 +722,7 @@ void VulkanApplication::recreate_swapchain() {
     create_framebuffers();
 }
 
-void VulkanApplication::recreate_render_image() {
+void VulkanApplication::recreate_render_images() {
     float render_scale = 1.0;
     switch(ui.render_scale_index) {
         case 1:
@@ -746,7 +746,7 @@ void VulkanApplication::recreate_render_image() {
         rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 
-    p_pipeline_builder.input_image = &rt_pipeline_builder.created_output_images[0].image;
+    p_pipeline_builder.input_image = rt_pipeline_builder.created_output_images[0].image;
     p_pipeline_builder.cmd_on_resize(command_buffer, render_image_extent);
 }
 
@@ -771,7 +771,7 @@ void VulkanApplication::draw_frame() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    if (render_images_dirty) {recreate_render_image(); render_images_dirty = false;}
+    if (render_images_dirty) {recreate_render_images(); render_images_dirty = false;}
     material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
     lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
@@ -1535,8 +1535,6 @@ void VulkanApplication::setup() {
     p_pipeline = p_pipeline_builder.build();
     
 
-    std::cout << "RENDER IMAGE" << std::endl;
-    recreate_render_image();
 
     init_imgui();
     std::cout << "IMGUI INITIALIZED" << std::endl;

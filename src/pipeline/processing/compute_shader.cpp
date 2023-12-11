@@ -13,10 +13,10 @@ ComputeShader Device::create_compute_shader(std::string code_path) {
     return ComputeShader(this, code_path);
 }
 
-void ComputeShader::set_image(int binding, Image& img) {
+void ComputeShader::set_image(int binding, Image* img) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
-    compute_descriptor_image_info.imageLayout = img.layout;
-    compute_descriptor_image_info.imageView = img.view_handle;
+    compute_descriptor_image_info.imageLayout = img->layout;
+    compute_descriptor_image_info.imageView = img->view_handle;
 
     VkWriteDescriptorSet compute_descriptor_write{};
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

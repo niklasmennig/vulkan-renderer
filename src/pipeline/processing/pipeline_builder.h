@@ -31,7 +31,7 @@ struct ProcessingPipelineBuilder {
 
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
-    Image* input_image;
+    Image input_image;
     std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader> created_compute_shaders;
 

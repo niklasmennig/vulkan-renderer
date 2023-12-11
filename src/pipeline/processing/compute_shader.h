@@ -22,7 +22,7 @@ struct ComputeShader {
 
     std::string code_path;
 
-    void set_image(int binding, Image& image);
+    void set_image(int binding, Image* image);
 
     void build();
     void dispatch(VkCommandBuffer command_buffer, VkExtent2D image_extent);

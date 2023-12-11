@@ -50,7 +50,7 @@ void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, Vk
     }
 
     for (auto& created_image: created_images) {
-        if (created_image.target_size.width != created_image.image.width || created_image.target_size.height != created_image.image.height) {
+        if (created_image.target_size.width != created_image.image.width || created_image.target_size.height != created_image.image.height || created_image.image.layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
             // resize created image to target size
             std::cout << "resizing pipeline image" << std::endl;
             created_image.image.free();

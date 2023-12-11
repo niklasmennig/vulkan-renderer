@@ -99,7 +99,7 @@ void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout targ
     layout = target_layout;
     access = target_access;
 
-    vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
+    vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
 }
 
 void Image::cmd_setup_texture(VkCommandBuffer cmd_buffer) {

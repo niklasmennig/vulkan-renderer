@@ -125,7 +125,7 @@ struct VulkanApplication {
 
     uint32_t render_clear_accumulated;
 
-    bool render_images_dirty = false;
+    bool render_images_dirty = true;
     bool pipeline_dirty = false;
 
     std::filesystem::path scene_path;
@@ -175,7 +175,7 @@ struct VulkanApplication {
     void create_swapchain_image_views();
     void create_framebuffers();
     void recreate_swapchain();
-    void recreate_render_image();
+    void recreate_render_images();
     void rebuild_pipeline();
     void create_default_descriptor_writes();
     void create_synchronization();
