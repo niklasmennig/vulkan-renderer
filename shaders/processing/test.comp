@@ -1,9 +1,11 @@
 #version 460
 
+#define NUM_IMAGES 2
+
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rgba32f) uniform image2D image;
-layout(set = 0, binding = 1, rgba32f) uniform image2D image2;
+layout(set = 0, binding = 0, rgba32f) uniform image2D images[];
+
 
 void main() {
     ivec2 pixel_position = ivec2(gl_GlobalInvocationID.xy);
@@ -15,6 +17,6 @@ void main() {
 
     // imageStore(image, ivec2(gl_GlobalInvocationID.xy), (pix0 + pix1 + pix2 + pix3) / 4.0);
 
-    vec4 col = imageLoad(image2, pixel_position);
-    imageStore(image, pixel_position, col);
+    vec4 col = imageLoad(images[0], pixel_position);
+    imageStore(images[0], pixel_position * 2, col);
 }

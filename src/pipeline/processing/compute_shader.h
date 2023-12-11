@@ -19,10 +19,11 @@ struct ComputeShader {
 
     VkPipelineLayout layout;
     uint8_t local_dispatch_size_x, local_dispatch_size_y, local_dispatch_size_z;
+    uint8_t num_image_descriptors;
 
     std::string code_path;
 
-    void set_image(int binding, Image* image);
+    void set_image(int index, Image* image);
 
     void build();
     void dispatch(VkCommandBuffer command_buffer, VkExtent2D image_extent);

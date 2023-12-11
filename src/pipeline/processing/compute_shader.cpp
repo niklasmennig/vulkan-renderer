@@ -13,7 +13,7 @@ ComputeShader Device::create_compute_shader(std::string code_path) {
     return ComputeShader(this, code_path);
 }
 
-void ComputeShader::set_image(int binding, Image* img) {
+void ComputeShader::set_image(int index, Image* img) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
     compute_descriptor_image_info.imageLayout = img->layout;
     compute_descriptor_image_info.imageView = img->view_handle;
@@ -21,8 +21,8 @@ void ComputeShader::set_image(int binding, Image* img) {
     VkWriteDescriptorSet compute_descriptor_write{};
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     compute_descriptor_write.dstSet = descriptor_set;
-    compute_descriptor_write.dstBinding = binding;
-    compute_descriptor_write.dstArrayElement = 0;
+    compute_descriptor_write.dstBinding = 0;
+    compute_descriptor_write.dstArrayElement = index;
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
@@ -31,6 +31,46 @@ void ComputeShader::set_image(int binding, Image* img) {
 }
 
 void ComputeShader::build() {
+    // preprocess shader code
+    std::ifstream in_file(code_path);
+    std::string line;
+    std::cout << "detecting shader information for compute shader at " << this->code_path << std::endl;
+    while(std::getline(in_file, line)) {
+        if (line.find("layout") != std::string::npos) {
+            size_t size_x_pos = line.find("local_size_x");
+            size_t size_y_pos = line.find("local_size_y");
+            size_t size_z_pos = line.find("local_size_z");
+            if (size_x_pos != std::string::npos && size_y_pos != std::string::npos && size_z_pos != std::string::npos) {
+                size_t size_x_string_start = line.find("=", size_x_pos) + 1;
+                size_t size_x_string_end = line.find(",", size_x_string_start);
+                size_t size_y_string_start = line.find("=", size_y_pos) + 1;
+                size_t size_y_string_end = line.find(",", size_y_string_start);
+                size_t size_z_string_start = line.find("=", size_z_pos) + 1;
+                size_t size_z_string_end = line.find(")", size_z_string_start);
+                
+                std::string size_x_string = line.substr(size_x_string_start, size_x_string_end - size_x_string_start);
+                std::string size_y_string = line.substr(size_y_string_start, size_y_string_end - size_y_string_start);
+                std::string size_z_string = line.substr(size_z_string_start, size_z_string_end - size_z_string_start);
+
+                local_dispatch_size_x = std::stoi(size_x_string);
+                local_dispatch_size_y = std::stoi(size_y_string);
+                local_dispatch_size_z = std::stoi(size_z_string);
+
+                std::cout << "shader group sizes detected: " << (int)local_dispatch_size_x << ", " << (int)local_dispatch_size_y << ", " << (int)local_dispatch_size_z << std::endl;
+            }
+        }
+
+        auto define_pos = line.find("#define");
+        if (define_pos != std::string::npos) {
+            auto num_images_pos = line.find("NUM_IMAGES", define_pos + 7);
+            if (num_images_pos != std::string::npos) {
+                num_image_descriptors = std::stoi(line.substr(num_images_pos + 10));
+                std::cout << "image descriptor count detected: " << (int)num_image_descriptors << std::endl;
+            }
+        }
+    }
+
+
     std::filesystem::path compiled_shader_path = compile_shader(code_path);
 
     std::cout << "before load" << code_path << std::endl;
@@ -43,17 +83,12 @@ void ComputeShader::build() {
 
     std::cout << "after load" << std::endl;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> layout_bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 1> layout_bindings{};
 
     layout_bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     layout_bindings[0].binding = 0;
-    layout_bindings[0].descriptorCount = 1;
+    layout_bindings[0].descriptorCount = num_image_descriptors;
     layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-
-    layout_bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    layout_bindings[1].binding = 1;
-    layout_bindings[1].descriptorCount = 1;
-    layout_bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
     descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -64,7 +99,7 @@ void ComputeShader::build() {
 
     VkDescriptorPoolSize pool_size{};
     pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    pool_size.descriptorCount = 2;
+    pool_size.descriptorCount = num_image_descriptors;
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{};
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -125,36 +160,4 @@ void ComputeShader::free() {
 ComputeShader::ComputeShader(Device* device, std::string path) {
     this->device = device;
     this->code_path = path;
-
-    // preprocess shader code
-    std::ifstream in_file(path);
-    std::string line;
-    std::cout << "detecting shader information for compute shader at " << this->code_path << std::endl;
-    while(std::getline(in_file, line)) {
-        if (line.find("layout") != std::string::npos) {
-            size_t size_x_pos = line.find("local_size_x");
-            size_t size_y_pos = line.find("local_size_y");
-            size_t size_z_pos = line.find("local_size_z");
-            if (size_x_pos != std::string::npos && size_y_pos != std::string::npos && size_z_pos != std::string::npos) {
-                size_t size_x_string_start = line.find("=", size_x_pos) + 1;
-                size_t size_x_string_end = line.find(",", size_x_string_start);
-                size_t size_y_string_start = line.find("=", size_y_pos) + 1;
-                size_t size_y_string_end = line.find(",", size_y_string_start);
-                size_t size_z_string_start = line.find("=", size_z_pos) + 1;
-                size_t size_z_string_end = line.find(")", size_z_string_start);
-                
-                std::string size_x_string = line.substr(size_x_string_start, size_x_string_end - size_x_string_start);
-                std::string size_y_string = line.substr(size_y_string_start, size_y_string_end - size_y_string_start);
-                std::string size_z_string = line.substr(size_z_string_start, size_z_string_end - size_z_string_start);
-
-                local_dispatch_size_x = std::stoi(size_x_string);
-                local_dispatch_size_y = std::stoi(size_y_string);
-                local_dispatch_size_z = std::stoi(size_z_string);
-
-                std::cout << "shader group sizes detected: " << (int)local_dispatch_size_x << ", " << (int)local_dispatch_size_y << ", " << (int)local_dispatch_size_z << std::endl;
-                return;
-            }
-        }
-    }
-    std::cout << "shader group sizes could not be detected" << std::endl;
 }
