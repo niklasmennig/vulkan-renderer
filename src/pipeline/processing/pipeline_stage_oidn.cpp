@@ -6,16 +6,16 @@
 #include <iostream>
 
 void ProcessingPipelineStageOIDN::initialize(ProcessingPipelineBuilder* builder) {
-    std::cout << "CREATING PIPELINE IMAGE" << std::endl;
-    image = builder->create_image(100, 100);
     output_image = &builder->input_image;
+
+    copy_in_shader = builder->create_compute_shader("shaders/processing/copy_in.comp");
+    copy_out_shader = builder->create_compute_shader("shaders/processing/copy_out.comp");
 
     oidn_device = oidn::newDevice();
     oidn_device.commit();
 }
 
 void ProcessingPipelineStageOIDN::on_resize(ProcessingPipelineBuilder* builder, VkExtent2D image_extent) {
-    image->resize(image_extent.width / 2, 100);
 
     oidn_color_buf = oidn_device.newBuffer(image_extent.width * image_extent.height * 3 * sizeof(float), oidn::Storage::Managed);
 
@@ -28,9 +28,13 @@ void ProcessingPipelineStageOIDN::on_resize(ProcessingPipelineBuilder* builder, 
 void ProcessingPipelineStageOIDN::process(VkCommandBuffer command_buffer) {
     std::cout << "EXECUTING OIDN STAGE" << std::endl;
     float* oidn_color_ptr = (float*)oidn_color_buf.getData();
-    output_image->cmd_update_buffer(command_buffer);
-    output_image->buffer.get_data(oidn_color_ptr, 0, output_image->width * output_image->height * 3 * sizeof(float));
+    copy_in_shader->dispatch(command_buffer, output_image->get_extents());
+
+    // implement functionality to set buffers in compute shaders
+    // use compute shader to copy image colors to OIDN buffer
+    copy_in_shader.set_buffer(0, oidn_color_ptr);
     oidn_filter.execute();
-    output_image->buffer.set_data(oidn_color_ptr);
-    output_image->cmd_update_image(command_buffer);
+    copy_out_shader->dispatch(command_buffer, output_image->get_extents());
+    // use other compute shader to copy OIDN filtered color data to output image
+    copy_out_shader.set_buffer(0, oidn_color_ptr);
 }
