@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../loaders/geometry_gltf.h"
+#include "loaders/geometry_gltf.h"
 
 // structure intended to perform changes on loaded GLTF data
 struct GLTFProcessor {

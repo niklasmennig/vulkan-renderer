@@ -61,6 +61,7 @@ void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, Vk
 }
 
 ProcessingPipelineBuilder ProcessingPipelineBuilder::with_stage(std::shared_ptr<ProcessingPipelineStage> stage) {
+    std::cout << "adding stage" << std::endl;
     stages.push_back(stage);
     return *this;
 }
@@ -73,6 +74,7 @@ ProcessingPipeline ProcessingPipelineBuilder::build() {
     std::cout << "building with " << stages.size() << " stages" << std::endl;
 
     for (auto stage: stages) {
+        std::cout << "INITIALIZING STAGE" << std::endl;
         stage->initialize(this);
     }
 

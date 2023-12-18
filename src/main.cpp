@@ -14,6 +14,7 @@
 
 int main(int argc, char** argv)
 {
+    std::cout << "TEST" << std::endl;
     // initialize glfw
     glfwInit();
 

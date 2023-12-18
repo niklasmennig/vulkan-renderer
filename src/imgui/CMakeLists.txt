@@ -2,6 +2,11 @@ add_library(imgui)
 
 target_link_libraries(imgui Vulkan::Vulkan)
 
+target_include_directories(imgui PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${GLFW3_INCLUDE_DIR}
+)
+
 target_sources(imgui PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui.cpp"

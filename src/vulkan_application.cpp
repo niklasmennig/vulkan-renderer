@@ -16,6 +16,7 @@
 
 #include "pipeline/raytracing/pipeline_stage_simple.h"
 #include "pipeline/processing/pipeline_stage_simple.h"
+#include "pipeline/processing/pipeline_stage_oidn.h"
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -1530,7 +1531,7 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    .with_stage(std::make_shared<ProcessingPipelineStageSimple>(ProcessingPipelineStageSimple()));
+                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()));
 
     p_pipeline = p_pipeline_builder.build();
     
