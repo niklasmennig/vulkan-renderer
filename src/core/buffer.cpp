@@ -4,6 +4,17 @@
 #include <stdexcept>
 #include <iostream>
 
+void Buffer::map(void* data) {
+    if (vkMapMemory(device_handle, device_memory, device_memory_offset, buffer_size, 0, &data) != VK_SUCCESS)
+    {
+        throw std::runtime_error("error mapping buffer memory");
+    }
+}
+
+void Buffer::unmap() {
+    vkUnmapMemory(device_handle, device_memory);
+}
+
 void Buffer::set_data(void* data, size_t offset, size_t size) {
     if (size == 0) size = buffer_size - offset;
     void *buffer_data;

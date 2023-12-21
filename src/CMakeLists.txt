@@ -28,9 +28,10 @@ target_sources(renderer PRIVATE
 )
 
 set (OpenImageDenoise_INCLUDE_DIR ${CMAKE_SOURCE_DIR} CACHE PATH "Path to Open Image Denoise Include Directory")
-set (OpenImageDenoise_LIBRARY ${CMAKE_SOURCE_DIR} CACHE PATH "Path to Open Image Denoise Library")
+set (OpenImageDenoise_LIBRARY ${CMAKE_SOURCE_DIR} CACHE FILEPATH "Path to Open Image Denoise Library")
 
 target_include_directories(renderer PRIVATE 
+    ${PROJECT_SOURCE_DIR}/includes/
     ${VULKAN_INCLUDE_DIR} 
     ${GLFW3_INCLUDE_DIR} 
     ${OpenImageDenoise_INCLUDE_DIR} 
@@ -40,4 +41,4 @@ target_include_directories(renderer PRIVATE
 
 set_property(TARGET renderer PROPERTY CXX_STANDARD 17)
 target_compile_definitions(renderer PRIVATE GLSLC_EXE="${VULKAN_GLSLC_EXECUTABLE}" SHADER_DIR="${SHADER_DIR}")
-target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan imgui ${OpenImageDenoise_LIBRARY}/OpenImageDenoise.lib)
+target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan imgui ${OpenImageDenoise_LIBRARY})
