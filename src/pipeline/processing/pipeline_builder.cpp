@@ -55,7 +55,7 @@ void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, Vk
             std::cout << "resizing pipeline image" << std::endl;
             created_image.image.free();
             created_image.image = device->create_image(created_image.target_size.width, created_image.target_size.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1,VK_FORMAT_R8G8B8A8_UNORM, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
-            created_image.image.cmd_transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
+            created_image.image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
         }
     }
 }

@@ -25,6 +25,9 @@ struct Device
     VkInstance vulkan_instance{};
     VkDevice vulkan_device{};
 
+    VkQueue graphics_queue;
+    VkCommandPool command_pool{};
+
     uint32_t image_count;
     VkSurfaceFormatKHR surface_format;
 
@@ -36,13 +39,16 @@ struct Device
 
     
 
-    // maps memory type index to shared memory
     uint32_t shared_buffer_size = 2000000000;
+    // maps memory type index to shared memory
     std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
 
 
+    VkCommandBuffer begin_single_use_command_buffer();
+    void end_single_use_command_buffer(VkCommandBuffer cmd_buffer);
+
     Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 4, bool shared = true);
-    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, bool shared = true);
     Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR, VkSamplerAddressMode uv_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT, bool shared = true);
 
     void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared = true);

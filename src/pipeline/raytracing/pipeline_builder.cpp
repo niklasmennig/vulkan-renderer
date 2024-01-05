@@ -234,12 +234,7 @@ void RaytracingPipeline::cmd_recreate_output_images(VkCommandBuffer command_buff
         if (builder->created_output_images[i].image.width > 0 && builder->created_output_images[i].image.height > 0) builder->created_output_images[i].image.free();
         builder->created_output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1,
          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, builder->created_output_images[i].format, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
-    }
-}
-
-void RaytracingPipeline::cmd_update_output_image_buffers(VkCommandBuffer command_buffer) {
-    for (int i = 0; i < builder->created_output_images.size(); i++) {
-        if (builder->created_output_images[i].update_buffer) builder->created_output_images[i].image.cmd_update_buffer(command_buffer);
+        builder->created_output_images[i].image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL);
     }
 }
 
@@ -497,7 +492,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     sbt_buffer_info.size = entry_stride * (shader_stages.size());
-    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, base_alignment);
+    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, entry_stride, false);
 
 
     // write shader stage data to sbt buffer consecutively
@@ -507,16 +502,16 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     }
 
     // raygen shader first
-    result.sbt.region_raygen.deviceAddress = result.sbt.buffer.device_address;
+    result.sbt.region_raygen.deviceAddress = result.sbt.buffer.get_device_address();
 
     // closest hit shader stages after raygen
-    result.sbt.region_hit.deviceAddress = result.sbt.buffer.device_address + entry_stride;
+    result.sbt.region_hit.deviceAddress = result.sbt.buffer.get_device_address() + 1 * entry_stride;
 
     // miss shader stages after closest-hit
-    result.sbt.region_miss.deviceAddress = result.sbt.buffer.device_address + (1 + hit_stages) * entry_stride;
+    result.sbt.region_miss.deviceAddress = result.sbt.buffer.get_device_address() + (1 + hit_stages) * entry_stride;
 
     // callable shader stages after miss shaders
-    result.sbt.region_callable.deviceAddress = result.sbt.buffer.device_address + (1 + hit_stages + miss_stages) * entry_stride;
+    result.sbt.region_callable.deviceAddress = result.sbt.buffer.get_device_address() + (1 + hit_stages + miss_stages) * entry_stride;
 
 #pragma endregion
 

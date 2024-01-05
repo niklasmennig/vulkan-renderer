@@ -8,23 +8,21 @@
 #include "glm/vec3.hpp"
 using vec3 = glm::vec3;
 
-struct ImagePixels {
-    std::vector<unsigned char> data;
-    VkFormat format;
-    uint32_t width, height;
-    float multiplier = 1.0f;
+struct Device;
 
-    vec3 get_pixel(uint32_t x, uint32_t y);
+struct ImagePixels {
+
 };
 
 struct Image
 {
-    VkDevice device_handle;
+    Device* device;
+
     uint32_t width, height;
     VkImageLayout layout;
     VkFormat format;
     VkAccessFlags access;
-    Buffer buffer;
+    VkMemoryRequirements memory_requirements;
     VkDeviceMemory texture_memory;
     VkDeviceSize texture_memory_offset;
     VkImage image_handle;
@@ -40,13 +38,13 @@ struct Image
 
     void free();
     VkImageMemoryBarrier get_layout_transition(VkImageLayout target_layout, VkAccessFlags target_access);
-    void cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access);
-    void cmd_setup_texture(VkCommandBuffer cmd_buffer);
-    void cmd_update_buffer(VkCommandBuffer cmd_buffer);
-    void cmd_update_image(VkCommandBuffer cmd_buffer);
+    void transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access = 0);
+    void transition_layout(VkImageLayout target_layout, VkAccessFlags target_access = 0);
     void cmd_blit_image(VkCommandBuffer cmd_buffer, Image src_image);
+    void copy_buffer_to_image(VkCommandBuffer cmd_buffer, Buffer buffer);
+    void copy_buffer_to_image(Buffer buffer);
+    void copy_image_to_buffer(VkCommandBuffer cmd_buffer, Buffer buffer);
+    void copy_image_to_buffer(Buffer buffer);
 
     VkExtent2D get_extents();
-    vec3 get_pixel(uint32_t x, uint32_t y);
-    ImagePixels get_pixels();
 };

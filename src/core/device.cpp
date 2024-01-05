@@ -55,11 +55,43 @@ void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, 
     }
 }
 
+VkCommandBuffer Device::begin_single_use_command_buffer() {
+    VkCommandBufferAllocateInfo buffer_info{};
+    buffer_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    buffer_info.commandPool = command_pool;
+    buffer_info.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(vulkan_device, &buffer_info, &commandBuffer);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &begin_info);
+
+    return commandBuffer;
+}
+
+void Device::end_single_use_command_buffer(VkCommandBuffer cmd_buffer) {
+    vkEndCommandBuffer(cmd_buffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmd_buffer;
+
+    vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphics_queue);
+
+    vkFreeCommandBuffers(vulkan_device, command_pool, 1, &cmd_buffer);
+}
+
 Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, bool shared)
 {
     Buffer result{};
     result.device_handle = vulkan_device;
-    result.buffer_size = create_info->size;
 
     create_info->usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
@@ -70,10 +102,11 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
 
     VkMemoryRequirements mem_requirements;
     vkGetBufferMemoryRequirements(vulkan_device, result.buffer_handle, &mem_requirements);
+    result.buffer_size = mem_requirements.size;
 
     // find correct memory type
     uint32_t type_filter = mem_requirements.memoryTypeBits;
-    VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     uint32_t memtype_index = find_memory_type(type_filter, properties);
 
@@ -94,26 +127,18 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
     if (shared) std::cout << "Binding Buffer to shared memory at heap " << memtype_index << " in range "  << result.device_memory_offset << " - " << result.device_memory_offset + result.buffer_size << std::endl;
     vkBindBufferMemory(vulkan_device, result.buffer_handle, result.device_memory, result.device_memory_offset);
 
-
-
-    VkBufferDeviceAddressInfo addr_info;
-    addr_info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-    addr_info.buffer = result.buffer_handle;
-    addr_info.pNext = 0;
-
-    result.device_address = vkGetBufferDeviceAddress(vulkan_device, &addr_info);
     result.shared = shared;
 
     return result;
 }
 
-Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage) {
+Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, bool shared) {
     VkBufferCreateInfo create_info {};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     create_info.size = size;
     create_info.usage = usage;
 
-    return create_buffer(&create_info);
+    return create_buffer(&create_info, 4, shared);
 }
 
 Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format, VkFilter filter, VkSamplerAddressMode uv_mode, bool shared) {
@@ -126,16 +151,13 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
 
     Image result;
     result.format = format;
-    result.device_handle = vulkan_device;
-    result.buffer = create_buffer(&buffer_info, 0, shared);
+    result.device = this;
     result.width = width;
     result.height = height;
 
-    VkImageType image_type = VK_IMAGE_TYPE_2D;
-
     VkImageCreateInfo image_info{};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_info.imageType = image_type;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
     image_info.extent.width = width;
     image_info.extent.height = height;
     image_info.extent.depth = 1;
@@ -157,15 +179,14 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     result.layout = image_info.initialLayout;
     result.access = 0;
 
-    VkMemoryRequirements memory_requirements;
-    vkGetImageMemoryRequirements(vulkan_device, result.image_handle, &memory_requirements);
+    vkGetImageMemoryRequirements(vulkan_device, result.image_handle, &result.memory_requirements);
 
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = memory_requirements.size;
-    alloc_info.memoryTypeIndex = find_memory_type(memory_requirements.memoryTypeBits, memory_properties);
+    alloc_info.allocationSize = result.memory_requirements.size;
+    alloc_info.memoryTypeIndex = find_memory_type(result.memory_requirements.memoryTypeBits, memory_properties);
 
-    allocate_memory(alloc_info, memory_requirements.alignment, &result.texture_memory, &result.texture_memory_offset, shared);
+    allocate_memory(alloc_info, result.memory_requirements.alignment, &result.texture_memory, &result.texture_memory_offset, shared);
 
     if(shared) std::cout << "Binding Image to shared memory at " << alloc_info.memoryTypeIndex << " in range " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
     vkBindImageMemory(vulkan_device, result.image_handle, result.texture_memory, result.texture_memory_offset);

@@ -40,5 +40,5 @@ target_include_directories(renderer PRIVATE
 )
 
 set_property(TARGET renderer PROPERTY CXX_STANDARD 17)
-target_compile_definitions(renderer PRIVATE GLSLC_EXE="${VULKAN_GLSLC_EXECUTABLE}" SHADER_DIR="${SHADER_DIR}")
+target_compile_definitions(renderer PRIVATE GLSLC_EXECUTABLE="${Vulkan_GLSLC_EXECUTABLE}" SHADER_DIR="${SHADER_DIR}")
 target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan imgui ${OpenImageDenoise_LIBRARY})

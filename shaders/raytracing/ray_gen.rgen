@@ -79,8 +79,6 @@ void main() {
 
         float last_bsdf_pdf = 1.0;
 
-        payload.hit = false;
-
         while (depth <= max_depth) {
 
             // trace scene for hit information
@@ -284,7 +282,6 @@ void main() {
     float l_tonemapped = (l * (1.0 + l * pow(white_point, 2.0))) / (1.0 + l);
     
     color_rgb = xyY_to_rgb(vec3(color_xyY.x, color_xyY.y, l_tonemapped));
-
 
     imageStore(images[0], img_coord, vec4(color_rgb, 1.0));
 

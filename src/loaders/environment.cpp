@@ -11,22 +11,36 @@
 #include <iostream>
 
 EnvironmentMap loaders::load_environment_map(Device* device, const std::string& path) {
+    std::cout << "TODO: IMPLEMENT loaders::load_environment_map" << std::endl;
     EnvironmentMap result {};
     int width = 100;
     int height = 50;
 
-    result.image = loaders::load_image(device, path);
-    ImagePixels image_pixels = result.image.get_pixels();
+    result.image = loaders::load_image(device, path, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    Buffer image_data_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+    // copy on separate command buffer to make sure copy is finished when processing starts
+    result.image.copy_image_to_buffer(image_data_buffer);
 
     // generate cdf texture from image
     result.cdf_map = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
     float* cdf_data = new float[width * height];
+    Buffer cdf_data_buffer = device->create_buffer(sizeof(float) * width * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
 
     result.conditional_cdf_map = device->create_image(1, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
     float* conditional_cdf_data = new float[height];
+    Buffer conditional_cdf_data_buffer = device->create_buffer(sizeof(float) * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
 
     int scan_pixels_x = std::floor(result.image.width / width);
     int scan_pixels_y = std::floor(result.image.height / height);
+
+    VkCommandBuffer cmd_buffer = device->begin_single_use_command_buffer();
+    result.image.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_GENERAL);
+    result.cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_GENERAL);
+    result.conditional_cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_GENERAL);
+
+
+    float* image_data;
+    vkMapMemory(device->vulkan_device, image_data_buffer.device_memory, image_data_buffer.device_memory_offset, image_data_buffer.buffer_size, 0, (void**)&image_data);
 
     float conditional_sum = 0;
     for (int v = 0; v < height; v++) {
@@ -35,7 +49,12 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
             float luminance_sum = 0;
             for (int scan_x = 0; scan_x < scan_pixels_x; scan_x++) {
                 for (int scan_y = 0; scan_y < scan_pixels_y; scan_y++) {
-                    vec3 pixel_color = image_pixels.get_pixel((float)u / width * image_pixels.width + scan_x, (float)v / height * image_pixels.height + scan_y);
+                    int pixel_x = (float)u / width * result.image.width + scan_x;
+                    int pixel_y = (float)v / height * result.image.height + scan_y;
+                    
+                    int pixel_offset = (pixel_x + pixel_y * width) * 4 * sizeof(float);
+                    vec3 pixel_color = vec3(image_data[pixel_offset + 0], image_data[pixel_offset + 1], image_data[pixel_offset + 2]);
+
                     luminance_sum += color::luminance(pixel_color);
                 }   
             }
@@ -69,8 +88,23 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
         }
     }
 
-    result.cdf_map.buffer.set_data(cdf_data);
-    result.conditional_cdf_map.buffer.set_data(conditional_cdf_data);
+    vkUnmapMemory(device->vulkan_device, image_data_buffer.device_memory);
+
+    cdf_data_buffer.set_data(cdf_data);
+    result.cdf_map.copy_buffer_to_image(cmd_buffer, cdf_data_buffer);
+
+    conditional_cdf_data_buffer.set_data(conditional_cdf_data);
+    result.conditional_cdf_map.copy_buffer_to_image(cmd_buffer, conditional_cdf_data_buffer);
+
+    result.image.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.conditional_cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+
+    device->end_single_use_command_buffer(cmd_buffer);
+
+    image_data_buffer.free();
+    cdf_data_buffer.free();
+    conditional_cdf_data_buffer.free();
 
     return result;
 }

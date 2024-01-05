@@ -1,19 +1,25 @@
 [environment]
-    # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    path = "./hdri/kloppenheim_05_puresky_4k.hdr"
     # path = "./hdri/studio_small_03_4k.hdr"
-    path = "./hdri/vestibule_4k.hdr"
+    # path = "./hdri/vestibule_4k.hdr"
     # path = "./hdri/rural_asphalt_road_4k.hdr"
     # path = "./hdri/moonless_golf_4k.hdr"
 
 [objects]
-    [objects.test2]
-    path = "./gltf/round_table/round_wooden_table_01_8k.gltf"
+    [objects.c]
+    path = "./gltf/sponza/Sponza.gltf"
 
-    # [objects.test]
+    # [objects.f]
     # path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    # [objects.d]
+    # path = "./gltf/sponza/Sponza.gltf"
+    # [objects.c]
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
-    [objects.test]
-    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    # [objects.tes1]
+    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+
+    
 
     # [objects.test]
     # path = "./gltf/plane/untitled.gltf"
@@ -21,39 +27,39 @@
     # [objects.test]
     # path = "./gltf/test_sphere/slate_floor_2k.gltf"
 
-    # [objects.test]
+    # [objects.d]
     # path = "./gltf/metal_rough_spheres/MetalRoughSpheres.gltf"
 
-    # [objects.test]
-    # path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.test]
     # path = "./gltf/transmission_test/TransmissionTest.gltf"
 
-    [objects.test3]
-    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+    # [objects.e]
+    # path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
 
     # [objects.test]
     # path = "./gltf/normal_tangent_test/NormalTangentTest.gltf"
 
 
 [instances]
-    [instances.test2]
-    object = "test2"
-    position = [0.0, -1.0, 0.0]
-    rotation = [-20.0, 0.0, 0.0]
+    [instances.test]
+    object = "c"
 
-    [instances.h1]
-    object = "test"
-    scale = [0.1, 0.1, 0.1]
-    position = [0.0, 0.2, 0.0]
-    rotation = [90.0, 0.0, 90.0]
+    # [instances.test2]
+    # object = "d"
+    # position = [0.0, 60.0, 0.0]
 
-    [instances.h2]
-    object = "test3"
-    scale = [0.3, 0.3, 0.3]
-    position = [-0.2, 0.15, 0.0]
-    rotation = [0.0, 0.0, 0.0]
+    # [instances.h1]
+    # object = "test"
+    # scale = [0.1, 0.1, 0.1]
+    # position = [0.0, 0.2, 0.0]
+    # rotation = [90.0, 0.0, 90.0]
+
+    # [instances.h2]
+    # object = "test3"
+    # scale = [0.3, 0.3, 0.3]
+    # position = [-0.2, 0.15, 0.0]
+    # rotation = [0.0, 0.0, 0.0]
 
     # [instances.h3]
     # object = "test"

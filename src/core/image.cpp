@@ -1,5 +1,7 @@
 #include "image.h"
 
+#include "device.h"
+
 #include <iostream>
 
 uint32_t Image::bytes_per_channel(VkFormat format) {
@@ -65,13 +67,12 @@ vec3 Image::color_from_packed_data(VkFormat format, unsigned char* data) {
 
 void Image::free()
 {
-    vkDestroySampler(device_handle, sampler_handle, nullptr);
-    vkDestroyImageView(device_handle, view_handle, nullptr); 
-    vkDestroyImage(device_handle, image_handle, nullptr);
+    vkDestroySampler(device->vulkan_device, sampler_handle, nullptr);
+    vkDestroyImageView(device->vulkan_device, view_handle, nullptr); 
+    vkDestroyImage(device->vulkan_device, image_handle, nullptr);
     if (!shared_memory) {
-        vkFreeMemory(device_handle, texture_memory, nullptr);
+        vkFreeMemory(device->vulkan_device, texture_memory, nullptr);
     }
-    buffer.free();
 }
 
 VkImageMemoryBarrier Image::get_layout_transition(VkImageLayout target_layout, VkAccessFlags target_access) {
@@ -93,7 +94,7 @@ VkImageMemoryBarrier Image::get_layout_transition(VkImageLayout target_layout, V
     return texture_barrier;
 }
 
-void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access) {
+void Image::transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout target_layout, VkAccessFlags target_access) {
     auto texture_barrier = get_layout_transition(target_layout, target_access);
 
     layout = target_layout;
@@ -102,46 +103,12 @@ void Image::cmd_transition_layout(VkCommandBuffer cmd_buffer, VkImageLayout targ
     vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &texture_barrier);
 }
 
-void Image::cmd_setup_texture(VkCommandBuffer cmd_buffer) {
-    cmd_transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
-    cmd_update_image(cmd_buffer);
-    cmd_transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);    
-}
+void Image::transition_layout(VkImageLayout target_layout, VkAccessFlags target_access) {
+    VkCommandBuffer cmd_buffer = device->begin_single_use_command_buffer();
 
-void Image::cmd_update_buffer(VkCommandBuffer cmd_buffer) {
-    VkBufferImageCopy texture_copy{};
-    texture_copy.bufferOffset = 0;
-    texture_copy.bufferRowLength = 0;
-    texture_copy.bufferImageHeight = 0;
-    texture_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture_copy.imageSubresource.mipLevel = 0;
-    texture_copy.imageSubresource.baseArrayLayer = 0;
-    texture_copy.imageSubresource.layerCount = 1;
-    texture_copy.imageOffset = {0, 0, 0};
-    texture_copy.imageExtent = {
-        width,
-        height,
-        1};
+    transition_layout(cmd_buffer, target_layout, target_access);
 
-    vkCmdCopyImageToBuffer(cmd_buffer, image_handle, layout, buffer.buffer_handle, 1, &texture_copy);
-}
-
-void Image::cmd_update_image(VkCommandBuffer cmd_buffer) {
-    VkBufferImageCopy texture_copy{};
-    texture_copy.bufferOffset = 0;
-    texture_copy.bufferRowLength = 0;
-    texture_copy.bufferImageHeight = 0;
-    texture_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    texture_copy.imageSubresource.mipLevel = 0;
-    texture_copy.imageSubresource.baseArrayLayer = 0;
-    texture_copy.imageSubresource.layerCount = 1;
-    texture_copy.imageOffset = {0, 0, 0};
-    texture_copy.imageExtent = {
-        width,
-        height,
-        1};
-
-    vkCmdCopyBufferToImage(cmd_buffer, buffer.buffer_handle, image_handle, layout, 1, &texture_copy);
+    device->end_single_use_command_buffer(cmd_buffer);
 }
 
 void Image::cmd_blit_image(VkCommandBuffer cmd_buffer, Image src_image) {
@@ -160,43 +127,55 @@ void Image::cmd_blit_image(VkCommandBuffer cmd_buffer, Image src_image) {
     vkCmdBlitImage(cmd_buffer, src_image.image_handle, src_image.layout, image_handle, layout, 1, &blit, VK_FILTER_LINEAR);
 }
 
+void Image::copy_buffer_to_image(VkCommandBuffer cmd_buffer, Buffer buffer) {
+    VkBufferImageCopy copy{};
+    copy.imageOffset = {0, 0, 0};
+    copy.imageExtent = {width, height, 1};
+    copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.imageSubresource.layerCount = 1;
+    copy.imageSubresource.mipLevel = 0;
+    copy.imageSubresource.baseArrayLayer = 0;
+    copy.bufferOffset = 0;
+    copy.bufferRowLength = 0;
+    copy.bufferImageHeight = 0;
+
+    vkCmdCopyBufferToImage(cmd_buffer, buffer.buffer_handle, image_handle, layout, 1, &copy);
+}
+
+void Image::copy_buffer_to_image(Buffer buffer) {
+    VkCommandBuffer cmd_buffer = device->begin_single_use_command_buffer();
+
+    copy_buffer_to_image(cmd_buffer, buffer);
+
+    device->end_single_use_command_buffer(cmd_buffer);
+}
+
+void Image::copy_image_to_buffer(VkCommandBuffer cmd_buffer, Buffer buffer) {
+    VkBufferImageCopy copy{};
+    copy.imageOffset = {0, 0, 0};
+    copy.imageExtent = {width, height, 1};
+    copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.imageSubresource.layerCount = 1;
+    copy.imageSubresource.mipLevel = 0;
+    copy.imageSubresource.baseArrayLayer = 0;
+    copy.bufferOffset = 0;
+    copy.bufferRowLength = 0;
+    copy.bufferImageHeight = 0;
+
+    vkCmdCopyImageToBuffer(cmd_buffer, image_handle, layout, buffer.buffer_handle, 1, &copy);
+}
+
+void Image::copy_image_to_buffer(Buffer buffer) {
+    VkCommandBuffer cmd_buffer = device->begin_single_use_command_buffer();
+
+    copy_image_to_buffer(cmd_buffer, buffer);
+
+    device->end_single_use_command_buffer(cmd_buffer);
+}
+
 VkExtent2D Image::get_extents() {
     return VkExtent2D{
         width,
         height
     };
-}
-
-ImagePixels Image::get_pixels() {
-    ImagePixels result;
-    result.data.resize(buffer.buffer_size);
-    buffer.get_data(result.data.data(), 0, buffer.buffer_size);
-    result.format = format;
-    result.width = width;
-    result.height = height;
-
-    return result;
-}
-
-vec3 Image::get_pixel(uint32_t x, uint32_t y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return vec3(0);
-
-    size_t offset = Image::pixel_byte_offset(format, x, y, width, height);
-
-    unsigned char* data = new unsigned char[16];
-    buffer.get_data(data, offset, 16);
-
-    vec3 result = Image::color_from_packed_data(format, data);
-    return result;
-}
-
-vec3 ImagePixels::get_pixel(uint32_t x, uint32_t y) {
-    if (x < 0 || x >= width || y < 0 || y >= height) return vec3(0);
-
-
-    size_t offset = Image::pixel_byte_offset(format, x, y, width, height);
-
-    vec3 result = Image::color_from_packed_data(format, data.data() + offset);
-
-    return result * multiplier;
 }

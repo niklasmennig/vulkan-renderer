@@ -29,13 +29,14 @@ struct GLTFMaterial {
 };
 
 struct GLTFPrimitive {
-    std::vector<vec4> vertices;
-    std::vector<vec4> normals;
+    std::vector<vec3> vertices;
+    std::vector<vec3> normals;
     std::vector<vec2> uvs;
     std::vector<uint32_t> indices;
-    std::vector<vec4> tangents;
+    std::vector<vec3> tangents;
 
     int material_index;
+    uint32_t max_vertex;
 };
 
 struct GLTFMesh {

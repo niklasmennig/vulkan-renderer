@@ -52,15 +52,7 @@ struct MeshData {
 
 struct AccelerationStructure {
     VkAccelerationStructureKHR acceleration_structure;
-    Buffer scratch_buffer;
-    Buffer as_buffer;
-};
-
-struct BLAS : AccelerationStructure {
-};
-
-struct TLAS : AccelerationStructure {
-    Buffer instance_buffer;
+    Buffer buffer;
 };
 
 struct VulkanApplication {
@@ -137,7 +129,7 @@ struct VulkanApplication {
 
     // these use loaded_mesh_index
     std::vector<MeshData> created_meshes;
-    std::vector<BLAS> created_blas;
+    std::vector<AccelerationStructure> created_blas;
 
     // this uses loaded_texture_index
     std::vector<Image> loaded_textures;
@@ -149,7 +141,7 @@ struct VulkanApplication {
     // mapping object name -> texture index offset
     std::unordered_map<std::string, uint32_t> loaded_texture_index;
 
-    TLAS scene_tlas;
+    AccelerationStructure scene_tlas;
 
     Buffer index_buffer, vertex_buffer, normal_buffer, texcoord_buffer, tangent_buffer, mesh_data_offset_buffer, mesh_offset_index_buffer, texture_index_buffer, material_parameter_buffer;
     Buffer lights_buffer;
@@ -159,13 +151,10 @@ struct VulkanApplication {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
 
-    MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec4> &vertices, std::vector<vec4> &normals, std::vector<vec2> &texcoords, std::vector<vec4> &tangents);
+    MeshData create_mesh_data(std::vector<uint32_t> &indices, std::vector<vec3> &vertices, std::vector<vec3> &normals, std::vector<vec2> &texcoords, std::vector<vec3> &tangents);
 
-    BLAS build_blas(MeshData &mesh_data);
-    void free_blas(BLAS &blas);
-
-    TLAS build_tlas();
-    void free_tlas(TLAS &tlas);
+    AccelerationStructure build_blas(std::vector<uint32_t> &indices, std::vector<vec3> &vertices, uint32_t max_vertex);
+    AccelerationStructure build_tlas();
 
     void submit_immediate(std::function<void()> lambda);
 

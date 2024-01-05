@@ -21,7 +21,7 @@ void get_position(const SMikkTSpaceContext* ctx, float* out, int face, int vert)
     int idx = face * 3 + vert;
     int vertex_index = mesh_data->indices[idx];
 
-    glm::vec4 vertex = mesh_data->vertices[vertex_index];
+    glm::vec3 vertex = mesh_data->vertices[vertex_index];
 
     out[0] = vertex.x;
     out[1] = vertex.y;
@@ -34,7 +34,7 @@ void get_normal(const SMikkTSpaceContext* ctx, float* out, int face, int vert) {
     int idx = face * 3 + vert;
     int normal_index = mesh_data->indices[idx];
 
-    glm::vec4 normal = mesh_data->normals[normal_index];
+    glm::vec3 normal = mesh_data->normals[normal_index];
 
     out[0] = normal.x;
     out[1] = normal.y;

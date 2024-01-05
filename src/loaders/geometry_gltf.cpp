@@ -11,6 +11,7 @@
 
 
 GLTFData loaders::load_gltf(const std::string path) {
+    std::cout << "Loading GLTF file at: " << path << std::endl;
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
     std::string err, warn;
@@ -46,6 +47,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                 for (int i = 0; i < count; i++) {
                     uint16_t val = *(reinterpret_cast<const uint16_t*>(data_address + byte_stride * i));
                     result_primitive.indices.push_back(val);
+                    if (val > result_primitive.max_vertex) result_primitive.max_vertex = val;
                 }
             }
 
@@ -64,7 +66,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result_primitive.vertices.push_back(vec4(x,y,z,1.0));
+                        result_primitive.vertices.push_back(vec3(x,y,z));
                     }
                 } else if (attribute.first == "NORMAL") {
                     for (int i = 0; i < count; i++) {
@@ -72,7 +74,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result_primitive.normals.push_back(vec4(x, y, z, 0.0));
+                        result_primitive.normals.push_back(vec3(x, y, z));
                     }
                 } else if (attribute.first == "TEXCOORD_0") {
                     for (int i = 0; i < count; i++) {
@@ -87,7 +89,7 @@ GLTFData loaders::load_gltf(const std::string path) {
                         float y = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 1);
                         float z = *(reinterpret_cast<const float*>(data_address + byte_stride * i) + 2);
 
-                        result_primitive.tangents.push_back(vec4(x, y, z, 0.0));
+                        result_primitive.tangents.push_back(vec3(x, y, z));
                     }
                 }
             }

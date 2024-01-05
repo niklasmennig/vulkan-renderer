@@ -28,16 +28,16 @@ void ProcessingPipelineStageOIDN::on_resize(ProcessingPipelineBuilder* builder, 
 }
 
 void ProcessingPipelineStageOIDN::process(VkCommandBuffer command_buffer) {
-    output_image->cmd_update_buffer(command_buffer);
-    output_image->cmd_transition_layout(command_buffer, output_image->layout, output_image->access);
-    float* oidn_color_ptr = (float*)oidn_buffer_in.getData();
-    vkMapMemory(output_image->device_handle, output_image->buffer.device_memory, output_image->buffer.device_memory_offset, output_image->buffer.buffer_size, 0, (void**)&oidn_color_ptr);
-    oidn_filter.execute();
-    vkUnmapMemory(output_image->device_handle, output_image->buffer.device_memory);
-    float* image_data;
-    float* oidn_denoised_ptr = (float*)oidn_buffer_out.getData();
-    vkMapMemory(output_image->device_handle, output_image->buffer.device_memory, output_image->buffer.device_memory_offset, output_image->buffer.buffer_size, 0, (void**)&image_data);
-    memcpy(image_data, oidn_denoised_ptr, output_image->buffer.buffer_size);
-    vkUnmapMemory(output_image->device_handle, output_image->buffer.device_memory);
-    output_image->cmd_update_image(command_buffer);
+    // output_image->cmd_update_buffer(command_buffer);
+    // output_image->cmd_transition_layout(command_buffer, output_image->layout, output_image->access);
+    // float* oidn_color_ptr = (float*)oidn_buffer_in.getData();
+    // vkMapMemory(output_image->device_handle, output_image->buffer.device_memory, output_image->buffer.device_memory_offset, output_image->buffer.buffer_size, 0, (void**)&oidn_color_ptr);
+    // oidn_filter.execute();
+    // vkUnmapMemory(output_image->device_handle, output_image->buffer.device_memory);
+    // float* image_data;
+    // float* oidn_denoised_ptr = (float*)oidn_buffer_out.getData();
+    // vkMapMemory(output_image->device_handle, output_image->buffer.device_memory, output_image->buffer.device_memory_offset, output_image->buffer.buffer_size, 0, (void**)&image_data);
+    // memcpy(image_data, oidn_denoised_ptr, output_image->buffer.buffer_size);
+    // vkUnmapMemory(output_image->device_handle, output_image->buffer.device_memory);
+    // output_image->cmd_update_image(command_buffer);
 }

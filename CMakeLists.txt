@@ -14,6 +14,8 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 find_package(Vulkan REQUIRED)
 find_package(GLFW3 REQUIRED)
 
+message(GLSLC: "${Vulkan_GLSLC_EXECUTABLE}")
+
 if (MSVC)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 endif()
