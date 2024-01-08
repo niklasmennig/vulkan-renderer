@@ -15,4 +15,6 @@ struct ProcessingPipelineStage {
 
     // perform processing step
     virtual void process(VkCommandBuffer command_buffer) = 0;
+
+    virtual void free() = 0;
 };

@@ -23,7 +23,9 @@ void ProcessingPipeline::run(VkCommandBuffer command_buffer) {
 }
 
 void ProcessingPipeline::free() {
-    
+    for (auto stage : builder->stages) {
+        stage->free();
+    }
 }
 
 void CreatedPipelineImage::resize(unsigned int width, unsigned int height) {

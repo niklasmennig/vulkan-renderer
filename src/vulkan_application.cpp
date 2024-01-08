@@ -763,7 +763,6 @@ void VulkanApplication::recreate_render_images() {
         rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
     }
 
-    p_pipeline_builder.input_image = rt_pipeline_builder.created_output_images[0].image;
     p_pipeline_builder.cmd_on_resize(command_buffer, render_image_extent);
 }
 
@@ -802,8 +801,8 @@ void VulkanApplication::draw_frame() {
     push_constants.exposure = ui.exposure;
     push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
     uint32_t flags = 0;
-    if (ui.direct_lighting_enabled) flags |= 1;
-    if (ui.indirect_lighting_enabled) flags |= 2;
+    if (ui.direct_lighting_enabled) flags |= 0b1;
+    if (ui.indirect_lighting_enabled) flags |= 0b10;
     push_constants.flags = flags;
     vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
@@ -828,14 +827,7 @@ void VulkanApplication::draw_frame() {
     image_barrier.srcAccessMask = 0;
     image_barrier.dstAccessMask = 0;
 
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
-
-    // run processing pipeline
-    p_pipeline.run(command_buffer);
-
-    image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
     VkImageBlit image_blit{};
     image_blit.srcSubresource.layerCount = 1;
@@ -851,6 +843,11 @@ void VulkanApplication::draw_frame() {
 
 
     OutputImage displayed_image = rt_pipeline.get_output_image(ui.selected_output_image);
+
+    // rework output images to be pixel buffers -> only copy selected buffer to swap chain image to present
+
+    p_pipeline_builder.input_image = &displayed_image.image;
+    p_pipeline.run(command_buffer);
 
     // std::cout << "TODO: IMPLEMENT color_under_cursor" << std::endl;
     // ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
@@ -1556,7 +1553,7 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
                     // .with_stage(std::make_shared<ProcessingPipelineStageSimple>(ProcessingPipelineStageSimple()));
                     ;
 
