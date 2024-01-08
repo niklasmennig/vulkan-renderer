@@ -750,18 +750,10 @@ void VulkanApplication::recreate_render_images() {
             break;
     }
     render_image_extent = {(uint32_t)(swap_chain_extent.width * render_scale), (uint32_t)(swap_chain_extent.height * render_scale)};
-    rt_pipeline.cmd_recreate_output_images(command_buffer, render_image_extent);
+    if (render_transfer_image.width < 1) render_transfer_image.free();
+    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
-    std::vector<VkImageMemoryBarrier> transitions;
-    for (OutputImage& output_image : rt_pipeline.builder->created_output_images) {
-        transitions.push_back(output_image.image.get_layout_transition(VK_IMAGE_LAYOUT_GENERAL, output_image.image.access));
-        output_image.image.layout = VK_IMAGE_LAYOUT_GENERAL;
-    }
-    std::cout << "Transitioning " << transitions.size() << " images" << std::endl;
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 0, nullptr, transitions.size(), transitions.data());
-    for(int i = 0; i < rt_pipeline.builder->created_output_images.size(); i++) {
-        rt_pipeline.set_descriptor_image_binding("images", rt_pipeline.builder->created_output_images[i].image, ImageType::Storage, i);
-    }
+    rt_pipeline.cmd_on_resize(command_buffer, render_image_extent);
 
     p_pipeline_builder.cmd_on_resize(command_buffer, render_image_extent);
 }
@@ -800,6 +792,7 @@ void VulkanApplication::draw_frame() {
     push_constants.frame_samples = ui.frame_samples;
     push_constants.exposure = ui.exposure;
     push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
+    push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
     uint32_t flags = 0;
     if (ui.direct_lighting_enabled) flags |= 0b1;
     if (ui.indirect_lighting_enabled) flags |= 0b10;
@@ -829,32 +822,39 @@ void VulkanApplication::draw_frame() {
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 
-    VkImageBlit image_blit{};
-    image_blit.srcSubresource.layerCount = 1;
-    image_blit.srcSubresource.baseArrayLayer = 0;
-    image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_blit.dstSubresource.layerCount = 1;
-    image_blit.dstSubresource.baseArrayLayer = 0;
-    image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_blit.srcOffsets[0] = {0,0,0};
-    image_blit.srcOffsets[1] = {(int32_t)render_image_extent.width, (int32_t)render_image_extent.height, 1};
-    image_blit.dstOffsets[0] = {0,0,0};
-    image_blit.dstOffsets[1] = {(int32_t)swap_chain_extent.width, (int32_t)swap_chain_extent.height, 1};
 
-
-    OutputImage displayed_image = rt_pipeline.get_output_image(ui.selected_output_image);
+    OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
     // rework output images to be pixel buffers -> only copy selected buffer to swap chain image to present
 
-    p_pipeline_builder.input_image = &displayed_image.image;
+    // p_pipeline_builder.input_image = &displayed_image.image;
     p_pipeline.run(command_buffer);
 
     // std::cout << "TODO: IMPLEMENT color_under_cursor" << std::endl;
     // ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
 
-    displayed_image.image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-    vkCmdBlitImage(command_buffer, displayed_image.image.image_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit, VK_FILTER_LINEAR);
-    displayed_image.image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
+    VkBufferImageCopy output_buffer_copy {};
+    output_buffer_copy.bufferOffset = 0;
+    output_buffer_copy.imageExtent = VkExtent3D{swap_chain_extent.width, swap_chain_extent.height, 1};
+    output_buffer_copy.imageOffset = VkOffset3D{0, 0, 0};
+    output_buffer_copy.imageSubresource.layerCount = 1;
+    output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
+    vkCmdCopyBufferToImage(command_buffer, selected_output.buffer.buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
+    render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+
+    VkImageBlit transfer_blit {};
+    transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    transfer_blit.srcSubresource.layerCount = 1;
+    transfer_blit.srcOffsets[0] = {0,0,0};
+    transfer_blit.srcOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
+    transfer_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    transfer_blit.dstSubresource.layerCount = 1;
+    transfer_blit.dstOffsets[0] = {0,0,0};
+    transfer_blit.dstOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
+
+    vkCmdBlitImage(command_buffer, render_transfer_image.image_handle, render_transfer_image.layout, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &transfer_blit, VK_FILTER_LINEAR);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -1824,6 +1824,8 @@ void VulkanApplication::cleanup() {
     mesh_offset_index_buffer.free();
     texture_index_buffer.free();
     material_parameter_buffer.free();
+
+    render_transfer_image.free();
 
     rt_pipeline.free();
     rt_pipeline_builder.free();

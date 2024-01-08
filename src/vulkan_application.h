@@ -90,6 +90,8 @@ struct VulkanApplication {
 
     VkExtent2D render_image_extent;
 
+    Image render_transfer_image;
+
     VkRenderPass render_pass;
     RaytracingPipelineBuilder rt_pipeline_builder;
     RaytracingPipeline rt_pipeline;

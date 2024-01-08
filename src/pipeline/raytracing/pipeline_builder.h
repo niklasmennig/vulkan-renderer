@@ -31,13 +31,11 @@ struct ShaderBindingTable
     VkStridedDeviceAddressRegionKHR region_callable;
 };
 
-struct OutputImage
+struct OutputBuffer
 {
-    Image image;
+    Buffer buffer;
     std::string name;
     bool hidden;
-    bool update_buffer;
-    VkFormat format;
 };
 
 struct DescriptorSetBinding {
@@ -55,17 +53,17 @@ struct RaytracingPipeline {
     ShaderBindingTable sbt;
     VkDeviceSize sbt_stride;
 
-    std::string output_image_binding_name;
+    std::vector <OutputBuffer> created_output_buffers;
 
     DescriptorSetBinding get_descriptor_set_binding(std::string descriptor_name);
     void set_descriptor_acceleration_structure_binding(VkAccelerationStructureKHR acceleration_structure);
     void set_descriptor_image_binding(std::string name, Image image, ImageType image_type, uint32_t array_index = 0);
-    void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type);
+    void set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type, uint32_t array_index = 0);
     void set_descriptor_sampler_binding(std::string name, Image* images, size_t image_count = 1);
 
-    void cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent);
+    void cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent);
 
-    OutputImage get_output_image(std::string name);
+    OutputBuffer& get_output_buffer(std::string name);
 
     void free();
 };
@@ -80,12 +78,10 @@ struct RaytracingPipelineBuilderDescriptor
     VkShaderStageFlags stage_flags;
 };
 
-struct RaytracingPipelineBuilderOutputImage
+struct RaytracingPipelineBuilderOutputBuffer
 {
     std::string name;
-    VkFormat format;
     bool hidden;
-    bool update_buffers;
 };
 
 struct RaytracingPipelineBuilder
@@ -93,10 +89,7 @@ struct RaytracingPipelineBuilder
     Device* device;
     std::vector<std::shared_ptr<RaytracingPipelineStage>> shader_stages;
     std::vector<RaytracingPipelineBuilderDescriptor> descriptors;
-    std::vector<RaytracingPipelineBuilderOutputImage> output_images;
-
-    std::string output_image_name = "";
-    uint32_t output_image_set, output_image_binding;
+    std::vector<RaytracingPipelineBuilderOutputBuffer> output_buffers;
 
     private:
     uint32_t hit_stages = 0;
@@ -104,20 +97,18 @@ struct RaytracingPipelineBuilder
     uint32_t callable_stages = 0;
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
-    void add_output_image(std::string name, VkFormat format = VK_FORMAT_UNDEFINED, bool hidden = false, bool update_buffer = true);
+    void add_output_buffer(std::string name, bool hidden = false);
     void add_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
 
     public:
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
     uint8_t max_set = 0;
-    std::vector<OutputImage> created_output_images;
-    std::unordered_map<std::string, uint32_t> named_output_image_indices;
+    std::unordered_map<std::string, uint32_t> named_output_buffer_indices;
     std::unordered_map<std::string, DescriptorSetBinding> named_descriptors;
     std::vector<VkDescriptorSet> descriptor_sets;
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
     VkDescriptorPool descriptor_pool;
-    RaytracingPipelineBuilder with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding);
     RaytracingPipelineBuilder with_default_pipeline();
     RaytracingPipelineBuilder with_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 

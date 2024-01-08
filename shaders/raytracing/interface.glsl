@@ -8,7 +8,7 @@
 // framework data bindings
 #define DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE 0
 #define DESCRIPTOR_BINDING_CAMERA_PARAMETERS 1
-#define DESCRIPTOR_BINDING_IMAGES 2
+#define DESCRIPTOR_BINDING_OUTPUT_BUFFERS 2
 #define DESCRIPTOR_BINDING_LIGHTS 3
 
 // mesh data bindings
@@ -51,7 +51,7 @@ struct PushConstants {
     float exposure;
     //
     uvec2 environment_cdf_dimensions;
-    vec2 padding2;
+    uvec2 image_extent;
 };
 
 #endif

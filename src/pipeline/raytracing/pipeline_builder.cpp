@@ -58,49 +58,32 @@ void RaytracingPipelineBuilder::add_descriptor(std::string name, uint32_t set, u
 
 // adds the specified image to the pipelines' output images
 // hidden: hide in display selection UI
-// update_buffers: update internal pixel buffer, activated automatically for non-hidden images
-void RaytracingPipelineBuilder::add_output_image(std::string name, VkFormat format, bool hidden, bool update_buffers) {
+void RaytracingPipelineBuilder::add_output_buffer(std::string name, bool hidden) {
     if (name.empty()) {
         std::cerr << "unnamed output images are not allowed" << std::endl;
         exit(1);
     }
 
-    if (!hidden) update_buffers = true;
-
-    output_images.push_back(RaytracingPipelineBuilderOutputImage {
+    output_buffers.push_back(RaytracingPipelineBuilderOutputBuffer {
         name,
-        format,
-        hidden,
-        update_buffers
+        hidden
     });
-}
-
-RaytracingPipelineBuilder RaytracingPipelineBuilder::with_output_image_descriptor(std::string name, uint32_t set, uint32_t binding) {
-    output_image_name = name;
-    output_image_set = set;
-    output_image_binding = binding;
-
-    add_descriptor(output_image_name, output_image_set, output_image_binding, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 1);
-
-    return *this;
 }
 
 RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
     add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    with_output_image_descriptor("images", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_IMAGES);
-    add_output_image("Result Image");
-    add_output_image("Accumulated Color", VK_FORMAT_R32G32B32A32_SFLOAT);
-    add_output_image("Instance Indices", VK_FORMAT_UNDEFINED, true);
-    add_output_image("Instance Indices(Colored)");
-    add_output_image("Albedo");
-    add_output_image("Normals");
-    add_output_image("Roughness");
-    add_output_image("Ray Depth");
-    add_output_image("Environment CDF");
-    add_output_image("Environment Conditional");
-    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_output_buffer("Result Image");
+    add_output_buffer("Accumulated Color");
+    add_output_buffer("Instance Indices", true);
+    add_output_buffer("Instance Indices(Colored)");
+    add_output_buffer("Albedo");
+    add_output_buffer("Normals");
+    add_output_buffer("Roughness");
+    add_output_buffer("Ray Depth");
+    add_output_buffer("Environment CDF");
+    add_output_buffer("Environment Conditional");
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -180,7 +163,7 @@ void RaytracingPipeline::set_descriptor_image_binding(std::string name, Image im
     vkUpdateDescriptorSets(device->vulkan_device, 1, &descriptor_write_image, 0, nullptr);
 }
 
-void RaytracingPipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type) {
+void RaytracingPipeline::set_descriptor_buffer_binding(std::string name, Buffer& buffer, BufferType buffer_type, uint32_t array_index) {
     DescriptorSetBinding set_binding = get_descriptor_set_binding(name);
 
     VkDescriptorBufferInfo buffer_write_info{};
@@ -192,7 +175,7 @@ void RaytracingPipeline::set_descriptor_buffer_binding(std::string name, Buffer&
     descriptor_write_buffer.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptor_write_buffer.dstSet = builder->descriptor_sets[set_binding.set];
     descriptor_write_buffer.dstBinding = set_binding.binding;
-    descriptor_write_buffer.dstArrayElement = 0;
+    descriptor_write_buffer.dstArrayElement = array_index;
     descriptor_write_buffer.descriptorType = (VkDescriptorType)buffer_type;
     descriptor_write_buffer.descriptorCount = 1;
     descriptor_write_buffer.pBufferInfo = &buffer_write_info;
@@ -229,23 +212,27 @@ void RaytracingPipeline::set_descriptor_sampler_binding(std::string name, Image*
     }
 }
 
-void RaytracingPipeline::cmd_recreate_output_images(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
-    for (int i = 0; i < builder->created_output_images.size(); i++) {
-        if (builder->created_output_images[i].image.width > 0 && builder->created_output_images[i].image.height > 0) builder->created_output_images[i].image.free();
-        builder->created_output_images[i].image = device->create_image(image_extent.width, image_extent.height, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1,
-         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, builder->created_output_images[i].format, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
-        builder->created_output_images[i].image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL);
+void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
+    for (int i = 0; i < created_output_buffers.size(); i++) {
+        if (created_output_buffers[i].buffer.buffer_handle != VK_NULL_HANDLE) created_output_buffers[i].buffer.free();
+        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+        set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
+
 }
 
-OutputImage RaytracingPipeline::get_output_image(std::string name) {
-    uint32_t index = builder->named_output_image_indices[name];
-    return builder->created_output_images[index];
+OutputBuffer& RaytracingPipeline::get_output_buffer(std::string name) {
+    uint32_t index = builder->named_output_buffer_indices[name];
+    return created_output_buffers[index];
 }
 
 void RaytracingPipeline::free() {
     // free sbt
     sbt.buffer.free();
+
+    for (auto out_buffer : created_output_buffers) {
+        out_buffer.buffer.free();
+    }
     
     vkDestroyPipeline(device->vulkan_device, pipeline_handle, nullptr);
     vkDestroyPipelineCache(device->vulkan_device, pipeline_cache_handle, nullptr);
@@ -255,7 +242,9 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     RaytracingPipeline result;
     result.device = device;
     result.builder = this;
-    result.output_image_binding_name = output_image_name;
+
+    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("outputs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_OUTPUT_BUFFERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, output_buffers.size());
 
     if (pipeline_layout == VK_NULL_HANDLE) {
         // scan for highest descriptor set number
@@ -264,18 +253,16 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
         }
 
         // apply output image descriptor
-        for (auto &descriptor: descriptors) {
-            if (descriptor.set == output_image_set && descriptor.binding == output_image_binding) descriptor.descriptor_count = output_images.size();
-        }
+        // for (auto &descriptor: descriptors) {
+        //     if (descriptor.set == DESCRIPTOR_SET_FRAMEWORK && descriptor.binding == DESCRIPTOR_BINDING_OUTPUT_BUFFERS) descriptor.descriptor_count = output_buffers.size();
+        // }
 
-        for (int i = 0; i < output_images.size(); i++) {
-            OutputImage output_image;
-            output_image.image = Image();
-            output_image.hidden = output_images[i].hidden;
-            output_image.name = output_images[i].name;
-            output_image.format = output_images[i].format;
-            created_output_images.push_back(output_image);
-            named_output_image_indices[output_images[i].name] = i;
+        for (int i = 0; i < output_buffers.size(); i++) {
+            OutputBuffer buffer;
+            buffer.name = output_buffers[i].name;
+            buffer.hidden = output_buffers[i].hidden;
+            result.created_output_buffers.push_back(buffer);
+            named_output_buffer_indices[output_buffers[i].name] = i;
         }
 
         #pragma region DESCRIPTOR SET LAYOUT
@@ -521,11 +508,10 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
 
 void RaytracingPipelineBuilder::free() {
     vkDestroyPipelineLayout(device->vulkan_device, pipeline_layout, nullptr);
-    for (OutputImage o: created_output_images) {
-        o.image.free();
-    }
+
     for (VkDescriptorSetLayout d : descriptor_set_layouts) {
         vkDestroyDescriptorSetLayout(device->vulkan_device, d, nullptr);
     }
+
     vkDestroyDescriptorPool(device->vulkan_device, descriptor_pool, nullptr);
 }
