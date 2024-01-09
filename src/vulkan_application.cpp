@@ -750,12 +750,15 @@ void VulkanApplication::recreate_render_images() {
             break;
     }
     render_image_extent = {(uint32_t)(swap_chain_extent.width * render_scale), (uint32_t)(swap_chain_extent.height * render_scale)};
+    
+    VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
+    rt_pipeline.cmd_on_resize(cmdbuf, render_image_extent);
+    p_pipeline_builder.cmd_on_resize(cmdbuf, render_image_extent);
+    device.end_single_use_command_buffer(cmdbuf);
+
     if (render_transfer_image.width < 1) render_transfer_image.free();
-    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
+    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
-    rt_pipeline.cmd_on_resize(command_buffer, render_image_extent);
-
-    p_pipeline_builder.cmd_on_resize(command_buffer, render_image_extent);
 }
 
 void VulkanApplication::draw_frame() {
@@ -825,22 +828,37 @@ void VulkanApplication::draw_frame() {
 
     OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
-    // rework output images to be pixel buffers -> only copy selected buffer to swap chain image to present
-
     // p_pipeline_builder.input_image = &displayed_image.image;
-    p_pipeline.run(command_buffer);
-
-    // std::cout << "TODO: IMPLEMENT color_under_cursor" << std::endl;
-    // ui.color_under_cursor = displayed_image.image.get_pixel(get_cursor_position().x, get_cursor_position().y);
+    // p_pipeline.run(command_buffer);
 
     VkBufferImageCopy output_buffer_copy {};
     output_buffer_copy.bufferOffset = 0;
-    output_buffer_copy.imageExtent = VkExtent3D{swap_chain_extent.width, swap_chain_extent.height, 1};
+    output_buffer_copy.imageExtent = VkExtent3D{render_transfer_image.width, render_transfer_image.height, 1};
     output_buffer_copy.imageOffset = VkOffset3D{0, 0, 0};
     output_buffer_copy.imageSubresource.layerCount = 1;
     output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
+    VkBufferMemoryBarrier buffer_barrier {};
+    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    buffer_barrier.buffer = selected_output.buffer.buffer_handle;
+    buffer_barrier.size = VK_WHOLE_SIZE;
+
     render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 0, nullptr);
+
+    // std::cout << "TODO: IMPLEMENT color_under_cursor" << std::endl;
+    vec2 cursor_pos = get_cursor_position();
+    if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
+        uint32_t cursor_pixel_offset = cursor_pos.x + cursor_pos.y * render_image_extent.width;
+        vec4* color_buffer;
+        vkMapMemory(device.vulkan_device, selected_output.buffer.device_memory, selected_output.buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&color_buffer);
+        vec4 temp = color_buffer[cursor_pixel_offset];
+        ui.color_under_cursor.r = temp.r;
+        ui.color_under_cursor.g = temp.g;
+        ui.color_under_cursor.b = temp.b;
+        vkUnmapMemory(device.vulkan_device, selected_output.buffer.device_memory);
+    }
+
     vkCmdCopyBufferToImage(command_buffer, selected_output.buffer.buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
     render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
 
