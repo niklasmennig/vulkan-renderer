@@ -824,8 +824,8 @@ void VulkanApplication::draw_frame() {
 
     OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
-    // p_pipeline_builder.input_image = &displayed_image.image;
-    // p_pipeline.run(command_buffer);
+    p_pipeline_builder.output_buffer = &selected_output;
+    p_pipeline.run(command_buffer);
 
     VkBufferImageCopy output_buffer_copy {};
     output_buffer_copy.bufferOffset = 0;

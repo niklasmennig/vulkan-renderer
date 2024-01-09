@@ -7,16 +7,10 @@
 
 #include <OpenImageDenoise/oidn.hpp>
 
-struct Image;
-struct ComputeShader;
-struct CreatedPipelineImage;
+struct OutputBuffer;
 
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
-    Image* output_image;
-
-    Device* device;
-
-    Buffer transfer_buffer;
+    OutputBuffer* output_buffer;
 
     oidn::DeviceRef oidn_device;
     oidn::FilterRef oidn_filter;

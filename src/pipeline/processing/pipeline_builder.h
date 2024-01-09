@@ -9,6 +9,8 @@
 struct ProcessingPipelineStage;
 struct ProcessingPipelineBuilder;
 
+struct OutputBuffer;
+
 struct ProcessingPipeline {
     Device* device;
 
@@ -29,9 +31,10 @@ struct CreatedPipelineImage {
 struct ProcessingPipelineBuilder {
     Device* device;
 
+    OutputBuffer* output_buffer;
+
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
-    Image* input_image;
     std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader> created_compute_shaders;
 
