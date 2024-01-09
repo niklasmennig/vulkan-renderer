@@ -846,13 +846,7 @@ void VulkanApplication::draw_frame() {
     vec2 cursor_pos = get_cursor_position();
     if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
         uint32_t cursor_pixel_offset = cursor_pos.x + cursor_pos.y * render_image_extent.width;
-        vec4* color_buffer;
-        vkMapMemory(device.vulkan_device, selected_output.buffer.device_memory, selected_output.buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&color_buffer);
-        vec4 temp = color_buffer[cursor_pixel_offset];
-        ui.color_under_cursor.r = temp.r;
-        ui.color_under_cursor.g = temp.g;
-        ui.color_under_cursor.b = temp.b;
-        vkUnmapMemory(device.vulkan_device, selected_output.buffer.device_memory);
+        ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
     }
 
     vkCmdCopyBufferToImage(command_buffer, selected_output.buffer.buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
@@ -1611,17 +1605,17 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    std::cout << "TODO: IMPLEMENT object selection on mouse press" << std::endl;
-                    // vec3 hovered_instance_color = app->rt_pipeline.get_output_image("Instance Indices").image.get_pixel(app->get_cursor_position().x, app->get_cursor_position().y);
-                    // int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
-                    // if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
+                    uint32_t pixel_index = app->get_cursor_position().x + app->get_cursor_position().y * app->render_image_extent.width;
+                    vec3 hovered_instance_color = app->rt_pipeline.get_output_buffer("Instance Indices").get_color(pixel_index);
+                    int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
+                    if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
-                    // app->ui.selected_instance = instance_index;
-                    // if (instance_index != -1) {
-                    //     app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
-                    // } else {
-                    //     app->ui.selected_instance_parameters = nullptr;
-                    // }
+                    app->ui.selected_instance = instance_index;
+                    if (instance_index != -1) {
+                        app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
+                    } else {
+                        app->ui.selected_instance_parameters = nullptr;
+                    }
                 }
             } else {
                 app->mouse_look_active = false;

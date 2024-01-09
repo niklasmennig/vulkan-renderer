@@ -21,6 +21,17 @@ using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
 
+vec3 OutputBuffer::get_color(uint32_t pixel_index) {
+    vec4* color_buffer;
+    vkMapMemory(buffer.device_handle, buffer.device_memory, buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&color_buffer);
+    vec4 temp = color_buffer[pixel_index];
+    vec3 result;
+    result.r = temp.r;
+    result.g = temp.g;
+    result.b = temp.b;
+    vkUnmapMemory(buffer.device_handle, buffer.device_memory);
+    return result;
+}
 
 void RaytracingPipelineBuilder::add_stage(std::shared_ptr<RaytracingPipelineStage> stage) {
     auto insert_position = shader_stages.begin();

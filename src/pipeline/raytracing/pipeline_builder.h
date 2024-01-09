@@ -36,6 +36,8 @@ struct OutputBuffer
     Buffer buffer;
     std::string name;
     bool hidden;
+
+    vec3 get_color(uint32_t pixel_index);
 };
 
 struct DescriptorSetBinding {
