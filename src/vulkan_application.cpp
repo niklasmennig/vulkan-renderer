@@ -221,8 +221,6 @@ AccelerationStructure VulkanApplication::build_tlas() {
             std::cout << mesh.primitives.size() << " primitives" << std::endl;
             for (int i = 0; i < mesh.primitives.size(); i++) {
                 uint32_t blas_index = blas_offset + node.mesh_index + i;
-                // blas_index = 90;
-                std::cout << "instantiating BLAS at index " << blas_index << std::endl;
                 VkAccelerationStructureKHR as = created_blas[blas_index].acceleration_structure;
 
                 VkAccelerationStructureDeviceAddressInfoKHR blas_address_info{};
@@ -230,8 +228,6 @@ AccelerationStructure VulkanApplication::build_tlas() {
                 blas_address_info.accelerationStructure = as;
 
                 VkDeviceAddress blas_address = device.vkGetAccelerationStructureDeviceAddressKHR(logical_device, &blas_address_info);
-
-                std::cout << "BLAS address: " << blas_address << std::endl;
 
                 VkAccelerationStructureInstanceKHR structure{};
                 structure.transform.matrix[0][0] = transformation_matrix[0][0];
@@ -789,7 +785,7 @@ void VulkanApplication::draw_frame() {
     Shaders::PushConstants push_constants;
     push_constants.sbt_stride = rt_pipeline.sbt_stride;
     push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    push_constants.clear_accumulated = render_clear_accumulated;
+    push_constants.clear_accumulated = accumulated_frames;
     push_constants.light_count = lights.size();
     push_constants.max_depth = ui.max_ray_depth;
     push_constants.frame_samples = ui.frame_samples;
@@ -1600,7 +1596,7 @@ void VulkanApplication::setup() {
             app->minimized = false;
             app->recreate_swapchain();
             app->render_images_dirty = true;
-            app->render_clear_accumulated = 0;
+            app->accumulated_frames = 0;
         } else {
             app->minimized = true;
         }
@@ -1780,12 +1776,12 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed | ui.has_changed()) render_clear_accumulated = 0;
+        if (camera_changed | ui.has_changed()) accumulated_frames = 0;
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
 
-        if (render_clear_accumulated < std::numeric_limits<uint32_t>::max()) render_clear_accumulated += 1;
+        if (accumulated_frames < std::numeric_limits<uint32_t>::max()) accumulated_frames += 1;
         
         draw_frame();
 
@@ -1918,7 +1914,7 @@ double VulkanApplication::get_fps() {
 }
 
 uint32_t VulkanApplication::get_samples() {
-    return render_clear_accumulated;
+    return accumulated_frames;
 }
 
 vec2 VulkanApplication::get_cursor_position() {

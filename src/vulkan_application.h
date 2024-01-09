@@ -117,7 +117,7 @@ struct VulkanApplication {
     Buffer camera_buffer;
     bool camera_changed;
 
-    uint32_t render_clear_accumulated;
+    uint32_t accumulated_frames;
 
     bool render_images_dirty = true;
     bool pipeline_dirty = false;
