@@ -8,7 +8,7 @@
 void ProcessingPipelineStageSimple::initialize(ProcessingPipelineBuilder* builder) {
     std::cout << "CREATING PIPELINE IMAGE" << std::endl;
     image = builder->create_image(100, 100);
-    output_image = builder->input_image;
+    // output_image = builder->input_image;
 
     compute_shader = builder->create_compute_shader("./shaders/processing/test.comp");
     compute_shader->build();

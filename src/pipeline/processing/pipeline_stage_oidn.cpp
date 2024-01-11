@@ -6,46 +6,35 @@
 #include <iostream>
 
 void ProcessingPipelineStageOIDN::initialize(ProcessingPipelineBuilder* builder) {
-    output_image = builder->input_image;
-
-    oidn_device = oidn::newDevice();
-    oidn_device.commit();
+    oidn_device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+    oidnCommitDevice(oidn_device);
 }
 
 void ProcessingPipelineStageOIDN::on_resize(ProcessingPipelineBuilder* builder, VkExtent2D image_extent) {
-    oidn_buffer_in = oidn_device.newBuffer(image_extent.width * image_extent.height * 3 * sizeof(float), oidn::Storage::Host);
-    oidn_buffer_out = oidn_device.newBuffer(image_extent.width * image_extent.height * 3 * sizeof(float), oidn::Storage::Host);
+    std::cout << "Processing Pipeline resized to " << image_extent.width << ", " << image_extent.height << std::endl;
+    this->builder = builder;
 
-    device = builder->device;
+    oidn_buffer = oidnNewSharedBufferFromWin32Handle(oidn_device, OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32, builder->image_memory_handle, nullptr, image_extent.width * image_extent.height * 4 * sizeof(float));
+    oidn_buffer_albedo = oidnNewSharedBufferFromWin32Handle(oidn_device, OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32, builder->albedo_memory_handle, nullptr, image_extent.width * image_extent.height * 4 * sizeof(float));
+    oidn_buffer_normal = oidnNewSharedBufferFromWin32Handle(oidn_device, OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32, builder->normal_memory_handle, nullptr, image_extent.width * image_extent.height * 4 * sizeof(float));
 
-    transfer_buffer = builder->device->create_buffer(image_extent.width * image_extent.height * 3 * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
-
-    oidn_filter = oidn_device.newFilter("RT");
-    oidn_filter.setImage("color", oidn_buffer_in, oidn::Format::Float3, image_extent.width, image_extent.height);
-    oidn_filter.setImage("output", oidn_buffer_out, oidn::Format::Float3, image_extent.width, image_extent.height);
-    oidn_filter.commit();
+    oidn_filter = oidnNewFilter(oidn_device, "RT");
+    oidnSetFilterImage(oidn_filter, "color", oidn_buffer, OIDN_FORMAT_FLOAT3, image_extent.width, image_extent.height, 0, 0, 0);
+    oidnSetFilterImage(oidn_filter, "albedo", oidn_buffer_albedo, OIDN_FORMAT_FLOAT3, image_extent.width, image_extent.height, 0, 0, 0);
+    oidnSetFilterImage(oidn_filter, "normal", oidn_buffer_normal, OIDN_FORMAT_FLOAT3, image_extent.width, image_extent.height, 0, 0, 0);
+    oidnSetFilterImage(oidn_filter, "output", oidn_buffer, OIDN_FORMAT_FLOAT3, image_extent.width, image_extent.height, 0, 0, 0);
+    oidnSetFilterBool(oidn_filter, "hdr", true);
+    oidnCommitFilter(oidn_filter);
 
     const char* error;
-    if (oidn_device.getError(error) != oidn::Error::None) {
+    if (oidnGetDeviceError(oidn_device, &error) != OIDN_ERROR_NONE) {
         std::cout << "OIDN Error: " << error << std::endl;
     }
 }
 
 void ProcessingPipelineStageOIDN::process(VkCommandBuffer command_buffer) {
-    // output_image->copy_image_to_buffer(command_buffer, transfer_buffer);
-
-    // void* image_data;
-    // vkMapMemory(transfer_buffer.device_handle, transfer_buffer.device_memory, transfer_buffer.device_memory_offset, transfer_buffer.buffer_size, 0, &image_data);
-    // oidn_buffer_in.write(0, transfer_buffer.buffer_size, image_data);
-    // vkUnmapMemory(transfer_buffer.device_handle, transfer_buffer.device_memory);
-    // oidn_filter.execute();
-    // vkMapMemory(transfer_buffer.device_handle, transfer_buffer.device_memory, transfer_buffer.device_memory_offset, transfer_buffer.buffer_size, 0, &image_data);
-    // oidn_buffer_out.read(0, transfer_buffer.buffer_size, image_data);
-    // vkUnmapMemory(transfer_buffer.device_handle, transfer_buffer.device_memory);
-
-    // output_image->copy_buffer_to_image(cmdbuf, transfer_buffer);
+    oidnExecuteFilter(oidn_filter);
 }
 
 void ProcessingPipelineStageOIDN::free() {
-    transfer_buffer.free();
 }

@@ -14,6 +14,8 @@ void UI::init(VulkanApplication* app) {
 void UI::draw() {
     changed = false;
     hovered = false;
+    render_scale_changed = false;
+
     ImGui::Begin("Scene Inspector");
     hovered |= ImGui::IsWindowHovered();
     ImGui::DragFloat("Exposure", &exposure, 0.1);
@@ -39,14 +41,12 @@ void UI::draw() {
     }
 
 
-    static const char* render_scale_options[]{"Full Resolution", "Half Resolution", "Quarter Resolution"};
-    if (ImGui::Combo("##render_scale_selector", &render_scale_index, render_scale_options, sizeof(render_scale_options) / sizeof(char*))) {
-        application->set_render_images_dirty();
-        changed = true;
-    }
+    render_scale_changed |= ImGui::SliderFloat("Render Scale", &render_scale, 0.1, 1.0);
 
     changed |= ImGui::Checkbox("Direct Lighting", &direct_lighting_enabled);
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
+
+    changed |= ImGui::Checkbox("Use Processing Pipeline", &use_processing_pipeline);
     
     if (ImGui::Button("Save Screenshot")) {
         std::cout << "TODO: IMPLEMENT save screenshot" << std::endl;
@@ -120,6 +120,10 @@ void UI::draw() {
 
 bool UI::has_changed() {
     return changed;
+}
+
+bool UI::has_render_scale_changed() {
+    return render_scale_changed;
 }
 
 bool UI::is_hovered() {

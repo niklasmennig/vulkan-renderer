@@ -736,15 +736,7 @@ void VulkanApplication::recreate_swapchain() {
 }
 
 void VulkanApplication::recreate_render_images() {
-    float render_scale = 1.0;
-    switch(ui.render_scale_index) {
-        case 1:
-            render_scale = 0.5;
-            break;
-        case 2:
-            render_scale = 0.25;
-            break;
-    }
+    render_scale  = ui.render_scale;
     render_image_extent = {(uint32_t)(swap_chain_extent.width * render_scale), (uint32_t)(swap_chain_extent.height * render_scale)};
     
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
@@ -752,9 +744,10 @@ void VulkanApplication::recreate_render_images() {
     p_pipeline_builder.cmd_on_resize(cmdbuf, render_image_extent);
     device.end_single_use_command_buffer(cmdbuf);
 
-    if (render_transfer_image.width < 1) render_transfer_image.free();
-    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
+    if (render_transfer_image.width > 0) render_transfer_image.free();
+    render_transfer_image = device.create_image(render_image_extent.width, render_image_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
+    accumulated_frames = 0;
 }
 
 void VulkanApplication::draw_frame() {
@@ -778,7 +771,7 @@ void VulkanApplication::draw_frame() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    if (render_images_dirty) {recreate_render_images(); render_images_dirty = false;}
+    if (render_images_dirty | ui.has_render_scale_changed()) {recreate_render_images(); render_images_dirty = false;}
     material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
     lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
@@ -803,6 +796,13 @@ void VulkanApplication::draw_frame() {
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
     device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
+    OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
+
+    VkBufferMemoryBarrier buffer_barrier {};
+    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    buffer_barrier.buffer = selected_output.buffer.buffer_handle;
+    buffer_barrier.size = VK_WHOLE_SIZE;
+
     // transition output image to writeable format
     VkImageMemoryBarrier image_barrier = {};
     image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -819,13 +819,30 @@ void VulkanApplication::draw_frame() {
     image_barrier.srcAccessMask = 0;
     image_barrier.dstAccessMask = 0;
 
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
+
+    HANDLE image_memory_handle, albedo_memory_handle, normal_memory_handle;
+
+    VkMemoryGetWin32HandleInfoKHR handle_info {};
+    handle_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+    handle_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
+    handle_info.memory = selected_output.buffer.device_memory;
+
+    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &image_memory_handle);
+
+    handle_info.memory = rt_pipeline.get_output_buffer("Albedo").buffer.device_memory;
+    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &albedo_memory_handle);
+
+    handle_info.memory = rt_pipeline.get_output_buffer("Normals").buffer.device_memory;
+    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &normal_memory_handle);
 
 
-    OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
-
-    // p_pipeline_builder.input_image = &displayed_image.image;
-    // p_pipeline.run(command_buffer);
+    if (ui.use_processing_pipeline) {
+        p_pipeline_builder.image_memory_handle = image_memory_handle;
+        p_pipeline_builder.albedo_memory_handle = albedo_memory_handle;
+        p_pipeline_builder.normal_memory_handle = normal_memory_handle;
+        p_pipeline.run(command_buffer);
+    }
 
     VkBufferImageCopy output_buffer_copy {};
     output_buffer_copy.bufferOffset = 0;
@@ -834,18 +851,14 @@ void VulkanApplication::draw_frame() {
     output_buffer_copy.imageSubresource.layerCount = 1;
     output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-    VkBufferMemoryBarrier buffer_barrier {};
-    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    buffer_barrier.buffer = selected_output.buffer.buffer_handle;
-    buffer_barrier.size = VK_WHOLE_SIZE;
+    
 
     render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 0, nullptr);
 
-    // std::cout << "TODO: IMPLEMENT color_under_cursor" << std::endl;
     vec2 cursor_pos = get_cursor_position();
     if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
-        uint32_t cursor_pixel_offset = cursor_pos.x + cursor_pos.y * render_image_extent.width;
+        uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
         ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
     }
 
@@ -856,7 +869,7 @@ void VulkanApplication::draw_frame() {
     transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     transfer_blit.srcSubresource.layerCount = 1;
     transfer_blit.srcOffsets[0] = {0,0,0};
-    transfer_blit.srcOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
+    transfer_blit.srcOffsets[1] = {(int)render_image_extent.width, (int)render_image_extent.height, 1};
     transfer_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     transfer_blit.dstSubresource.layerCount = 1;
     transfer_blit.dstOffsets[0] = {0,0,0};
@@ -962,6 +975,7 @@ void VulkanApplication::setup_device() {
     device.vkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCreateRayTracingPipelinesKHR");
     device.vkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetRayTracingShaderGroupHandlesKHR");
     device.vkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkCmdTraceRaysKHR");
+    device.vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR)glfwGetInstanceProcAddress(vulkan_instance, "vkGetMemoryWin32HandleKHR");
 }
 
 void VulkanApplication::submit_immediate(std::function<void()> lambda) {
@@ -1260,6 +1274,8 @@ void VulkanApplication::setup() {
             VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
             // dependencies for compute shader functionality
             VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+            // dependencies for external memory handles
+            VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME
         };
 
         uint32_t extension_count = 0;
@@ -1605,7 +1621,7 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    uint32_t pixel_index = app->get_cursor_position().x + app->get_cursor_position().y * app->render_image_extent.width;
+                    uint32_t pixel_index = (uint32_t)(app->get_cursor_position().x * app->render_scale) + (uint32_t)(app->get_cursor_position().y * app->render_scale) * app->render_image_extent.width;
                     vec3 hovered_instance_color = app->rt_pipeline.get_output_buffer("Instance Indices").get_color(pixel_index);
                     int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
                     if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;

@@ -31,7 +31,10 @@ struct ProcessingPipelineBuilder {
 
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
-    Image* input_image;
+    HANDLE image_memory_handle;
+    HANDLE albedo_memory_handle;
+    HANDLE normal_memory_handle;
+
     std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader> created_compute_shaders;
 
