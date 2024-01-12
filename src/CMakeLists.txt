@@ -19,7 +19,7 @@ target_sources(renderer PRIVATE
     pipeline/raytracing/pipeline_stage_simple.cpp
     pipeline/raytracing/pipeline_builder.cpp
     pipeline/processing/compute_shader.cpp
-    pipeline/processing/pipeline_stage_simple.cpp
+    pipeline/processing/pipeline_stage_upscale.cpp
     pipeline/processing/pipeline_stage_oidn.cpp
     pipeline/processing/pipeline_builder.cpp
     ui.cpp

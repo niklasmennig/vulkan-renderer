@@ -12,14 +12,12 @@ struct ComputeShader;
 struct CreatedPipelineImage;
 
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
-    ProcessingPipelineBuilder* builder;
-
     OIDNDevice oidn_device;
     OIDNFilter oidn_filter;
     OIDNBuffer oidn_buffer, oidn_buffer_albedo, oidn_buffer_normal;
 
-    void initialize(ProcessingPipelineBuilder* builder) override;
-    void on_resize(ProcessingPipelineBuilder* builder, VkExtent2D image_extent) override;
-    void process(VkCommandBuffer command_buffer) override;
+    void initialize() override;
+    void on_resize(VkExtent2D swapchain_extent, VkExtent2D render_extent) override;
+    void process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) override;
     void free() override;
 };

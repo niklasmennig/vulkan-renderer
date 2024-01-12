@@ -47,7 +47,7 @@ VkDeviceAddress Buffer::get_device_address() {
 
 void Buffer::free()
 {
-    vkDestroyBuffer(device_handle, buffer_handle, nullptr);
+    if (buffer_handle != VK_NULL_HANDLE) vkDestroyBuffer(device_handle, buffer_handle, nullptr);
     if (shared) return;
-    vkFreeMemory(device_handle, device_memory, nullptr);
+    if (device_memory != VK_NULL_HANDLE) vkFreeMemory(device_handle, device_memory, nullptr);
 }

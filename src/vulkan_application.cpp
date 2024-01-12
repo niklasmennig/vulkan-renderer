@@ -15,7 +15,7 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 
 #include "pipeline/raytracing/pipeline_stage_simple.h"
-#include "pipeline/processing/pipeline_stage_simple.h"
+#include "pipeline/processing/pipeline_stage_upscale.h"
 #include "pipeline/processing/pipeline_stage_oidn.h"
 
 #pragma region VULKAN DEBUGGING
@@ -741,11 +741,12 @@ void VulkanApplication::recreate_render_images() {
     
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     rt_pipeline.cmd_on_resize(cmdbuf, render_image_extent);
-    p_pipeline_builder.cmd_on_resize(cmdbuf, render_image_extent);
+    p_pipeline_builder.rt_pipeline = &rt_pipeline;
+    p_pipeline_builder.cmd_on_resize(cmdbuf, swap_chain_extent, render_image_extent);
     device.end_single_use_command_buffer(cmdbuf);
 
     if (render_transfer_image.width > 0) render_transfer_image.free();
-    render_transfer_image = device.create_image(render_image_extent.width, render_image_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
+    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
     accumulated_frames = 0;
 }
@@ -821,32 +822,18 @@ void VulkanApplication::draw_frame() {
 
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
 
-    HANDLE image_memory_handle, albedo_memory_handle, normal_memory_handle;
-
-    VkMemoryGetWin32HandleInfoKHR handle_info {};
-    handle_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
-    handle_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
-    handle_info.memory = selected_output.buffer.device_memory;
-
-    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &image_memory_handle);
-
-    handle_info.memory = rt_pipeline.get_output_buffer("Albedo").buffer.device_memory;
-    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &albedo_memory_handle);
-
-    handle_info.memory = rt_pipeline.get_output_buffer("Normals").buffer.device_memory;
-    device.vkGetMemoryWin32HandleKHR(selected_output.buffer.device_handle, &handle_info, &normal_memory_handle);
-
+    Buffer* output_image_buffer = &selected_output.buffer;
+    VkExtent2D output_image_extent = render_image_extent;
 
     if (ui.use_processing_pipeline) {
-        p_pipeline_builder.image_memory_handle = image_memory_handle;
-        p_pipeline_builder.albedo_memory_handle = albedo_memory_handle;
-        p_pipeline_builder.normal_memory_handle = normal_memory_handle;
-        p_pipeline.run(command_buffer);
+        p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent);
+        output_image_buffer = p_pipeline_builder.output_buffer;
+        output_image_extent = p_pipeline_builder.output_extent;
     }
 
     VkBufferImageCopy output_buffer_copy {};
     output_buffer_copy.bufferOffset = 0;
-    output_buffer_copy.imageExtent = VkExtent3D{render_transfer_image.width, render_transfer_image.height, 1};
+    output_buffer_copy.imageExtent = VkExtent3D{output_image_extent.width, output_image_extent.height, 1};
     output_buffer_copy.imageOffset = VkOffset3D{0, 0, 0};
     output_buffer_copy.imageSubresource.layerCount = 1;
     output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -862,20 +849,20 @@ void VulkanApplication::draw_frame() {
         ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
     }
 
-    vkCmdCopyBufferToImage(command_buffer, selected_output.buffer.buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
+    vkCmdCopyBufferToImage(command_buffer, output_image_buffer->buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
     render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
 
     VkImageBlit transfer_blit {};
     transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     transfer_blit.srcSubresource.layerCount = 1;
     transfer_blit.srcOffsets[0] = {0,0,0};
-    transfer_blit.srcOffsets[1] = {(int)render_image_extent.width, (int)render_image_extent.height, 1};
+    transfer_blit.srcOffsets[1] = {(int)output_image_extent.width, (int)output_image_extent.height, 1};
     transfer_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     transfer_blit.dstSubresource.layerCount = 1;
     transfer_blit.dstOffsets[0] = {0,0,0};
     transfer_blit.dstOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
 
-    vkCmdBlitImage(command_buffer, render_transfer_image.image_handle, render_transfer_image.layout, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &transfer_blit, VK_FILTER_LINEAR);
+    vkCmdBlitImage(command_buffer, render_transfer_image.image_handle, render_transfer_image.layout, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &transfer_blit, VK_FILTER_NEAREST);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -1577,8 +1564,8 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
-                    // .with_stage(std::make_shared<ProcessingPipelineStageSimple>(ProcessingPipelineStageSimple()));
+                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
                     ;
 
     p_pipeline = p_pipeline_builder.build();

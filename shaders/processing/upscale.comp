@@ -1,0 +1,26 @@
+#version 460
+
+#define NUM_BUFFERS 2
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+#include "interface.glsl"
+
+layout(set = 0, binding = 0) buffer Vec4Buffer {vec4[] data;} buffers[];
+
+layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
+
+
+void main() {
+    ivec2 pixel_position = ivec2(gl_GlobalInvocationID.xy);
+    vec2 render_ratio = vec2(push_constants.constants.render_extent) / vec2(push_constants.constants.swapchain_extent);
+    ivec2 render_pixel_position = ivec2(pixel_position * render_ratio);
+
+    uint pixel_index = pixel_position.x + pixel_position.y * push_constants.constants.swapchain_extent.x;
+    uint render_pixel_index = render_pixel_position.x + render_pixel_position.y * push_constants.constants.render_extent.x;
+
+    vec4 color = buffers[0].data[render_pixel_index];
+    if (pixel_index.x % 10 == 0) color = vec4(0.0);
+
+    buffers[1].data[pixel_index] = color;
+}

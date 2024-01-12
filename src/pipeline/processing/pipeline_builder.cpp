@@ -16,16 +16,14 @@ ProcessingPipelineBuilder Device::create_processing_pipeline_builder() {
     return builder;
 }
 
-void ProcessingPipeline::run(VkCommandBuffer command_buffer) {
+void ProcessingPipeline::run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
     for (auto stage: builder->stages) {
-        stage->process(command_buffer);
+        stage->process(command_buffer, swapchain_extent, render_extent);
     }
 }
 
 void ProcessingPipeline::free() {
-    for (auto stage : builder->stages) {
-        stage->free();
-    }
+
 }
 
 void CreatedPipelineImage::resize(unsigned int width, unsigned int height) {
@@ -46,9 +44,14 @@ ComputeShader* ProcessingPipelineBuilder::create_compute_shader(std::string path
     return &created_compute_shaders.back();
 }
 
-void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
+Buffer ProcessingPipelineBuilder::create_buffer(uint32_t size) {
+    return device->create_buffer(size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+}
+
+void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
     for (auto stage: stages) {
-        stage->on_resize(this, image_extent);
+        // stage->builder = this;
+        stage->on_resize(swapchain_extent, render_extent);
     }
 
     for (auto& created_image: created_images) {
@@ -77,18 +80,23 @@ ProcessingPipeline ProcessingPipelineBuilder::build() {
 
     for (auto stage: stages) {
         std::cout << "INITIALIZING STAGE" << std::endl;
-        stage->initialize(this);
+        stage->builder = this;
+        stage->initialize();
     }
 
     return result;
 }
 
 void ProcessingPipelineBuilder::free() {
+    for (auto stage : stages) {
+        stage->free();
+    }
+
     for (auto created_image: created_images) {
         created_image.image.free();
     }
 
-    for (auto shader: created_compute_shaders) {
-        shader.free();
+    for (auto created_compute_shader: created_compute_shaders) {
+        created_compute_shader.free();
     }
 }
