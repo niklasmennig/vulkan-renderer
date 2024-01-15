@@ -11,12 +11,14 @@ struct ProcessingPipelineBuilder;
 
 struct OutputBuffer;
 
+struct RaytracingPipeline;
+
 struct ProcessingPipeline {
     Device* device;
 
     ProcessingPipelineBuilder* builder;
 
-    void run(VkCommandBuffer command_buffer);
+    void run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);
 
     void free();
 };
@@ -31,19 +33,25 @@ struct CreatedPipelineImage {
 struct ProcessingPipelineBuilder {
     Device* device;
 
-    OutputBuffer* output_buffer;
+    Buffer* input_buffer = nullptr;
+    Buffer* output_buffer = nullptr;
 
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
+    RaytracingPipeline* rt_pipeline;
+    VkExtent2D output_extent;
+
     std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader> created_compute_shaders;
+    std::vector<Buffer> created_buffers;
 
     CreatedPipelineImage* create_image(unsigned int width, unsigned int height);
     ComputeShader* create_compute_shader(std::string path);
+    Buffer create_buffer(uint32_t size);
 
     ProcessingPipelineBuilder with_stage(std::shared_ptr<ProcessingPipelineStage> stage);
 
-    void cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent);
+    void cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);
     ProcessingPipeline build();
 
     void free();

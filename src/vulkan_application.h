@@ -88,6 +88,7 @@ struct VulkanApplication {
 
     VkDescriptorPool imgui_descriptor_pool;
 
+    float render_scale;
     VkExtent2D render_image_extent;
 
     Image render_transfer_image;

@@ -179,3 +179,8 @@ VkExtent2D Image::get_extents() {
         height
     };
 }
+
+Image::Image() {
+    width = 0;
+    height = 0;
+}

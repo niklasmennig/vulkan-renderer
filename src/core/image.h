@@ -47,4 +47,6 @@ struct Image
     void copy_image_to_buffer(Buffer buffer);
 
     VkExtent2D get_extents();
+
+    Image();
 };

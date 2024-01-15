@@ -288,23 +288,25 @@ void main() {
     output_buffers[0].color[pixel_index] = vec4(color_rgb, 1.0);
 
 
-    // instance indices AOV
-    vec3 instance_color =  vec3(floor(primary_hit_instance/(255*255)), floor(primary_hit_instance/255), (mod(primary_hit_instance,255)));
-    if (primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
-    output_buffers[2].color[pixel_index] = vec4(instance_color, 1.0);
-    vec3 colored_instance_color = vec3(prng_float(primary_hit_instance, 0), prng_float(primary_hit_instance, 1), prng_float(primary_hit_instance, 2));
-    if (primary_hit_instance == NULL_INSTANCE) colored_instance_color = vec3(1.0);
-    output_buffers[3].color[pixel_index] = vec4(colored_instance_color, 1.0);
+    if (sample_count == 1) {
+        // instance indices AOV
+        vec3 instance_color =  vec3(floor(primary_hit_instance/(255*255)), floor(primary_hit_instance/255), (mod(primary_hit_instance,255)));
+        if (primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
+        output_buffers[2].color[pixel_index] = vec4(instance_color, 1.0);
+        vec3 colored_instance_color = vec3(prng_float(primary_hit_instance, 0), prng_float(primary_hit_instance, 1), prng_float(primary_hit_instance, 2));
+        if (primary_hit_instance == NULL_INSTANCE) colored_instance_color = vec3(1.0);
+        output_buffers[3].color[pixel_index] = vec4(colored_instance_color, 1.0);
 
-    // albedo AOV
-    output_buffers[4].color[pixel_index] = vec4(primary_hit_albedo, 1.0);
-    // normal AOV
-    output_buffers[5].color[pixel_index] = vec4(primary_hit_normal, 1.0);
-    // roughness AOV
-    output_buffers[6].color[pixel_index] = vec4(vec3(primary_hit_roughness), 1.0);
-    // ray depth AOV
-    output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
-    // environment map AOVs
-    output_buffers[8].color[pixel_index] = vec4(float(primary_hit_env_cdf));
-    output_buffers[9].color[pixel_index] = vec4(float(primary_hit_env_conditional));
+        // albedo AOV
+        output_buffers[4].color[pixel_index] = vec4(primary_hit_albedo, 1.0);
+        // normal AOV
+        output_buffers[5].color[pixel_index] = vec4(primary_hit_normal, 1.0);
+        // roughness AOV
+        output_buffers[6].color[pixel_index] = vec4(vec3(primary_hit_roughness), 1.0);
+        // ray depth AOV
+        output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
+        // environment map AOVs
+        output_buffers[8].color[pixel_index] = vec4(float(primary_hit_env_cdf));
+        output_buffers[9].color[pixel_index] = vec4(float(primary_hit_env_conditional));
+    }
 }

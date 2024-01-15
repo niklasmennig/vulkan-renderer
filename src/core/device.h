@@ -47,8 +47,8 @@ struct Device
     VkCommandBuffer begin_single_use_command_buffer();
     void end_single_use_command_buffer(VkCommandBuffer cmd_buffer);
 
-    Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 4, bool shared = true);
-    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, bool shared = true);
+    Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 4, bool shared = true, bool exportable = false);
+    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, bool shared = true, bool exportable = false);
     Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR, VkSamplerAddressMode uv_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT, bool shared = true);
 
     void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared = true);
@@ -66,6 +66,7 @@ struct Device
     PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR;
     PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR;
     PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
+    PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR;
 
     uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 };

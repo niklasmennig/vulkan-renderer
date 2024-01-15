@@ -10,16 +10,12 @@
 struct OutputBuffer;
 
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
-    OutputBuffer* output_buffer;
+    OIDNDevice oidn_device;
+    OIDNFilter oidn_filter;
+    OIDNBuffer oidn_buffer, oidn_buffer_albedo, oidn_buffer_normal;
 
-    oidn::DeviceRef oidn_device;
-    oidn::FilterRef oidn_filter;
-
-    oidn::BufferRef oidn_buffer_in;
-    oidn::BufferRef oidn_buffer_out;
-
-    void initialize(ProcessingPipelineBuilder* builder) override;
-    void on_resize(ProcessingPipelineBuilder* builder, VkExtent2D image_extent) override;
-    void process(VkCommandBuffer command_buffer) override;
+    void initialize() override;
+    void on_resize(VkExtent2D swapchain_extent, VkExtent2D render_extent) override;
+    void process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) override;
     void free() override;
 };

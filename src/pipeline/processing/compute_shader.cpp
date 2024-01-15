@@ -9,6 +9,13 @@
 #include "loaders/shader_spirv.h"
 #include "shader_compiler.h"
 
+#include <glm/vec2.hpp>
+
+namespace ShaderInterface {
+    using ivec2 = glm::ivec2;
+    #include "../shaders/processing/interface.glsl"
+}
+
 ComputeShader Device::create_compute_shader(std::string code_path) {
     return ComputeShader(this, code_path);
 }
@@ -26,6 +33,24 @@ void ComputeShader::set_image(int index, Image* img) {
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
+
+    vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
+}
+
+void ComputeShader::set_buffer(int index, Buffer* buffer) {
+    VkDescriptorBufferInfo compute_descriptor_buffer_info{};
+    compute_descriptor_buffer_info.buffer = buffer->buffer_handle;
+    compute_descriptor_buffer_info.offset = 0;
+    compute_descriptor_buffer_info.range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet compute_descriptor_write{};
+    compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    compute_descriptor_write.dstSet = descriptor_set;
+    compute_descriptor_write.dstBinding = 0;
+    compute_descriptor_write.dstArrayElement = index;
+    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    compute_descriptor_write.descriptorCount = 1;
+    compute_descriptor_write.pBufferInfo = &compute_descriptor_buffer_info;
 
     vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
 }
@@ -62,6 +87,15 @@ void ComputeShader::build() {
 
         auto define_pos = line.find("#define");
         if (define_pos != std::string::npos) {
+
+            // NUM_BUFFERS
+            auto num_buffers_pos = line.find("NUM_BUFFERS", define_pos + 7);
+            if (num_buffers_pos != std::string::npos) {
+                num_buffer_descriptors = std::stoi(line.substr(num_buffers_pos + 11));
+                std::cout << "buffer descriptor count detected: " << (int)num_buffer_descriptors << std::endl;
+            }
+
+            // NUM_IMAGES
             auto num_images_pos = line.find("NUM_IMAGES", define_pos + 7);
             if (num_images_pos != std::string::npos) {
                 num_image_descriptors = std::stoi(line.substr(num_images_pos + 10));
@@ -83,12 +117,17 @@ void ComputeShader::build() {
 
     std::cout << "after load" << std::endl;
 
-    std::array<VkDescriptorSetLayoutBinding, 1> layout_bindings{};
+    std::array<VkDescriptorSetLayoutBinding, 2> layout_bindings{};
 
     layout_bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     layout_bindings[0].binding = 0;
-    layout_bindings[0].descriptorCount = num_image_descriptors;
-    layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    layout_bindings[0].descriptorCount = num_buffer_descriptors;
+    layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    layout_bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layout_bindings[1].binding = 1;
+    layout_bindings[1].descriptorCount = num_image_descriptors;
+    layout_bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
     descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -97,15 +136,24 @@ void ComputeShader::build() {
 
     vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
 
-    VkDescriptorPoolSize pool_size{};
-    pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    pool_size.descriptorCount = num_image_descriptors;
+    VkDescriptorPoolSize pool_size_buffers{};
+    pool_size_buffers.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pool_size_buffers.descriptorCount = num_buffer_descriptors;
+
+    VkDescriptorPoolSize pool_size_images{};
+    pool_size_images.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    pool_size_images.descriptorCount = num_image_descriptors;
+
+    VkDescriptorPoolSize pool_sizes[] = {
+        pool_size_buffers,
+        pool_size_images
+    };
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{};
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptor_pool_create_info.maxSets = 1;
-    descriptor_pool_create_info.poolSizeCount = 1;
-    descriptor_pool_create_info.pPoolSizes = &pool_size;
+    descriptor_pool_create_info.poolSizeCount = 2;
+    descriptor_pool_create_info.pPoolSizes = pool_sizes;
 
     vkCreateDescriptorPool(device->vulkan_device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
 
@@ -117,10 +165,17 @@ void ComputeShader::build() {
 
     vkAllocateDescriptorSets(device->vulkan_device, &descriptor_set_allocate_info, &descriptor_set);
 
+    VkPushConstantRange push_constant_range {};
+    push_constant_range.offset = 0;
+    push_constant_range.size = sizeof(ShaderInterface::PushConstants);
+    push_constant_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
     VkPipelineLayoutCreateInfo layout_create_info{};
     layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_create_info.setLayoutCount = 1;
     layout_create_info.pSetLayouts = &descriptor_set_layout;
+    layout_create_info.pushConstantRangeCount = 1;
+    layout_create_info.pPushConstantRanges = &push_constant_range;
     vkCreatePipelineLayout(device->vulkan_device, &layout_create_info, nullptr, &layout);
 
     VkComputePipelineCreateInfo pipeline_create_info{};
@@ -139,8 +194,14 @@ void ComputeShader::build() {
     std::cout << "compute shader built" << std::endl;
 }
 
-void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
-    dispatch(command_buffer, image_extent.width / local_dispatch_size_x, image_extent.height / local_dispatch_size_y, 1);
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
+    ShaderInterface::PushConstants push_constants;
+    push_constants.swapchain_extent = ShaderInterface::ivec2(swapchain_extent.width, swapchain_extent.height);
+    push_constants.render_extent = ShaderInterface::ivec2(render_extent.width, render_extent.height);
+
+    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShaderInterface::PushConstants), &push_constants);
+
+    dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1);
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) {

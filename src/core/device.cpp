@@ -88,12 +88,21 @@ void Device::end_single_use_command_buffer(VkCommandBuffer cmd_buffer) {
     vkFreeCommandBuffers(vulkan_device, command_pool, 1, &cmd_buffer);
 }
 
-Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, bool shared)
+Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, bool shared, bool exportable)
 {
     Buffer result{};
     result.device_handle = vulkan_device;
 
     create_info->usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    create_info->sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (exportable) {
+        VkExternalMemoryBufferCreateInfo ext_buffer_info{};
+        ext_buffer_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
+        ext_buffer_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+
+        create_info->pNext = &ext_buffer_info;
+    }
 
     if (vkCreateBuffer(vulkan_device, create_info, nullptr, &result.buffer_handle) != VK_SUCCESS)
     {
@@ -108,6 +117,8 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
     uint32_t type_filter = mem_requirements.memoryTypeBits;
     VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
+    if (exportable) properties = 0;
+
     uint32_t memtype_index = find_memory_type(type_filter, properties);
 
     VkMemoryAllocateInfo alloc_info{};
@@ -121,6 +132,14 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
 
     alloc_info.pNext = &alloc_flags;
 
+    if (exportable) {
+        VkExportMemoryAllocateInfo export_info {};
+        export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+        export_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+
+        alloc_flags.pNext = &export_info;
+    }
+
     size_t memory_alignment = std::max(mem_requirements.alignment, alignment);
 
     allocate_memory(alloc_info, memory_alignment, &result.device_memory, &result.device_memory_offset, shared);
@@ -132,13 +151,13 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
     return result;
 }
 
-Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, bool shared) {
+Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, bool shared, bool exportable) {
     VkBufferCreateInfo create_info {};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     create_info.size = size;
     create_info.usage = usage;
 
-    return create_buffer(&create_info, 4, shared);
+    return create_buffer(&create_info, 4, shared, exportable);
 }
 
 Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format, VkFilter filter, VkSamplerAddressMode uv_mode, bool shared) {
