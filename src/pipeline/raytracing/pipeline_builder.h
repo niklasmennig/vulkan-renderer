@@ -49,8 +49,8 @@ struct RaytracingPipeline {
     Device* device;
     RaytracingPipelineBuilder* builder;
 
-    VkPipeline pipeline_handle;
-    VkPipelineCache pipeline_cache_handle;
+    VkPipeline pipeline_handle = VK_NULL_HANDLE;
+    VkPipelineCache pipeline_cache_handle = VK_NULL_HANDLE;
 
     ShaderBindingTable sbt;
     VkDeviceSize sbt_stride;
@@ -115,6 +115,8 @@ struct RaytracingPipelineBuilder
     RaytracingPipelineBuilder with_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
     RaytracingPipelineBuilder with_buffer_descriptor(std::string name, uint32_t binding, VkShaderStageFlags stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+
+    RaytracingPipelineBuilder();
 
     RaytracingPipeline build();
     void free();

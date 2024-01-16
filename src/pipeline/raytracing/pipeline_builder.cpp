@@ -225,7 +225,8 @@ void RaytracingPipeline::set_descriptor_sampler_binding(std::string name, Image*
 
 void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D image_extent) {
     for (int i = 0; i < created_output_buffers.size(); i++) {
-        if (created_output_buffers[i].buffer.buffer_handle != VK_NULL_HANDLE) created_output_buffers[i].buffer.free();
+        created_output_buffers[i].buffer.free();
+
         created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
         set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
@@ -254,8 +255,13 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     result.device = device;
     result.builder = this;
 
-    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("outputs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_OUTPUT_BUFFERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, output_buffers.size());
+    for (int i = 0; i < output_buffers.size(); i++) {
+        OutputBuffer buffer;
+        buffer.name = output_buffers[i].name;
+        buffer.hidden = output_buffers[i].hidden;
+        result.created_output_buffers.push_back(buffer);
+        named_output_buffer_indices[output_buffers[i].name] = i;
+    }
 
     if (pipeline_layout == VK_NULL_HANDLE) {
         // scan for highest descriptor set number
@@ -263,17 +269,9 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
             if (desc.set > max_set) max_set = desc.set;
         }
 
-        // apply output image descriptor
-        // for (auto &descriptor: descriptors) {
-        //     if (descriptor.set == DESCRIPTOR_SET_FRAMEWORK && descriptor.binding == DESCRIPTOR_BINDING_OUTPUT_BUFFERS) descriptor.descriptor_count = output_buffers.size();
-        // }
-
-        for (int i = 0; i < output_buffers.size(); i++) {
-            OutputBuffer buffer;
-            buffer.name = output_buffers[i].name;
-            buffer.hidden = output_buffers[i].hidden;
-            result.created_output_buffers.push_back(buffer);
-            named_output_buffer_indices[output_buffers[i].name] = i;
+        // set correct size for outputs descriptor
+        for (auto& desc : descriptors) {
+            if (desc.set == DESCRIPTOR_SET_FRAMEWORK && desc.binding == DESCRIPTOR_BINDING_OUTPUT_BUFFERS) desc.descriptor_count = output_buffers.size();
         }
 
         #pragma region DESCRIPTOR SET LAYOUT
@@ -515,6 +513,11 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
 
     return result;
     
+}
+
+RaytracingPipelineBuilder::RaytracingPipelineBuilder() {
+    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("outputs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_OUTPUT_BUFFERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0);
 }
 
 void RaytracingPipelineBuilder::free() {

@@ -749,6 +749,8 @@ void VulkanApplication::recreate_render_images() {
     render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
     accumulated_frames = 0;
+    render_images_dirty = false;
+    vkDeviceWaitIdle(device.vulkan_device);
 }
 
 void VulkanApplication::draw_frame() {
@@ -759,8 +761,9 @@ void VulkanApplication::draw_frame() {
 
     if (pipeline_dirty) {
         rebuild_pipeline();
-        pipeline_dirty = false;
     }
+
+    if (render_images_dirty | ui.has_render_scale_changed()) {recreate_render_images();}
 
     // command buffer begin
     VkCommandBufferBeginInfo begin_info{};
@@ -772,98 +775,101 @@ void VulkanApplication::draw_frame() {
         throw std::runtime_error("error beginning command buffer");
     }
 
-    if (render_images_dirty | ui.has_render_scale_changed()) {recreate_render_images(); render_images_dirty = false;}
-    material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
-    lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
+    if (!pipeline_dirty && !render_images_dirty) {
 
-    Shaders::PushConstants push_constants;
-    push_constants.sbt_stride = rt_pipeline.sbt_stride;
-    push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-    push_constants.clear_accumulated = accumulated_frames;
-    push_constants.light_count = lights.size();
-    push_constants.max_depth = ui.max_ray_depth;
-    push_constants.frame_samples = ui.frame_samples;
-    push_constants.exposure = ui.exposure;
-    push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
-    push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
-    uint32_t flags = 0;
-    if (ui.direct_lighting_enabled) flags |= 0b1;
-    if (ui.indirect_lighting_enabled) flags |= 0b10;
-    push_constants.flags = flags;
-    vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+        material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
+        lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
-    // raytracer draw
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
-    device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+        Shaders::PushConstants push_constants;
+        push_constants.sbt_stride = rt_pipeline.sbt_stride;
+        push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+        push_constants.clear_accumulated = accumulated_frames;
+        push_constants.light_count = lights.size();
+        push_constants.max_depth = ui.max_ray_depth;
+        push_constants.frame_samples = ui.frame_samples;
+        push_constants.exposure = ui.exposure;
+        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
+        push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
+        uint32_t flags = 0;
+        if (ui.direct_lighting_enabled) flags |= 0b1;
+        if (ui.indirect_lighting_enabled) flags |= 0b10;
+        push_constants.flags = flags;
+        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
-    OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
+        // raytracer draw
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
+        device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
-    VkBufferMemoryBarrier buffer_barrier {};
-    buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    buffer_barrier.buffer = selected_output.buffer.buffer_handle;
-    buffer_barrier.size = VK_WHOLE_SIZE;
+        OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
-    // transition output image to writeable format
-    VkImageMemoryBarrier image_barrier = {};
-    image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    image_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    image_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    image_barrier.image = swap_chain_images[image_index];
-    image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    image_barrier.subresourceRange.baseMipLevel = 0;
-    image_barrier.subresourceRange.levelCount = 1;
-    image_barrier.subresourceRange.baseArrayLayer = 0;
-    image_barrier.subresourceRange.layerCount = 1;
-    image_barrier.srcAccessMask = 0;
-    image_barrier.dstAccessMask = 0;
+        VkBufferMemoryBarrier buffer_barrier {};
+        buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        buffer_barrier.buffer = selected_output.buffer.buffer_handle;
+        buffer_barrier.size = VK_WHOLE_SIZE;
 
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
+        // transition output image to writeable format
+        VkImageMemoryBarrier image_barrier = {};
+        image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        image_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        image_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.image = swap_chain_images[image_index];
+        image_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_barrier.subresourceRange.baseMipLevel = 0;
+        image_barrier.subresourceRange.levelCount = 1;
+        image_barrier.subresourceRange.baseArrayLayer = 0;
+        image_barrier.subresourceRange.layerCount = 1;
+        image_barrier.srcAccessMask = 0;
+        image_barrier.dstAccessMask = 0;
 
-    Buffer* output_image_buffer = &selected_output.buffer;
-    VkExtent2D output_image_extent = render_image_extent;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
 
-    if (ui.use_processing_pipeline) {
-        p_pipeline_builder.input_buffer = output_image_buffer;
-        p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent);
-        output_image_buffer = p_pipeline_builder.output_buffer;
-        output_image_extent = p_pipeline_builder.output_extent;
+        Buffer* output_image_buffer = &selected_output.buffer;
+        VkExtent2D output_image_extent = render_image_extent;
+
+        if (ui.use_processing_pipeline) {
+            p_pipeline_builder.input_buffer = output_image_buffer;
+            p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent);
+            output_image_buffer = p_pipeline_builder.output_buffer;
+            output_image_extent = p_pipeline_builder.output_extent;
+        }
+
+        VkBufferImageCopy output_buffer_copy {};
+        output_buffer_copy.bufferOffset = 0;
+        output_buffer_copy.imageExtent = VkExtent3D{output_image_extent.width, output_image_extent.height, 1};
+        output_buffer_copy.imageOffset = VkOffset3D{0, 0, 0};
+        output_buffer_copy.imageSubresource.layerCount = 1;
+        output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        
+
+        render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 0, nullptr);
+
+        vec2 cursor_pos = get_cursor_position();
+        if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
+            uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
+            ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
+        }
+
+        vkCmdCopyBufferToImage(command_buffer, output_image_buffer->buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
+        render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+
+        VkImageBlit transfer_blit {};
+        transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        transfer_blit.srcSubresource.layerCount = 1;
+        transfer_blit.srcOffsets[0] = {0,0,0};
+        transfer_blit.srcOffsets[1] = {(int)output_image_extent.width, (int)output_image_extent.height, 1};
+        transfer_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        transfer_blit.dstSubresource.layerCount = 1;
+        transfer_blit.dstOffsets[0] = {0,0,0};
+        transfer_blit.dstOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
+
+        vkCmdBlitImage(command_buffer, render_transfer_image.image_handle, render_transfer_image.layout, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &transfer_blit, VK_FILTER_NEAREST);
     }
 
-    VkBufferImageCopy output_buffer_copy {};
-    output_buffer_copy.bufferOffset = 0;
-    output_buffer_copy.imageExtent = VkExtent3D{output_image_extent.width, output_image_extent.height, 1};
-    output_buffer_copy.imageOffset = VkOffset3D{0, 0, 0};
-    output_buffer_copy.imageSubresource.layerCount = 1;
-    output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-    
-
-    render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 0, nullptr);
-
-    vec2 cursor_pos = get_cursor_position();
-    if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
-        uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
-        ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
-    }
-
-    vkCmdCopyBufferToImage(command_buffer, output_image_buffer->buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
-    render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
-
-    VkImageBlit transfer_blit {};
-    transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    transfer_blit.srcSubresource.layerCount = 1;
-    transfer_blit.srcOffsets[0] = {0,0,0};
-    transfer_blit.srcOffsets[1] = {(int)output_image_extent.width, (int)output_image_extent.height, 1};
-    transfer_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    transfer_blit.dstSubresource.layerCount = 1;
-    transfer_blit.dstOffsets[0] = {0,0,0};
-    transfer_blit.dstOffsets[1] = {(int)swap_chain_extent.width, (int)swap_chain_extent.height, 1};
-
-    vkCmdBlitImage(command_buffer, render_transfer_image.image_handle, render_transfer_image.layout, swap_chain_images[image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &transfer_blit, VK_FILTER_NEAREST);
 
     // imgui draw
     VkOffset2D render_area_offset{};
@@ -1886,9 +1892,10 @@ void VulkanApplication::rebuild_pipeline() {
     rt_pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
     rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
     rt_pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
-    set_render_images_dirty();
+    recreate_render_images();
     vkDeviceWaitIdle(device.vulkan_device);
     old_pipeline.free();
+    pipeline_dirty = false;
 }
 
 void VulkanApplication::set_scene_path(std::string path) {
