@@ -771,11 +771,12 @@ void VulkanApplication::draw_frame() {
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     begin_info.pInheritanceInfo = nullptr;
 
-    if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
-        throw std::runtime_error("error beginning command buffer");
-    }
 
     if (!pipeline_dirty && !render_images_dirty) {
+
+        if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
+            throw std::runtime_error("error beginning command buffer");
+        }
 
         material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
         lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
@@ -799,7 +800,7 @@ void VulkanApplication::draw_frame() {
         // raytracer draw
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
-        device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+        if (accumulated_frames < 2) device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
         OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
@@ -807,6 +808,8 @@ void VulkanApplication::draw_frame() {
         buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         buffer_barrier.buffer = selected_output.buffer.buffer_handle;
         buffer_barrier.size = VK_WHOLE_SIZE;
+        buffer_barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+        buffer_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
         // transition output image to writeable format
         VkImageMemoryBarrier image_barrier = {};
@@ -824,7 +827,34 @@ void VulkanApplication::draw_frame() {
         image_barrier.srcAccessMask = 0;
         image_barrier.dstAccessMask = 0;
 
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0, 0, nullptr, 1, &buffer_barrier, 1, &image_barrier);
+
+        if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+            throw std::runtime_error("encountered an error when ending command buffer");
+        }
+
+        VkSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT};
+        submit_info.waitSemaphoreCount = 0;
+        submit_info.pWaitSemaphores = nullptr;
+        submit_info.pWaitDstStageMask = wait_stages;
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &command_buffer;
+
+
+        if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fence) != VK_SUCCESS)
+        {
+            throw std::runtime_error("error submitting draw command buffer");
+        }
+
+        vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(logical_device, 1, &in_flight_fence);
+
+        if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
+            throw std::runtime_error("error beginning command buffer");
+        }
 
         Buffer* output_image_buffer = &selected_output.buffer;
         VkExtent2D output_image_extent = render_image_extent;
@@ -843,16 +873,13 @@ void VulkanApplication::draw_frame() {
         output_buffer_copy.imageSubresource.layerCount = 1;
         output_buffer_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-        
-
         render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr, 1, &buffer_barrier, 0, nullptr);
 
-        vec2 cursor_pos = get_cursor_position();
-        if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
-            uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
-            ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
-        }
+        // vec2 cursor_pos = get_cursor_position();
+        // if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
+        //     uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
+        //     ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
+        // }
 
         vkCmdCopyBufferToImage(command_buffer, output_image_buffer->buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
         render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
@@ -1571,8 +1598,8 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
-                    .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
+                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
                     ;
 
     p_pipeline = p_pipeline_builder.build();
@@ -1615,17 +1642,17 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    uint32_t pixel_index = (uint32_t)(app->get_cursor_position().x * app->render_scale) + (uint32_t)(app->get_cursor_position().y * app->render_scale) * app->render_image_extent.width;
-                    vec3 hovered_instance_color = app->rt_pipeline.get_output_buffer("Instance Indices").get_color(pixel_index);
-                    int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
-                    if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
+                    // uint32_t pixel_index = (uint32_t)(app->get_cursor_position().x * app->render_scale) + (uint32_t)(app->get_cursor_position().y * app->render_scale) * app->render_image_extent.width;
+                    // vec3 hovered_instance_color = app->rt_pipeline.get_output_buffer("Instance Indices").get_color(pixel_index);
+                    // int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
+                    // if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
-                    app->ui.selected_instance = instance_index;
-                    if (instance_index != -1) {
-                        app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
-                    } else {
-                        app->ui.selected_instance_parameters = nullptr;
-                    }
+                    // app->ui.selected_instance = instance_index;
+                    // if (instance_index != -1) {
+                    //     app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
+                    // } else {
+                    //     app->ui.selected_instance_parameters = nullptr;
+                    // }
                 }
             } else {
                 app->mouse_look_active = false;

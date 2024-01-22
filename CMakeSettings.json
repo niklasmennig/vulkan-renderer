@@ -1,15 +1,18 @@
 ﻿{
-  "configurations": [
-    {
-      "name": "x64-Debug",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DGLFW3_ROOT=\"F:\\Dev\\Libraries\\C++\\glfw-3.3.8\"",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": ""
-    }
-  ]
+    "configurations": [
+        {
+            "name": "x64-Debug",
+            "generator": "Ninja",
+            "configurationType": "Debug",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "-DGLFW3_ROOT=\"F:\\Dev\\Libraries\\C++\\glfw-3.3.8\"",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "variables": [
+
+            ]
+        }
+    ]
 }

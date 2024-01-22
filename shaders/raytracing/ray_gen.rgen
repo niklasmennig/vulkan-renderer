@@ -304,7 +304,7 @@ void main() {
         // roughness AOV
         output_buffers[6].color[pixel_index] = vec4(vec3(primary_hit_roughness), 1.0);
         // ray depth AOV
-        output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
+        // output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
         // environment map AOVs
         output_buffers[8].color[pixel_index] = vec4(float(primary_hit_env_cdf));
         output_buffers[9].color[pixel_index] = vec4(float(primary_hit_env_conditional));

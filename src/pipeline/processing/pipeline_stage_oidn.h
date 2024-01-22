@@ -10,9 +10,11 @@
 struct OutputBuffer;
 
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
+    Buffer* output_buffer, test_buffer;
+
     OIDNDevice oidn_device;
     OIDNFilter oidn_filter;
-    OIDNBuffer oidn_buffer, oidn_buffer_albedo, oidn_buffer_normal;
+    OIDNBuffer oidn_buffer, oidn_buffer_albedo, oidn_buffer_normal, oidn_buffer_output;
 
     void initialize() override;
     void on_resize(VkExtent2D swapchain_extent, VkExtent2D render_extent) override;

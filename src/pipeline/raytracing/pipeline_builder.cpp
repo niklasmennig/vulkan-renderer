@@ -227,7 +227,7 @@ void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2
     for (int i = 0; i < created_output_buffers.size(); i++) {
         created_output_buffers[i].buffer.free();
 
-        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false, true);
         set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
 
