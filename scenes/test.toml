@@ -6,15 +6,15 @@
     # path = "./hdri/moonless_golf_4k.hdr"
 
 [objects]
-    [objects.c]
-    path = "./gltf/sponza/Sponza.gltf"
+    # [objects.c]
+    # path = "./gltf/sponza/Sponza.gltf"
 
     # [objects.f]
     # path = "./gltf/mosquito/MosquitoInAmber.gltf"
     # [objects.d]
     # path = "./gltf/sponza/Sponza.gltf"
-    # [objects.c]
-    # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
+    [objects.c]
+    path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
     # [objects.tes1]
     # path = "./gltf/damaged_helmet/DamagedHelmet.gltf"

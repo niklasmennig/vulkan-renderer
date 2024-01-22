@@ -32,7 +32,9 @@ void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, 
             shared.offset = 0;
             shared.memory = 0;
             std::cout << "allocating shared memory" << std::endl;
-            if (vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &shared.memory) != VK_SUCCESS) {
+            auto allocation_error = vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &shared.memory);
+            if (allocation_error != VK_SUCCESS) {
+                std::cout << "error code " << (int)allocation_error << std::endl;
                 throw std::runtime_error("error allocating shared memory");
             }
             shared.size = alloc_size;
