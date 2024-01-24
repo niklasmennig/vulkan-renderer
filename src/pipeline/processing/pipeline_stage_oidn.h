@@ -10,7 +10,7 @@
 struct OutputBuffer;
 
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
-    Buffer* output_buffer, test_buffer;
+    Buffer* output_buffer;
 
     OIDNDevice oidn_device;
     OIDNFilter oidn_filter;
