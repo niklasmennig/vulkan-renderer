@@ -95,6 +95,9 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_output_buffer("Ray Depth");
     add_output_buffer("Environment CDF");
     add_output_buffer("Environment Conditional");
+    add_descriptor("restir_initial_samples", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_INITIAL_SAMPLES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("restir_temporal_reservoir", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_TEMPORAL_RESERVOIR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("restir_spatial_reservoir", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_SPATIAL_RESERVOIR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);

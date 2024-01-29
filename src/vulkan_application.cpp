@@ -510,6 +510,15 @@ void VulkanApplication::create_default_descriptor_writes() {
     if (lights.size() > 0) lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * light_buffer_size);
 
     rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
+
+    // ReSTIR
+    std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
+    // Buffer restir_initial_samples_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Sample) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    // rt_pipeline.set_descriptor_buffer_binding("restir_initial_samples", restir_initial_samples_buffer, BufferType::Storage);
+    Buffer restir_temporal_reservoir_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    rt_pipeline.set_descriptor_buffer_binding("restir_temporal_reservoir", restir_temporal_reservoir_buffer, BufferType::Storage);
+    Buffer restir_spatial_reservoir_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    rt_pipeline.set_descriptor_buffer_binding("restir_spatial_reservoir", restir_spatial_reservoir_buffer, BufferType::Storage);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -800,7 +809,7 @@ void VulkanApplication::draw_frame() {
         // raytracer draw
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.pipeline_handle);
-        if (accumulated_frames < 2) device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
+        device.vkCmdTraceRaysKHR(command_buffer, &rt_pipeline.sbt.region_raygen, &rt_pipeline.sbt.region_miss, &rt_pipeline.sbt.region_hit, &rt_pipeline.sbt.region_callable, render_image_extent.width, render_image_extent.height, 1);
 
         OutputBuffer selected_output = rt_pipeline.get_output_buffer(ui.selected_output_image);
 
