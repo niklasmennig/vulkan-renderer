@@ -29,9 +29,7 @@ layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGH
 
 layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
-// layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_INITIAL_SAMPLES) buffer ReSTIRSamplesBuffer {Sample samples[];} restir_initial_samples;
-layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_TEMPORAL_RESERVOIR) buffer ReSTIRTempResBuffer {Reservoir reservoirs[];} restir_temporal_reservoirs;
-layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_SPATIAL_RESERVOIR) buffer ReSTIRSpatResBuffer {Reservoir reservoirs[];} restir_spatial_reservoirs;
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
 
 
 vec3 compute_ray_direction(vec2 ndc) {
@@ -51,12 +49,46 @@ vec3 compute_ray_direction(vec2 ndc) {
     return normalize(dir);
 }
 
+void sample_direct_light(inout uint seed, vec3 position, out LightSample light_sample, out bool occluded) {
+    uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+    Light light = lights_data.lights[light_idx];
+    vec3 random_values = vec3(random_float(seed), random_float(seed), random_float(seed));
+    light_sample = sample_light(position, random_values, light);
+    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+    vec3 light_dir = light_sample.direction;                   
+
+    // cast shadow ray
+    traceRayEXT(
+        as,
+        gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
+        0xff,
+        1,
+        push_constants.constants.sbt_stride,
+        1,
+        position,
+        EPSILON,
+        light_dir,
+        light_sample.distance - 2 * EPSILON,
+        1
+    );
+
+    occluded = ray_occluded;
+}
+
 void main() {
+    uint pixel_index = gl_LaunchIDEXT.x + gl_LaunchIDEXT.y * push_constants.constants.image_extent.x;
+    uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, uint(push_constants.constants.time))));
+
     uint max_depth = push_constants.constants.max_depth;
     uint frame_samples = push_constants.constants.frame_samples;
     uint sample_count = push_constants.constants.clear_accumulated;
+    
+    uint current_reservoir_index = sample_count % 2;
+    uint previous_reservoir_index = (current_reservoir_index + 1) % 2;
+    clear_reservoir(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index]);
 
     uint primary_hit_instance = NULL_INSTANCE;
+    vec3 primary_hit_position;
     vec3 primary_hit_albedo = vec3(0);
     vec3 primary_hit_normal = vec3(0);
     float primary_hit_roughness = 0;
@@ -66,7 +98,8 @@ void main() {
     vec3 color_sum = vec3(0.0);
     uint depth_sum = 0;
     for (int frame_sample = 0; frame_sample < frame_samples; frame_sample++) {
-        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, hash_combine(uint(push_constants.constants.time), frame_sample))));
+        
+
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);
@@ -102,6 +135,7 @@ void main() {
 
             if (!payload.hit) {
                 // ray missed scene
+                restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed = 0;
 
                 // calculate theta and phi for environment map
                 vec2 thetaphi = thetaphi_from_dir(ray_direction);
@@ -177,9 +211,11 @@ void main() {
                 vec3 ray_in_local = normalize(bsdf_sample.direction);
                 vec3 ray_in = normalize(to_world_space * ray_in_local);
 
-                // AOV data
+                // primary hit
                 if (depth == 1) {
+                    // AOV data
                     primary_hit_instance = payload.hit_instance;
+                    primary_hit_position = position;
                     primary_hit_albedo = base_color;
                     primary_hit_normal = abs(normal);
                     primary_hit_roughness = roughness;
@@ -189,29 +225,14 @@ void main() {
 
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
-                    uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
-                    Light light = lights_data.lights[light_idx];
-                    LightSample light_sample = sample_light(position, random_values, light);
-                    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+                    uint nee_seed = seed;
+                    LightSample light_sample;
+                    bool occluded;
+                    sample_direct_light(seed, position, light_sample, occluded);
+
                     vec3 light_dir = light_sample.direction;
-                    vec3 light_dir_local = normalize(to_shading_space * light_dir);                   
-
-                    // cast shadow ray
-                    traceRayEXT(
-                        as,
-                        gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
-                        0xff,
-                        1,
-                        push_constants.constants.sbt_stride,
-                        1,
-                        position,
-                        EPSILON,
-                        light_dir,
-                        light_sample.distance - 2 * EPSILON,
-                        1
-                    );
-
-                    bool occluded = ray_occluded;
+                    vec3 light_dir_local = to_shading_space * light_dir;
+                    
                     // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
                     float light_pdf = light_sample.pdf * push_constants.constants.light_count;
                     float bsdf_pdf = pdf_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
@@ -220,6 +241,12 @@ void main() {
                         float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
                         // float mis = 1.0;                     
                         color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
+
+                        if (depth == 1) {
+                            update_reservoir(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], nee_seed, 1, seed);
+                        }
+                    } else {
+                        restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].sum_weights = 0;
                     }
                 }
 
@@ -261,8 +288,20 @@ void main() {
         depth_sum += depth;
     }
 
-    // ivec2 img_coord = ivec2(gl_LaunchIDEXT.xy);
-    uint pixel_index = gl_LaunchIDEXT.x + gl_LaunchIDEXT.y * push_constants.constants.image_extent.x;
+    // Reservoir reuse
+
+    // temporal reuse
+    // combine_reservoirs(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], restir_reservoirs[previous_reservoir_index].reservoirs[pixel_index], seed);
+
+    // ReSTIR NEE pass
+    uint nee_seed = restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed;
+    LightSample restir_light_sample;
+    bool restir_occluded;
+    sample_direct_light(nee_seed, primary_hit_position, restir_light_sample, restir_occluded);
+    // if (restir_occluded) {
+    //     color_sum = vec3(0.0);
+    // }
+
 
     // accumulate color
     vec3 frame_color = color_sum / frame_samples;
@@ -271,11 +310,9 @@ void main() {
     if (sample_count <= 1) {
         accum_color = frame_color;
         output_buffers[1].color[pixel_index] = vec4(accum_color, 1.0);
-        // imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     } else {
         accum_color = (output_buffers[1].color[pixel_index].rgb + frame_color);
         output_buffers[1].color[pixel_index] = vec4(accum_color, 1.0);
-        // imageStore(images[1], img_coord, vec4(accum_color, 1.0));
     }
 
     // output image
@@ -291,13 +328,13 @@ void main() {
 
     output_buffers[0].color[pixel_index] = vec4(color_rgb, 1.0);
 
-
     if (sample_count == 1) {
         // instance indices AOV
         vec3 instance_color =  vec3(floor(primary_hit_instance/(255*255)), floor(primary_hit_instance/255), (mod(primary_hit_instance,255)));
         if (primary_hit_instance == NULL_INSTANCE) instance_color = vec3(1.0);
         output_buffers[2].color[pixel_index] = vec4(instance_color, 1.0);
-        vec3 colored_instance_color = vec3(prng_float(primary_hit_instance, 0), prng_float(primary_hit_instance, 1), prng_float(primary_hit_instance, 2));
+        uint color_seed = primary_hit_instance;
+        vec3 colored_instance_color = vec3(random_float(color_seed), random_float(color_seed), random_float(color_seed));
         if (primary_hit_instance == NULL_INSTANCE) colored_instance_color = vec3(1.0);
         output_buffers[3].color[pixel_index] = vec4(colored_instance_color, 1.0);
 
@@ -308,9 +345,12 @@ void main() {
         // roughness AOV
         output_buffers[6].color[pixel_index] = vec4(vec3(primary_hit_roughness), 1.0);
         // ray depth AOV
-        output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
+        // output_buffers[7].color[pixel_index] = vec4(float(depth_sum) / frame_samples / max_depth);
         // environment map AOVs
         output_buffers[8].color[pixel_index] = vec4(float(primary_hit_env_cdf));
         output_buffers[9].color[pixel_index] = vec4(float(primary_hit_env_conditional));
     }
+
+    output_buffers[7].color[pixel_index] = vec4(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed, restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].sum_weights, restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].num_samples, 1.0);
+
 }

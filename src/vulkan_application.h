@@ -123,6 +123,8 @@ struct VulkanApplication {
     bool render_images_dirty = true;
     bool pipeline_dirty = false;
 
+    Buffer restir_reservoir_buffer_0, restir_reservoir_buffer_1;
+
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;
 

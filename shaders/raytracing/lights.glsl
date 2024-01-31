@@ -24,7 +24,7 @@ float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     return 1.0 / area;
 }
 
-LightSample sample_light(vec3 position, vec4 random_values, Light light) {
+LightSample sample_light(vec3 position, vec3 random_values, Light light) {
     LightSample light_sample;
     uint type = light.uint_data[0];
     vec3 direction;

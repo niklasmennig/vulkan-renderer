@@ -513,12 +513,10 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // ReSTIR
     std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
-    // Buffer restir_initial_samples_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Sample) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-    // rt_pipeline.set_descriptor_buffer_binding("restir_initial_samples", restir_initial_samples_buffer, BufferType::Storage);
-    Buffer restir_temporal_reservoir_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-    rt_pipeline.set_descriptor_buffer_binding("restir_temporal_reservoir", restir_temporal_reservoir_buffer, BufferType::Storage);
-    Buffer restir_spatial_reservoir_buffer = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-    rt_pipeline.set_descriptor_buffer_binding("restir_spatial_reservoir", restir_spatial_reservoir_buffer, BufferType::Storage);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
+    rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -753,6 +751,13 @@ void VulkanApplication::recreate_render_images() {
     p_pipeline_builder.rt_pipeline = &rt_pipeline;
     p_pipeline_builder.cmd_on_resize(cmdbuf, swap_chain_extent, render_image_extent);
     device.end_single_use_command_buffer(cmdbuf);
+
+    restir_reservoir_buffer_0.free();
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
+    restir_reservoir_buffer_1.free();
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 
     if (render_transfer_image.width > 0) render_transfer_image.free();
     render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
