@@ -5,7 +5,7 @@
 #include "interface.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
-#include "material_parameters.glsl"
+#include "material.glsl"
 
 struct LightSample {
     vec3 direction;

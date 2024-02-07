@@ -10,6 +10,7 @@
 #include "payload.glsl"
 #include "texture_data.glsl"
 #include "mesh_data.glsl"
+#include "material.glsl"
 #include "ggx.glsl"
 #include "lambert.glsl"
 #include "mis.glsl"
@@ -18,7 +19,7 @@
 #include "restir.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
-layout(location = 1) rayPayloadEXT bool ray_occluded;
+layout(location = 1) rayPayloadEXT bool shadowray_occluded;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
@@ -72,7 +73,7 @@ void sample_direct_light(inout uint seed, vec3 position, out LightSample light_s
         1
     );
 
-    occluded = ray_occluded;
+    occluded = shadowray_occluded;
 }
 
 void main() {
@@ -89,6 +90,7 @@ void main() {
 
     uint primary_hit_instance = NULL_INSTANCE;
     vec3 primary_hit_position;
+    vec2 primary_hit_uv;
     vec3 primary_hit_albedo = vec3(0);
     vec3 primary_hit_normal = vec3(0);
     float primary_hit_roughness = 0;
@@ -175,8 +177,6 @@ void main() {
                 vec3 ray_out = normalize(-ray_direction);
                 vec3 new_origin = position;
 
-                MaterialParameters material_parameters = get_material_parameters(instance);
-
                 vec3 bitangent = normalize(cross(normal, tangent));
                 mat3 tbn = basis(normal);
                 
@@ -186,16 +186,7 @@ void main() {
                 normal = normalize(tbn * sampled_normal);
                 
                 // material properties
-                vec4 base_color_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_DIFFUSE);
-                vec3 base_color = material_parameters.diffuse * base_color_tex.rgb;
-                float opacity = material_parameters.opacity * base_color_tex.a;
-                vec3 arm = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_ROUGHNESS).rgb;
-                float roughness = material_parameters.roughness * arm.y;
-                float metallic = material_parameters.metallic * arm.z;
-                vec4 transmission_tex = sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_TRANSMISSIVE);
-                float transmission = material_parameters.transmissive * (1.0 - transmission_tex.x);
-                float ior = material_parameters.ior;
-                float fresnel_reflect = 0.5;
+               Material material = get_material(instance, uv);
                 
 
                 // bsdf sampling
@@ -206,7 +197,7 @@ void main() {
                 bool inner_reflection = dot(ray_out, tbn[1]) < -EPSILON;
 
                 vec4 random_values = vec4(random_float(seed), random_float(seed), random_float(seed), random_float(seed));
-                BSDFSample bsdf_sample = sample_ggx(ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior, random_values, inner_reflection); 
+                BSDFSample bsdf_sample = sample_ggx(ray_out_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior, random_values, inner_reflection); 
 
                 vec3 ray_in_local = normalize(bsdf_sample.direction);
                 vec3 ray_in = normalize(to_world_space * ray_in_local);
@@ -216,9 +207,10 @@ void main() {
                     // AOV data
                     primary_hit_instance = payload.hit_instance;
                     primary_hit_position = position;
-                    primary_hit_albedo = base_color;
+                    primary_hit_uv = uv;
+                    primary_hit_albedo = material.base_color;
                     primary_hit_normal = abs(normal);
-                    primary_hit_roughness = roughness;
+                    primary_hit_roughness = material.roughness;
                 }
 
                 if (bsdf_sample.pdf < EPSILON) {break;}
@@ -236,15 +228,15 @@ void main() {
                     
                     // occluded = occluded && (dot(ray_out, face_normal) * dot(ray_out, normal) > 0);
                     float light_pdf = light_sample.pdf * push_constants.constants.light_count;
-                    float bsdf_pdf = pdf_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);
+                    float bsdf_pdf = pdf_ggx(light_dir_local, ray_out_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
                     if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
-                        vec3 bsdf_eval = eval_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);  
-                        float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
-                        // float mis = 1.0;
-                        color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
 
                         if (depth == 1) {
-                            update_reservoir(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], nee_seed, 1, seed);
+                            update_reservoir(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], nee_seed, light_pdf, seed);
+                        } else {
+                            vec3 bsdf_eval = eval_ggx(light_dir_local, ray_out_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);  
+                            float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
+                            color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
                         }
                     } else {
                         restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].sum_weights = 0;
@@ -256,6 +248,7 @@ void main() {
 
                 // material emission
                 if ((push_constants.constants.flags & 2) == 2) {
+                    MaterialParameters material_parameters = get_material_parameters(instance);
                     vec3 intensity =  (sample_texture(payload.hit_instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength;
                     float mis_weight = 1.0;
                     if (depth > 1) {
@@ -290,18 +283,24 @@ void main() {
     }
 
     // Reservoir reuse
+    if (primary_hit_instance != NULL_INSTANCE) {
+        // temporal reuse
+        combine_reservoirs(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], restir_reservoirs[previous_reservoir_index].reservoirs[pixel_index], seed);
 
-    // temporal reuse
-    combine_reservoirs(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], restir_reservoirs[previous_reservoir_index].reservoirs[pixel_index], seed);
-
-    // ReSTIR NEE pass
-    uint nee_seed = restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed;
-    LightSample restir_light_sample;
-    bool restir_occluded;
-    sample_direct_light(nee_seed, primary_hit_position, restir_light_sample, restir_occluded);
-    // if (restir_occluded) {
-    //     color_sum = vec3(0.0);
-    // }
+        // ReSTIR NEE pass
+        uint nee_seed = restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed;
+        LightSample restir_light_sample;
+        bool restir_occluded;
+        sample_direct_light(nee_seed, primary_hit_position, restir_light_sample, restir_occluded);
+        if (!restir_occluded) {
+            Material material = get_material(primary_hit_instance, primary_hit_uv);
+            mat3 to_local = inverse(basis(primary_hit_normal));
+            vec3 local_light_dir = to_local * restir_light_sample.direction;
+            vec3 bsdf_eval = eval_ggx(local_light_dir, reflect(local_light_dir, primary_hit_normal), material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
+            color_sum += bsdf_eval * restir_light_sample.intensity * abs(dot(restir_light_sample.direction, primary_hit_normal));
+            frame_samples += 1;
+        }
+    }
 
 
     // accumulate color
@@ -352,6 +351,6 @@ void main() {
         output_buffers[9].color[pixel_index] = vec4(float(primary_hit_env_conditional));
     }
 
-    output_buffers[7].color[pixel_index] = vec4(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed, restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].sum_weights, restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].num_samples, 1.0);
+    output_buffers[7].color[pixel_index] = vec4(float(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed) / 1000.0, 0.0, 0.0, 1.0);
 
 }
