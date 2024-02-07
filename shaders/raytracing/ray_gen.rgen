@@ -223,6 +223,7 @@ void main() {
 
                 if (bsdf_sample.pdf < EPSILON) {break;}
 
+                // next event estimation
                 if (!bsdf_sample.specular && (push_constants.constants.flags & 1) == 1) {
                     // direct light
                     uint nee_seed = seed;
@@ -239,7 +240,7 @@ void main() {
                     if (!occluded && light_sample.pdf > EPSILON && bsdf_pdf > EPSILON) {
                         vec3 bsdf_eval = eval_ggx(light_dir_local, ray_out_local, base_color, opacity, metallic, fresnel_reflect, roughness, transmission, ior);  
                         float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
-                        // float mis = 1.0;                     
+                        // float mis = 1.0;
                         color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
 
                         if (depth == 1) {
@@ -291,7 +292,7 @@ void main() {
     // Reservoir reuse
 
     // temporal reuse
-    // combine_reservoirs(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], restir_reservoirs[previous_reservoir_index].reservoirs[pixel_index], seed);
+    combine_reservoirs(restir_reservoirs[current_reservoir_index].reservoirs[pixel_index], restir_reservoirs[previous_reservoir_index].reservoirs[pixel_index], seed);
 
     // ReSTIR NEE pass
     uint nee_seed = restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].y.nee_seed;
