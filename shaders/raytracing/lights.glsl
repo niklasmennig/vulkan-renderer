@@ -24,7 +24,7 @@ float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     return 1.0 / area;
 }
 
-LightSample sample_light(vec3 position, vec3 random_values, Light light) {
+LightSample sample_light(vec3 position, inout uint seed, Light light) {
     LightSample light_sample;
     uint type = light.uint_data[0];
     vec3 direction;
@@ -44,8 +44,8 @@ LightSample sample_light(vec3 position, vec3 random_values, Light light) {
             uint vertex_count = light.uint_data[2];
             uint primitive_count = vertex_count / 3;
 
-            uint primitive = uint(floor(random_values.x * primitive_count));
-            vec3 light_position = get_vertex_position(instance, primitive, random_values.yz);
+            uint primitive = uint(floor(random_float(seed) * primitive_count));
+            vec3 light_position = get_vertex_position(instance, primitive, vec2(random_float(seed), random_float(seed)));
 
             mat4x3 transform;
             transform[0][0] = light.float_data[0];
@@ -76,7 +76,7 @@ LightSample sample_light(vec3 position, vec3 random_values, Light light) {
             float pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
 
             MaterialParameters material_parameters = get_material_parameters(instance);
-            vec2 uv = get_vertex_uv(instance, primitive, random_values.yz);
+            vec2 uv = get_vertex_uv(instance, primitive, vec2(random_float(seed), random_float(seed)));
             light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength / pdf;
             light_sample.pdf = pdf;
             break;

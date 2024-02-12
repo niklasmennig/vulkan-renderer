@@ -806,10 +806,10 @@ void VulkanApplication::draw_frame() {
         push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
         push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
         uint32_t flags = 0;
-        if (ui.direct_lighting_enabled) flags |= 0b1;
-        if (ui.indirect_lighting_enabled) flags |= 0b10;
+        if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
+        if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
         push_constants.flags = flags;
-        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
         // raytracer draw
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);

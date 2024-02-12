@@ -8,14 +8,14 @@
 #define TEXTURE_ID_ENVIRONMENT_CDF 1
 #define TEXTURE_ID_ENVIRONMENT_CONDITIONAL 2
 
-LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
+LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     uint width = map_dimensions.x;
     uint height = map_dimensions.y;
 
     float x_step = 1.0 / width;
     float y_step = 1.0 / height;
 
-    float conditional_target = random_values.y;
+    float conditional_target = random_float(seed);
     float conditional_y = 0;
     float conditional_low = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y)).r;
     float conditional_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y + y_step)).r;
@@ -31,7 +31,7 @@ LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
         }
     }
 
-    float cdf_target = random_values.x;
+    float cdf_target = random_float(seed);
     float cdf_x = 0;
     float cdf_low = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(cdf_x, conditional_y)).r;
     float cdf_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(cdf_x + x_step, conditional_y)).r;
@@ -51,7 +51,7 @@ LightSample sample_environment(vec4 random_values, uvec2 map_dimensions) {
     float sample_pdf_conditional = conditional_hi - conditional_low;
 
     // sample pixel offset for environment map intensity sample
-    vec2 offset = random_values.zw * vec2(x_step, y_step);
+    vec2 offset = vec2(random_float(seed), random_float(seed)) * vec2(x_step, y_step);
     vec2 sample_uv = vec2(cdf_x, conditional_y) + offset;
 
     float theta = sample_uv.y * PI;

@@ -1,0 +1,125 @@
+#version 460
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_flags_primitive_culling : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#include "../common.glsl"
+#include "../interface.glsl"
+#include "payload.glsl"
+#include "../random.glsl"
+#include "../lights.glsl"
+
+layout(location = 0) rayPayloadEXT RayPayload payload;
+layout(location = 1) rayPayloadEXT bool shadowray_occluded;
+
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
+    CameraData camera;
+} raygen_data;
+layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_OUTPUT_BUFFERS) buffer OutputBuffer { vec4 color[]; } output_buffers[];
+layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
+
+layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
+
+// layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
+
+
+vec3 compute_ray_direction(vec2 ndc) {
+    vec3 right = raygen_data.camera.right.xyz;
+    vec3 up = raygen_data.camera.up.xyz;
+    vec3 forward = raygen_data.camera.forward.xyz;
+
+    float fov_x = radians(raygen_data.camera.fov_x);
+
+    float aspect_ratio = float(gl_LaunchSizeEXT.y) / float(gl_LaunchSizeEXT.x);
+    float fov_y = fov_x * aspect_ratio;
+
+    float fov_x_half = fov_x / 2.0;
+    float fov_y_half = fov_y / 2.0;
+
+    vec3 dir = normalize(forward) + ndc.x * abs(tan(fov_x_half)) * normalize(right) + ndc.y * abs(tan(fov_y_half)) * normalize(up);
+    return normalize(dir);
+}
+
+LightSample sample_direct_light(inout uint seed, vec3 position) {
+    uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+    Light light = lights_data.lights[light_idx];
+    vec3 random_values = vec3(random_float(seed), random_float(seed), random_float(seed));
+    LightSample light_sample = sample_light(position, seed, light);
+    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
+    
+    return light_sample;                  
+}
+
+void main() {
+    uint sample_count = push_constants.constants.clear_accumulated;
+    uint pixel_index = gl_LaunchIDEXT.x + gl_LaunchIDEXT.y * push_constants.constants.image_extent.x;
+
+    vec3 multisample_color = vec3(0.0);
+
+    for (uint frame_sample = 0; frame_sample < push_constants.constants.frame_samples; frame_sample++) {
+        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, frame_sample)));
+
+        vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+        vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);
+        vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
+        ndc.y *= -1;
+
+        // initialize payload
+        vec3 ray_origin = raygen_data.camera.origin.xyz;
+        vec3 ray_direction = compute_ray_direction(ndc);
+
+        payload.color = vec3(0.0);
+        payload.depth = 1;
+
+        payload.origin = ray_origin;
+        payload.direction = ray_direction;
+
+        payload.contribution = vec3(1.0);
+
+        payload.seed = seed;
+        payload.end_ray = false;
+
+        while (!payload.end_ray) {
+            traceRayEXT(
+                as,
+                0,
+                0xff,
+                0,
+                push_constants.constants.sbt_stride,
+                0,
+                payload.origin,
+                EPSILON,
+                payload.direction,
+                RAY_LEN_MAX,
+                0
+            );
+
+            payload.depth += 1;
+            if (payload.depth > push_constants.constants.max_depth) payload.end_ray = true;
+
+            if (payload.depth > 2) {
+                float rr_probability = luminance(payload.contribution);
+                if (random_float(payload.seed) > rr_probability) {
+                    payload.contribution /= rr_probability;
+                } else {
+                    payload.end_ray = true;
+                }
+            }
+        }
+
+        multisample_color += clamp(payload.color, vec3(0.0), vec3(FLT_MAX));
+    }
+
+    vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
+
+    vec3 accumulated_color = output_buffers[1].color[pixel_index].rgb;
+    if (sample_count <= 1) {
+        accumulated_color = multisample_color_normalized;
+    } else {
+        accumulated_color += multisample_color_normalized;
+    }
+    output_buffers[1].color[pixel_index] = vec4(accumulated_color, 0.0);
+
+    output_buffers[0].color[pixel_index] = vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 0.0);
+}

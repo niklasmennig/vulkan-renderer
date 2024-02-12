@@ -83,7 +83,7 @@ void RaytracingPipelineBuilder::add_output_buffer(std::string name, bool hidden)
 
 RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
-    add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_output_buffer("Result Image");
     add_output_buffer("Accumulated Color");
@@ -97,22 +97,22 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_output_buffer("Environment Conditional");
     add_descriptor("restir_reservoirs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_RESERVOIRS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 2);
     // object (meshes + materials + textures) descriptors (set 1)
-    add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_normals", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_NORMALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_texcoords", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TEXCOORDS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_tangents", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TANGENTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_data_offsets", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_DATA_OFFSETS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("mesh_offset_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_OFFSET_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("textures", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 128);
-    add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURE_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MATERIAL_PARAMETERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_normals", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_NORMALS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_texcoords", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TEXCOORDS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_tangents", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_TANGENTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_data_offsets", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_DATA_OFFSETS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("mesh_offset_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_OFFSET_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("textures", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURES, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 128);
+    add_descriptor("texture_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_TEXTURE_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+    add_descriptor("material_parameters", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MATERIAL_PARAMETERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     // shader stages
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/raytracing/ray_gen.rgen")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/closest_hit.rchit")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/miss.rmiss")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/occlusion_hit.rchit")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/occlusion_miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/raytracing/default/ray_gen.rgen")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/default/closest_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/default/miss.rmiss")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/default/occlusion_hit.rchit")));
+    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/default/occlusion_miss.rmiss")));
 
     return *this;
 }
@@ -353,7 +353,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
         VkPushConstantRange push_constant_range{};
         push_constant_range.offset = 0;
         push_constant_range.size = sizeof(Shaders::PushConstants);
-        push_constant_range.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        push_constant_range.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR;
 
         VkPipelineLayoutCreateInfo pipeline_layout_info{};
         pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -517,7 +517,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
 }
 
 RaytracingPipelineBuilder::RaytracingPipelineBuilder() {
-    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+    add_descriptor("lights", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_LIGHTS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     add_descriptor("outputs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_OUTPUT_BUFFERS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 0);
 }
 

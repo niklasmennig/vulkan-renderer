@@ -79,7 +79,7 @@ float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
 
 BSDFSample sample_ggx(in vec3 out_dir, 
               in vec3 baseColor, float opacity, in float metallicness, 
-              in float fresnelReflect, in float roughness, in float transmission, in float ior, in vec4 random, bool inner_reflection) 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in uint seed, bool inner_reflection) 
 {
     vec3 normal = vec3(0,1,0);
 
@@ -90,7 +90,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     }
 
     // handle opacity
-    if (random.w > opacity) {
+    if (random_float(seed) > opacity) {
       BSDFSample res;
       res.contribution = vec3(1.0);
       res.direction = -out_dir;
@@ -99,12 +99,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
       return res;
     }
 
-    if(random.z < 0.5) { // non-specular light
-    if(random.w * 2.0 < transmission) { // transmitted light
+    if(random_float(seed) < 0.5) { // non-specular light
+    if(random_float(seed) * 2.0 < transmission) { // transmitted light
            
       float a = roughness * roughness;
-      float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-      float phi = 2.0 * PI * random.x;
+      float theta = acos(sqrt((1.0 - random_float(seed)) / (1.0 + (a * a - 1.0) * random_float(seed))));
+      float phi = 2.0 * PI * random_float(seed);
       
       vec3 h_local = dir_from_thetaphi(theta, phi);
       if (inner_reflection) h_local = -h_local;
@@ -134,7 +134,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = normalize(l_local);
+      res.direction = l_local;
       res.pdf = D * sin(theta) * cos(theta);
       res.specular = true;
       return res;
@@ -142,7 +142,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     } else { // diffuse light
       
       // sampled indirect diffuse direction in normal space
-      DirectionSample diffuse_sample = sample_cosine_hemisphere(random.x, random.y);
+      DirectionSample diffuse_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
       vec3 l_local = diffuse_sample.direction;
 
       float theta = thetaphi_from_dir(l_local).x;
@@ -165,7 +165,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       
       BSDFSample res;
       res.contribution = contrib;
-      res.direction = normalize(l_local);
+      res.direction = l_local;
       res.pdf = diffuse_sample.pdf;
       res.specular = false;
       return res;
@@ -173,8 +173,8 @@ BSDFSample sample_ggx(in vec3 out_dir,
   } else {// specular light
 
     float a = roughness * roughness;
-    float theta = acos(sqrt((1.0 - random.y) / (1.0 + (a * a - 1.0) * random.y)));
-    float phi = 2.0 * PI * random.x;
+    float theta = acos(sqrt((1.0 - random_float(seed)) / (1.0 + (a * a - 1.0) * random_float(seed))));
+    float phi = 2.0 * PI * random_float(seed);
     vec3 h_local = dir_from_thetaphi(theta, phi);
 
     vec3 l_local = reflect(-out_dir, h_local);
@@ -199,7 +199,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
     
     BSDFSample res;
     res.contribution = contrib;
-    res.direction = normalize(l_local);
+    res.direction = l_local;
     res.pdf = h_local.y / PI;
     res.specular = true;
     return res;
