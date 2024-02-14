@@ -8,6 +8,8 @@
 #include "payload.glsl"
 #include "../random.glsl"
 #include "../lights.glsl"
+#include "../ggx.glsl"
+#include "../restir.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool shadowray_occluded;
@@ -21,8 +23,7 @@ layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGH
 
 layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
-// layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
-
+layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
 
 vec3 compute_ray_direction(vec2 ndc) {
     vec3 right = raygen_data.camera.right.xyz;
@@ -41,19 +42,16 @@ vec3 compute_ray_direction(vec2 ndc) {
     return normalize(dir);
 }
 
-LightSample sample_direct_light(inout uint seed, vec3 position) {
-    uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
-    Light light = lights_data.lights[light_idx];
-    vec3 random_values = vec3(random_float(seed), random_float(seed), random_float(seed));
-    LightSample light_sample = sample_light(position, seed, light);
-    // LightSample light_sample = sample_environment(random_values, push_constants.constants.environment_cdf_dimensions); 
-    
-    return light_sample;                  
-}
-
 void main() {
     uint sample_count = push_constants.constants.clear_accumulated;
     uint pixel_index = gl_LaunchIDEXT.x + gl_LaunchIDEXT.y * push_constants.constants.image_extent.x;
+
+    uint restir_index = sample_count % 2;
+
+    payload.pixel_index = pixel_index;
+    payload.restir_index = restir_index;
+
+    vec3 ray_origin = raygen_data.camera.origin.xyz;
 
     vec3 multisample_color = vec3(0.0);
 
@@ -66,7 +64,6 @@ void main() {
         ndc.y *= -1;
 
         // initialize payload
-        vec3 ray_origin = raygen_data.camera.origin.xyz;
         vec3 ray_direction = compute_ray_direction(ndc);
 
         payload.color = vec3(0.0);
@@ -111,15 +108,34 @@ void main() {
         multisample_color += clamp(payload.color, vec3(0.0), vec3(FLT_MAX));
     }
 
+    combine_reservoirs(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_reservoirs[(restir_index + 1) % 2].reservoirs[pixel_index], payload.seed);
+
+    if (payload.primary_hit_instance != NULL_INSTANCE) {
+        Material material = get_material(payload.primary_hit_instance, payload.primary_hit_uv);
+
+        vec3 light_direction = restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_direction.xyz;
+
+        vec3 bsdf_eval = eval_ggx(normalize(payload.primary_hit_position - ray_origin), light_direction, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior); 
+
+        vec3 restir_nee_contribution = bsdf_eval * restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity.rgb * clamp(dot(light_direction, payload.primary_hit_normal), 0, 1);
+
+        multisample_color = multisample_color + restir_nee_contribution;
+    }
+
     vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
 
-    vec3 accumulated_color = output_buffers[1].color[pixel_index].rgb;
+    vec3 accumulated_color = output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index].rgb;
     if (sample_count <= 1) {
         accumulated_color = multisample_color_normalized;
     } else {
         accumulated_color += multisample_color_normalized;
     }
-    output_buffers[1].color[pixel_index] = vec4(accumulated_color, 0.0);
+    output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index] = vec4(accumulated_color, 0.0);
 
-    output_buffers[0].color[pixel_index] = vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 0.0);
+    output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 0.0);
+
+    output_buffers[OUTPUT_IMAGE_ALBEDO].color[pixel_index] = vec4(payload.primary_hit_albedo, 1.0);
+    output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 0.0);
+
+    output_buffers[7].color[pixel_index] = vec4(vec3(restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity), 0.0);
 }

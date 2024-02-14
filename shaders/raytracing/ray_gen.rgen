@@ -15,8 +15,8 @@
 #include "lambert.glsl"
 #include "mis.glsl"
 #include "environment.glsl"
-#include "lights.glsl"
 #include "restir.glsl"
+#include "lights.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 layout(location = 1) rayPayloadEXT bool shadowray_occluded;

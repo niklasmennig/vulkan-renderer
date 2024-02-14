@@ -87,15 +87,15 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_output_buffer("Result Image");
     add_output_buffer("Accumulated Color");
-    add_output_buffer("Instance Indices", true);
-    add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Albedo");
     add_output_buffer("Normals");
+    add_output_buffer("Instance Indices", true);
+    add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Roughness");
     add_output_buffer("Ray Depth");
     add_output_buffer("Environment CDF");
     add_output_buffer("Environment Conditional");
-    add_descriptor("restir_reservoirs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_RESERVOIRS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR, 2);
+    add_descriptor("restir_reservoirs", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_RESTIR_RESERVOIRS, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, 2);
     // object (meshes + materials + textures) descriptors (set 1)
     add_descriptor("mesh_indices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     add_descriptor("mesh_vertices", DESCRIPTOR_SET_OBJECTS, DESCRIPTOR_BINDING_MESH_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);

@@ -29,6 +29,12 @@
 #define DESCRIPTOR_BINDING_TEXTURE_INDICES 8
 #define DESCRIPTOR_BINDING_MATERIAL_PARAMETERS 9
 
+// output image indices
+#define OUTPUT_IMAGE_RESULT 0
+#define OUTPUT_IMAGE_ACCUMULATED 1
+#define OUTPUT_IMAGE_ALBEDO 2
+#define OUTPUT_IMAGE_NORMAL 3
+
 struct CameraData
 {
     vec4 origin;
