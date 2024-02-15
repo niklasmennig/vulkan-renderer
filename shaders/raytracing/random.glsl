@@ -23,4 +23,8 @@ float random_float(inout uint seed) {
     return uintBitsToFloat((random_uint(seed) & 0x7FFFFF) | 0x3F800000) - 1;
 }
 
+vec3 random_vec3(inout uint seed) {
+    return vec3(random_float(seed), random_float(seed), random_float(seed));
+}
+
 #endif

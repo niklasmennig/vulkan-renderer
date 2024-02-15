@@ -8,6 +8,7 @@
 #include "payload.glsl"
 #include "../random.glsl"
 #include "../lights.glsl"
+#include "../environment.glsl"
 #include "../ggx.glsl"
 #include "../restir.glsl"
 
@@ -40,6 +41,19 @@ vec3 compute_ray_direction(vec2 ndc) {
 
     vec3 dir = normalize(forward) + ndc.x * abs(tan(fov_x_half)) * normalize(right) + ndc.y * abs(tan(fov_y_half)) * normalize(up);
     return normalize(dir);
+}
+
+LightSample sample_direct_light(inout uint seed, vec3 position) {
+    LightSample light_sample;
+    if (random_float(payload.seed) <= 0.0) {
+        light_sample = sample_environment(payload.seed, push_constants.constants.environment_cdf_dimensions);
+    } else {
+        uint light_idx = uint(floor(push_constants.constants.light_count * random_float(payload.seed)));
+        Light light = lights_data.lights[light_idx];
+        light_sample = sample_light(position, payload.seed, light);
+    }
+
+    return light_sample;
 }
 
 void main() {
@@ -108,21 +122,54 @@ void main() {
         multisample_color += clamp(payload.color, vec3(0.0), vec3(FLT_MAX));
     }
 
-    combine_reservoirs(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_reservoirs[(restir_index + 1) % 2].reservoirs[pixel_index], payload.seed);
+    vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
+
+    // initial restir samples
+    // clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
+    for (uint restir_sample = 0; restir_sample < 16; restir_sample++) {
+        uint restir_seed = random_uint(payload.seed);
+        LightSample light_sample = sample_direct_light(restir_seed, payload.primary_hit_position);
+        float p_hat = luminance(light_sample.intensity) * dot(light_sample.direction, payload.primary_hit_normal);
+        update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_seed, p_hat, payload.seed);
+    }
+
+    // temporal reuse
+    // Reservoir previous = restir_reservoirs[restir_index].reservoirs[pixel_index];
+    // clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
+    // update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], previous.light_index, )
 
     if (payload.primary_hit_instance != NULL_INSTANCE) {
         Material material = get_material(payload.primary_hit_instance, payload.primary_hit_uv);
 
-        vec3 light_direction = restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_direction.xyz;
+        uint nee_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
+        LightSample light_sample = sample_direct_light(nee_seed, payload.primary_hit_position);
+        vec3 light_direction = light_sample.direction;
 
-        vec3 bsdf_eval = eval_ggx(normalize(payload.primary_hit_position - ray_origin), light_direction, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior); 
+        traceRayEXT(
+            as,
+            gl_RayFlagsTerminateOnFirstHitEXT,
+            0xff,
+            1,
+            push_constants.constants.sbt_stride,
+            1,
+            payload.primary_hit_position,
+            EPSILON,
+            light_direction,
+            light_sample.distance - 2.0 * EPSILON,
+            1
+        );
 
-        vec3 restir_nee_contribution = bsdf_eval * restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity.rgb * clamp(dot(light_direction, payload.primary_hit_normal), 0, 1);
+        if (!shadowray_occluded) {
+            mat3x3 shading_space = transpose(basis(payload.primary_hit_normal));
 
-        multisample_color = multisample_color + restir_nee_contribution;
+            vec3 bsdf_eval = eval_ggx(shading_space * -normalize(payload.primary_hit_position - ray_origin), shading_space * -light_direction, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior); 
+
+            // vec3 restir_nee_contribution = bsdf_eval * restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity.rgb * clamp(dot(light_direction, payload.primary_hit_normal), 0, 1);
+            vec3 restir_nee_contribution = light_sample.intensity * bsdf_eval;
+
+            multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
+        }
     }
-
-    vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
 
     vec3 accumulated_color = output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index].rgb;
     if (sample_count <= 1) {
@@ -132,10 +179,11 @@ void main() {
     }
     output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index] = vec4(accumulated_color, 0.0);
 
-    output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 0.0);
+    output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / push_constants.constants.clear_accumulated * pow(2, push_constants.constants.exposure), 0.0);
 
     output_buffers[OUTPUT_IMAGE_ALBEDO].color[pixel_index] = vec4(payload.primary_hit_albedo, 1.0);
     output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 0.0);
 
-    output_buffers[7].color[pixel_index] = vec4(vec3(restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity), 0.0);
+    uint restir_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
+    output_buffers[7].color[pixel_index] = vec4(random_vec3(restir_seed), 0.0);
 }

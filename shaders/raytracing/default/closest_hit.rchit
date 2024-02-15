@@ -115,18 +115,14 @@ void main() {
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0, 1);
 
             if (payload.depth == 1) {
-                RestirSample restir_sample;
-                restir_sample.light_direction = vec4(light_sample.direction, 0.0);
-                restir_sample.light_intensity = vec4(light_sample.intensity, 0.0);
-                update_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index], restir_sample, light_sample.pdf, payload.seed);
+                update_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index], nee_seed, luminance(light_sample.intensity), payload.seed);
             } else {
                 float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
                 payload.color += mis * nee_contribution;
             }
         } else {
             if (payload.depth == 1) {
-                restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index].y.light_intensity = vec4(0.0);
-                restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index].sum_weights = 0;
+                clear_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index]);
             }
         }
     }

@@ -513,8 +513,14 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // ReSTIR
     std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
-    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
-    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+
+    VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
+    vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_1.buffer_handle, 0, VK_WHOLE_SIZE, 0);
+    device.end_single_use_command_buffer(cmdbuf);
+
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 }
