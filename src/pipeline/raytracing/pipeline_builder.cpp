@@ -228,7 +228,7 @@ void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2
     for (int i = 0; i < created_output_buffers.size(); i++) {
         created_output_buffers[i].buffer.free();
 
-        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false, true);
+        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
         set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
 
@@ -489,7 +489,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
     sbt_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     sbt_buffer_info.usage = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     sbt_buffer_info.size = entry_stride * (shader_stages.size());
-    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, entry_stride, false);
+    result.sbt.buffer = device->create_buffer(&sbt_buffer_info, entry_stride);
 
 
     // write shader stage data to sbt buffer consecutively

@@ -39,7 +39,7 @@ Image loaders::load_image(Device* device, const std::string& path, VkMemoryPrope
 
     Image result = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 1, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | additional_memory_properties, format);
 
-    Buffer image_data_buffer = device->create_buffer(result.memory_requirements.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+    Buffer image_data_buffer = device->create_buffer(result.memory_requirements.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
     void* buffer_data;
     vkMapMemory(device->vulkan_device, image_data_buffer.device_memory, image_data_buffer.device_memory_offset, image_data_buffer.buffer_size, 0, &buffer_data);
     memcpy(buffer_data, image_data, image_data_buffer.buffer_size);

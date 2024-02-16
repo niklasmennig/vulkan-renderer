@@ -20,34 +20,45 @@ uint32_t Device::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags pr
     return memtype_index;
 }
 
-void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared) {
+
+void Device::allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool* allocation_is_shared) {
     if (alignment == 0) alignment = 1;
+    bool shared = alloc_info.allocationSize < shared_allocation_size;
     if (shared) {
-        if (shared_buffer_memory.find(alloc_info.memoryTypeIndex) == shared_buffer_memory.end()) {
-            // allocate shared memory
-            VkMemoryAllocateInfo shared_alloc_info = alloc_info;
-            VkDeviceSize alloc_size = std::min(shared_buffer_size, (uint32_t)memory_properties.memoryHeaps[memory_properties.memoryTypes[alloc_info.memoryTypeIndex].heapIndex].size);
-            shared_alloc_info.allocationSize = alloc_size;
-            SharedDeviceMemory shared;
-            shared.offset = 0;
-            shared.memory = 0;
-            std::cout << "allocating shared memory" << std::endl;
-            auto allocation_error = vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &shared.memory);
-            if (allocation_error != VK_SUCCESS) {
-                std::cout << "error code " << (int)allocation_error << std::endl;
-                throw std::runtime_error("error allocating shared memory");
-            }
-            shared.size = alloc_size;
-            shared_buffer_memory.emplace(alloc_info.memoryTypeIndex, shared);
+        *allocation_is_shared = true;
+        if (shared_allocations.find(alloc_info.memoryTypeIndex) == shared_allocations.end()) {
+            shared_allocations[alloc_info.memoryTypeIndex] = std::vector<SharedAllocation>();
         }
-        SharedDeviceMemory* shared_memory = &shared_buffer_memory[alloc_info.memoryTypeIndex];
-        // align memory
-        shared_memory->offset = memory::align_up(shared_memory->offset, alignment);
-        *memory = shared_memory->memory;
-        *offset = shared_memory->offset;
-        if (shared_memory->offset + alloc_info.allocationSize > shared_memory->size) std::cerr << "shared memory allocation oversteps heap size" << std::endl;
-        shared_memory->offset += alloc_info.allocationSize;
+
+        std::vector<SharedAllocation>& allocations = shared_allocations[alloc_info.memoryTypeIndex];
+
+        // find existing allocation with enough free space
+        for (auto& allocation : allocations) {
+            if (shared_allocation_size - memory::align_up(allocation.current_offset, alignment) > alloc_info.allocationSize) {
+                // found existing allocation
+                *memory = allocation.memory;
+                allocation.current_offset = memory::align_up(allocation.current_offset, alignment);
+                *offset = allocation.current_offset;
+                allocation.current_offset += alloc_info.allocationSize;
+                return;
+            }
+        }
+
+        // no previously existing allocation found, allocate new shared memory
+        VkMemoryAllocateInfo shared_alloc_info = alloc_info;
+        shared_alloc_info.allocationSize = shared_allocation_size;
+        SharedAllocation allocation;
+        auto allocation_error = vkAllocateMemory(vulkan_device, &shared_alloc_info, nullptr, &allocation.memory);
+        if (allocation_error != VK_SUCCESS) {
+            std::cout << "error code " << (int)allocation_error << std::endl;
+            throw std::runtime_error("error allocating shared memory");
+        }
+        *memory = allocation.memory;
+        *offset = 0;
+        allocation.current_offset = alloc_info.allocationSize;
+        shared_allocations[alloc_info.memoryTypeIndex].push_back(allocation);
     } else {
+        *allocation_is_shared = false;
         VkResult res = vkAllocateMemory(vulkan_device, &alloc_info, nullptr, memory);
         if (res != VK_SUCCESS) {
             std::cout << "ERROR " << res << std::endl;
@@ -90,7 +101,7 @@ void Device::end_single_use_command_buffer(VkCommandBuffer cmd_buffer) {
     vkFreeCommandBuffers(vulkan_device, command_pool, 1, &cmd_buffer);
 }
 
-Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, bool shared, bool exportable)
+Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, bool exportable)
 {
     Buffer result{};
     result.device_handle = vulkan_device;
@@ -144,25 +155,26 @@ Buffer Device::create_buffer(VkBufferCreateInfo *create_info, size_t alignment, 
 
     size_t memory_alignment = std::max(mem_requirements.alignment, alignment);
 
-    allocate_memory(alloc_info, memory_alignment, &result.device_memory, &result.device_memory_offset, shared);
-    if (shared) std::cout << "Binding Buffer to shared memory at heap " << memtype_index << " in range "  << result.device_memory_offset << " - " << result.device_memory_offset + result.buffer_size << std::endl;
+    bool uses_shared_allocation;
+    allocate_memory(alloc_info, memory_alignment, &result.device_memory, &result.device_memory_offset, &uses_shared_allocation);
+    if (uses_shared_allocation) std::cout << "Binding Buffer to shared memory at heap " << memtype_index << " in range "  << result.device_memory_offset << " - " << result.device_memory_offset + result.buffer_size << std::endl;
     vkBindBufferMemory(vulkan_device, result.buffer_handle, result.device_memory, result.device_memory_offset);
 
-    result.shared = shared;
+    result.shared = uses_shared_allocation;
 
     return result;
 }
 
-Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, bool shared, bool exportable) {
+Buffer Device::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, bool exportable) {
     VkBufferCreateInfo create_info {};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     create_info.size = size;
     create_info.usage = usage;
 
-    return create_buffer(&create_info, 4, shared, exportable);
+    return create_buffer(&create_info, 4, exportable);
 }
 
-Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format, VkFilter filter, VkSamplerAddressMode uv_mode, bool shared) {
+Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers, VkMemoryPropertyFlags memory_properties, VkFormat format, VkFilter filter, VkSamplerAddressMode uv_mode) {
     if (format == VK_FORMAT_UNDEFINED) format = surface_format.format;
 
     VkBufferCreateInfo buffer_info{};
@@ -207,12 +219,13 @@ Image Device::create_image(uint32_t width, uint32_t height, VkImageUsageFlags us
     alloc_info.allocationSize = result.memory_requirements.size;
     alloc_info.memoryTypeIndex = find_memory_type(result.memory_requirements.memoryTypeBits, memory_properties);
 
-    allocate_memory(alloc_info, result.memory_requirements.alignment, &result.texture_memory, &result.texture_memory_offset, shared);
+    bool uses_shared_allocation;
+    allocate_memory(alloc_info, result.memory_requirements.alignment, &result.texture_memory, &result.texture_memory_offset, &uses_shared_allocation);
 
-    if(shared) std::cout << "Binding Image to shared memory at " << alloc_info.memoryTypeIndex << " in range " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
+    if(uses_shared_allocation) std::cout << "Binding Image to shared memory at " << alloc_info.memoryTypeIndex << " in range " << result.texture_memory_offset << " - " << result.texture_memory_offset + alloc_info.allocationSize << std::endl;
     vkBindImageMemory(vulkan_device, result.image_handle, result.texture_memory, result.texture_memory_offset);
 
-    result.shared_memory = shared;
+    result.shared_memory = uses_shared_allocation;
 
     VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
     if (array_layers > 1) view_type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;

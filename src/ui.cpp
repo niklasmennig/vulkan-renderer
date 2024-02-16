@@ -45,6 +45,7 @@ void UI::draw() {
 
     changed |= ImGui::Checkbox("Direct Lighting", &direct_lighting_enabled);
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
+    changed |= ImGui::Checkbox("ReSTIR Direct Lighting", &restir_enabled);
 
     changed |= ImGui::Checkbox("Use Processing Pipeline", &use_processing_pipeline);
     

@@ -33,7 +33,7 @@ void CreatedPipelineImage::resize(unsigned int width, unsigned int height) {
 
 CreatedPipelineImage* ProcessingPipelineBuilder::create_image(unsigned int width, unsigned int height) {
     created_images.push_back( CreatedPipelineImage {
-        device->create_image(width, height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1,VK_FORMAT_R8G8B8A8_UNORM, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false),
+        device->create_image(width, height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1,VK_FORMAT_R8G8B8A8_UNORM, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE),
         VkExtent2D{width, height}
     });
     return &created_images.back();
@@ -45,7 +45,7 @@ ComputeShader* ProcessingPipelineBuilder::create_compute_shader(std::string path
 }
 
 Buffer ProcessingPipelineBuilder::create_buffer(uint32_t size) {
-    return device->create_buffer(size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+    return device->create_buffer(size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 }
 
 void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
@@ -59,7 +59,7 @@ void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, Vk
             // resize created image to target size
             std::cout << "resizing pipeline image" << std::endl;
             created_image.image.free();
-            created_image.image = device->create_image(created_image.target_size.width, created_image.target_size.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1,VK_FORMAT_R8G8B8A8_UNORM, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+            created_image.image = device->create_image(created_image.target_size.width, created_image.target_size.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1,VK_FORMAT_R8G8B8A8_UNORM, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
             created_image.image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_GENERAL, 0);
         }
     }

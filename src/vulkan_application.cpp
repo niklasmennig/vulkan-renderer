@@ -69,7 +69,7 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     index_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     index_buffer_info.size = sizeof(uint32_t) * indices.size();
     index_buffer_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.indices = device.create_buffer(&index_buffer_info, 4, false);
+    res.indices = device.create_buffer(&index_buffer_info, 4);
 
     res.indices.set_data(indices.data());
 
@@ -77,7 +77,7 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     vertex_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vertex_buffer_info.size = sizeof(vec3) * vertices.size();
     vertex_buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.vertices = device.create_buffer(&vertex_buffer_info, 4, false);
+    res.vertices = device.create_buffer(&vertex_buffer_info, 4);
 
     res.vertices.set_data(vertices.data());
 
@@ -85,7 +85,7 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     normal_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     normal_buffer_info.size = sizeof(vec3) * normals.size();
     normal_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.normals = device.create_buffer(&normal_buffer_info, 4, false);
+    res.normals = device.create_buffer(&normal_buffer_info, 4);
 
     res.normals.set_data(normals.data());
 
@@ -93,7 +93,7 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     texcoord_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     texcoord_buffer_info.size = sizeof(vec2) * texcoords.size();
     texcoord_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.texcoords = device.create_buffer(&texcoord_buffer_info, 4, false);
+    res.texcoords = device.create_buffer(&texcoord_buffer_info, 4);
 
     res.texcoords.set_data(texcoords.data());
 
@@ -101,7 +101,7 @@ MeshData VulkanApplication::create_mesh_data(std::vector<uint32_t> &indices, std
     tangent_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     tangent_buffer_info.size = sizeof(vec3) * tangents.size();
     tangent_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    res.tangents = device.create_buffer(&tangent_buffer_info, 4, false);
+    res.tangents = device.create_buffer(&tangent_buffer_info, 4);
 
     res.tangents.set_data(tangents.data());
 
@@ -123,10 +123,10 @@ AccelerationStructure VulkanApplication::build_blas(std::vector<uint32_t> &indic
     geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
     geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
 
-    Buffer vertex_buffer = device.create_buffer(vertices.size() * sizeof(vec3), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR, false);
+    Buffer vertex_buffer = device.create_buffer(vertices.size() * sizeof(vec3), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
     vertex_buffer.set_data(vertices.data());
 
-    Buffer index_buffer = device.create_buffer(indices.size() * sizeof(uint32_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR, false);
+    Buffer index_buffer = device.create_buffer(indices.size() * sizeof(uint32_t), VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
     index_buffer.set_data(indices.data());
 
     geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
@@ -167,7 +167,7 @@ AccelerationStructure VulkanApplication::build_blas(std::vector<uint32_t> &indic
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    Buffer scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment, false);
+    Buffer scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -259,7 +259,7 @@ AccelerationStructure VulkanApplication::build_tlas() {
     instance_buffer_info.usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     instance_buffer_info.size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size();
 
-    Buffer instance_buffer = device.create_buffer(&instance_buffer_info, 4, false);
+    Buffer instance_buffer = device.create_buffer(&instance_buffer_info, 16);
 
     void* buffer_data;
     vkMapMemory(device.vulkan_device, instance_buffer.device_memory, instance_buffer.device_memory_offset, instance_buffer.buffer_size, 0, &buffer_data);
@@ -300,7 +300,7 @@ AccelerationStructure VulkanApplication::build_tlas() {
     scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR;
     scratch_buffer_info.size = acceleration_structure_size_info.buildScratchSize;
-    Buffer scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment, false);
+    Buffer scratch_buffer = device.create_buffer(&scratch_buffer_info, device.acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment);
 
     VkAccelerationStructureCreateInfoKHR as_create_info{};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -513,8 +513,8 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // ReSTIR
     std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
-    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
-    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
@@ -759,14 +759,14 @@ void VulkanApplication::recreate_render_images() {
     device.end_single_use_command_buffer(cmdbuf);
 
     restir_reservoir_buffer_0.free();
-    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
     restir_reservoir_buffer_1.free();
-    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, false);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 
     if (render_transfer_image.width > 0) render_transfer_image.free();
-    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
+    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
     accumulated_frames = 0;
     render_images_dirty = false;
@@ -814,6 +814,7 @@ void VulkanApplication::draw_frame() {
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
+        if (ui.restir_enabled) flags |= ENABLE_RESTIR;
         push_constants.flags = flags;
         vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
 
@@ -1910,8 +1911,10 @@ void VulkanApplication::cleanup() {
         vkDestroyImageView(logical_device, image_view, nullptr);
     vkDestroySwapchainKHR(logical_device, swap_chain, nullptr);
     vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
-    for (auto shared_memory = device.shared_buffer_memory.begin(); shared_memory != device.shared_buffer_memory.end(); shared_memory++) {
-        vkFreeMemory(logical_device, (*shared_memory).second.memory, nullptr);
+    for (auto shared_allocations = device.shared_allocations.begin(); shared_allocations != device.shared_allocations.end(); shared_allocations++) {
+        for (auto allocation : (*shared_allocations).second) {
+            vkFreeMemory(logical_device, allocation.memory, nullptr);
+        }
     }
     vkDestroyDevice(logical_device, nullptr);
     DestroyDebugUtilsMessengerEXT(vulkan_instance, debug_messenger, nullptr);

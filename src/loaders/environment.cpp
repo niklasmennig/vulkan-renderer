@@ -17,18 +17,18 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     int height = 50;
 
     result.image = loaders::load_image(device, path, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    Buffer image_data_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, false);
+    Buffer image_data_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     // copy on separate command buffer to make sure copy is finished when processing starts
     result.image.copy_image_to_buffer(image_data_buffer);
 
     // generate cdf texture from image
     result.cdf_map = device->create_image(width, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
     float* cdf_data = new float[width * height];
-    Buffer cdf_data_buffer = device->create_buffer(sizeof(float) * width * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+    Buffer cdf_data_buffer = device->create_buffer(sizeof(float) * width * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     result.conditional_cdf_map = device->create_image(1, height, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32_SFLOAT, VK_FILTER_NEAREST);
     float* conditional_cdf_data = new float[height];
-    Buffer conditional_cdf_data_buffer = device->create_buffer(sizeof(float) * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, false);
+    Buffer conditional_cdf_data_buffer = device->create_buffer(sizeof(float) * height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     int scan_pixels_x = std::floor(result.image.width / width);
     int scan_pixels_y = std::floor(result.image.height / height);

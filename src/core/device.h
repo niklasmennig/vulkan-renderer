@@ -14,10 +14,9 @@ struct ComputeShader;
 struct ProcessingPipelineBuilder;
 
 
-struct SharedDeviceMemory {
+struct SharedAllocation {
     VkDeviceMemory memory;
-    VkDeviceSize offset = 0;
-    VkDeviceSize size = 0;
+    VkDeviceSize current_offset = 0;
 };
 
 struct Device
@@ -39,19 +38,19 @@ struct Device
 
     
 
-    uint32_t shared_buffer_size = 2582000000;
+    uint32_t shared_allocation_size = 1048576;
     // maps memory type index to shared memory
-    std::unordered_map<uint32_t, SharedDeviceMemory> shared_buffer_memory;
+    std::unordered_map<uint32_t, std::vector<SharedAllocation>> shared_allocations;
 
 
     VkCommandBuffer begin_single_use_command_buffer();
     void end_single_use_command_buffer(VkCommandBuffer cmd_buffer);
 
-    Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 4, bool shared = true, bool exportable = false);
-    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, bool shared = true, bool exportable = false);
-    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR, VkSamplerAddressMode uv_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT, bool shared = true);
+    Buffer create_buffer(VkBufferCreateInfo *create_info, size_t alignment = 4, bool exportable = false);
+    Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, bool exportable = false);
+    Image create_image(uint32_t width, uint32_t height, VkImageUsageFlags usage, uint32_t array_layers = 1, VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VkFormat format = VK_FORMAT_UNDEFINED, VkFilter filter = VK_FILTER_LINEAR, VkSamplerAddressMode uv_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool shared = true);
+    void allocate_memory(VkMemoryAllocateInfo alloc_info, size_t alignment, VkDeviceMemory* memory, VkDeviceSize* offset, bool* allocation_is_shared);
 
     RaytracingPipelineBuilder create_raytracing_pipeline_builder();
     ProcessingPipelineBuilder create_processing_pipeline_builder();

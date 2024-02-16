@@ -125,7 +125,7 @@ void main() {
     vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
 
     // initial restir samples
-    // clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
+    clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
     for (uint restir_sample = 0; restir_sample < 16; restir_sample++) {
         uint restir_seed = random_uint(payload.seed);
         LightSample light_sample = sample_direct_light(restir_seed, payload.primary_hit_position);
@@ -138,7 +138,8 @@ void main() {
     // clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
     // update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], previous.light_index, )
 
-    if (payload.primary_hit_instance != NULL_INSTANCE) {
+    // ReSTIR contribution
+    if (payload.primary_hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
         Material material = get_material(payload.primary_hit_instance, payload.primary_hit_uv);
 
         uint nee_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
