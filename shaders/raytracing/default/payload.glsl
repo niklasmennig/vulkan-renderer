@@ -14,7 +14,6 @@ struct RayPayload {
     vec3 direction;
 
     uint seed;
-    bool end_ray;
 
     uint primary_hit_instance;
     vec3 primary_hit_position;

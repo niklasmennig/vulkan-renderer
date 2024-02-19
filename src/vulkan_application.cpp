@@ -145,7 +145,7 @@ AccelerationStructure VulkanApplication::build_blas(std::vector<uint32_t> &indic
     as_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
     as_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
     as_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-    as_info.flags = 0;
+    as_info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
     as_info.geometryCount = 1;
     as_info.pGeometries = &geometry;
 
@@ -277,7 +277,7 @@ AccelerationStructure VulkanApplication::build_tlas() {
     as_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
     as_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     as_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-    as_info.flags = 0;
+    as_info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
     as_info.geometryCount = 1;
     as_info.pGeometries = &geometry;
 
@@ -1864,6 +1864,8 @@ void VulkanApplication::cleanup() {
     // deinitialization
     lights_buffer.free();
     camera_buffer.free();
+    restir_reservoir_buffer_0.free();
+    restir_reservoir_buffer_1.free();
     for (Image i : loaded_textures) {
         i.free();
     }

@@ -126,4 +126,31 @@ void main() {
             }
         }
     }
+
+    payload.depth += 1;
+
+    if (payload.depth > 2) {
+        float rr_probability = luminance(payload.contribution);
+        if (random_float(payload.seed) > rr_probability) {
+            payload.contribution /= rr_probability;
+        } else {
+            return;
+        }
+    }
+
+    if (payload.depth < push_constants.constants.max_depth) {
+        traceRayEXT(
+            as,
+            0,
+            0xff,
+            0,
+            push_constants.constants.sbt_stride,
+            0,
+            payload.origin,
+            EPSILON,
+            payload.direction,
+            RAY_LEN_MAX,
+            0
+        );
+    }
 }

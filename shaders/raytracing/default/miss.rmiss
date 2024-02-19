@@ -29,5 +29,5 @@ void main() {
         payload.color += payload.contribution * env_contribution;
     }
 
-    payload.end_ray = true;
+    return;
 }

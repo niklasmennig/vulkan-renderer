@@ -89,10 +89,8 @@ void main() {
         payload.contribution = vec3(1.0);
 
         payload.seed = seed;
-        payload.end_ray = false;
 
-        while (!payload.end_ray) {
-            traceRayEXT(
+        traceRayEXT(
                 as,
                 0,
                 0xff,
@@ -105,19 +103,6 @@ void main() {
                 RAY_LEN_MAX,
                 0
             );
-
-            payload.depth += 1;
-            if (payload.depth > push_constants.constants.max_depth) payload.end_ray = true;
-
-            if (payload.depth > 2) {
-                float rr_probability = luminance(payload.contribution);
-                if (random_float(payload.seed) > rr_probability) {
-                    payload.contribution /= rr_probability;
-                } else {
-                    payload.end_ray = true;
-                }
-            }
-        }
 
         multisample_color += clamp(payload.color, vec3(0.0), vec3(FLT_MAX));
     }
