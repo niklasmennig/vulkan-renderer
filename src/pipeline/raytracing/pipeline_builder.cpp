@@ -111,8 +111,6 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_RAYGEN_BIT_KHR, "./shaders/raytracing/default/ray_gen.rgen")));
     add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/default/closest_hit.rchit")));
     add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/default/miss.rmiss")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, "./shaders/raytracing/default/occlusion_hit.rchit")));
-    add_stage(std::make_shared<RaytracingPipelineStageSimple>(RaytracingPipelineStageSimple(VK_SHADER_STAGE_MISS_BIT_KHR, "./shaders/raytracing/default/occlusion_miss.rmiss")));
 
     return *this;
 }

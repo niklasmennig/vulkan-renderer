@@ -1,5 +1,6 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 
 #include "payload.glsl"
 #include "../mesh_data.glsl"
@@ -16,7 +17,6 @@
 hitAttributeEXT vec2 barycentrics;
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(location = 1) rayPayloadEXT bool shadowray_occluded;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
@@ -91,22 +91,11 @@ void main() {
         uint nee_seed = payload.seed;
         LightSample light_sample = sample_direct_light(payload.seed, position);
 
-        shadowray_occluded = true;
-        traceRayEXT(
-            as,
-            gl_RayFlagsTerminateOnFirstHitEXT,
-            0xff,
-            1,
-            push_constants.constants.sbt_stride,
-            1,
-            position,
-            EPSILON,
-            light_sample.direction,
-            light_sample.distance - 2.0 * EPSILON,
-            1
-        );
+        rayQueryEXT ray_query;
+        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, position, EPSILON, light_sample.direction, light_sample.distance - 2.0 * EPSILON);
+        rayQueryProceedEXT(ray_query);
 
-        if (!shadowray_occluded) {
+        if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
             vec3 bsdf_eval = eval_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);  

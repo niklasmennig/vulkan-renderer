@@ -1,5 +1,6 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
 #extension GL_EXT_ray_flags_primitive_culling : enable
 #extension GL_GOOGLE_include_directive : enable
 
@@ -13,7 +14,6 @@
 #include "../restir.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
-layout(location = 1) rayPayloadEXT bool shadowray_occluded;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
@@ -111,7 +111,7 @@ void main() {
 
     // initial restir samples
     clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
-    for (uint restir_sample = 0; restir_sample < 16; restir_sample++) {
+    for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
         uint restir_seed = random_uint(payload.seed);
         LightSample light_sample = sample_direct_light(restir_seed, payload.primary_hit_position);
         float p_hat = luminance(light_sample.intensity) * dot(light_sample.direction, payload.primary_hit_normal);
@@ -131,21 +131,11 @@ void main() {
         LightSample light_sample = sample_direct_light(nee_seed, payload.primary_hit_position);
         vec3 light_direction = light_sample.direction;
 
-        traceRayEXT(
-            as,
-            gl_RayFlagsTerminateOnFirstHitEXT,
-            0xff,
-            1,
-            push_constants.constants.sbt_stride,
-            1,
-            payload.primary_hit_position,
-            EPSILON,
-            light_direction,
-            light_sample.distance - 2.0 * EPSILON,
-            1
-        );
+        rayQueryEXT ray_query;
+        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, payload.primary_hit_position, EPSILON, light_direction, light_sample.distance - 2.0 * EPSILON);
+        rayQueryProceedEXT(ray_query);
 
-        if (!shadowray_occluded) {
+        if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             mat3x3 shading_space = transpose(basis(payload.primary_hit_normal));
 
             vec3 bsdf_eval = eval_ggx(shading_space * -normalize(payload.primary_hit_position - ray_origin), shading_space * -light_direction, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior); 
