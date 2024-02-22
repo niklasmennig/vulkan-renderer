@@ -27,14 +27,15 @@ layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_REST
 
 LightSample sample_direct_light(inout uint seed, vec3 position) {
     LightSample light_sample;
-    if (random_float(payload.seed) <= 0.5) {
-        light_sample = sample_environment(payload.seed, push_constants.constants.environment_cdf_dimensions);
+    if (random_float(seed) < 0.5) {
+        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
     } else {
-        uint light_idx = uint(floor(push_constants.constants.light_count * random_float(payload.seed)));
+        uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
         Light light = lights_data.lights[light_idx];
-        light_sample = sample_light(position, payload.seed, light);
+        light_sample = sample_light(position, seed, light);
+        light_sample.intensity *= push_constants.constants.light_count;
     }
-
+    light_sample.intensity *= 2.0;
     return light_sample;
 }
 
@@ -83,11 +84,9 @@ void main() {
 
     payload.origin = position;
     payload.direction = normalize(transform_world * vec4(bsdf_sample.direction, 0.0));
-
-    payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;
     
     // direct lighting
-    if (!bsdf_sample.specular && front_facing && (push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
+    if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
         uint nee_seed = payload.seed;
         LightSample light_sample = sample_direct_light(payload.seed, position);
 
@@ -98,23 +97,26 @@ void main() {
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
-            vec3 bsdf_eval = eval_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);  
+            vec3 bsdf_eval = eval_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
+            // vec3 bsdf_eval = material.base_color;
+
             float bsdf_pdf = pdf_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0, 1);
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity;
+            // vec3 nee_contribution = vec3(1.0);
 
-            if (payload.depth == 1) {
-                update_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index], nee_seed, luminance(light_sample.intensity), payload.seed);
-            } else {
-                float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
+            if (payload.depth >= 0) {
+                // float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
+                float mis = 1.0;
                 payload.color += mis * nee_contribution;
             }
-        } else {
-            if (payload.depth == 1) {
-                clear_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index]);
-            }
+        // } else {
+        //     if (payload.depth == 1) {
+        //         clear_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index]);
+        //     }
         }
     }
+    payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;
 
     payload.depth += 1;
 

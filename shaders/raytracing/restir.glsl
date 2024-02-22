@@ -10,7 +10,7 @@ struct Reservoir {
     uint num_samples;
     float sum_weights;
     uint sample_seed;
-    float padding;
+    float weight;
 };
 
 #ifndef SHADER_STRUCTS_ONLY
@@ -20,14 +20,8 @@ void update_reservoir(inout Reservoir r, uint sample_seed, float weight, inout u
     r.num_samples = r.num_samples + 1;
     if (random_float(seed) < weight / r.sum_weights) {
         r.sample_seed = sample_seed;
+        r.weight = weight;
     }
-}
-
-void combine_reservoirs(inout Reservoir r, Reservoir r1, inout uint seed) {
-    uint old_samples = r.num_samples;
-    update_reservoir(r, r1.sample_seed, r1.sum_weights, seed);
-    r.num_samples = old_samples + r1.num_samples;
-    r.sum_weights = r.sum_weights + r1.sum_weights;
 }
 
 void clear_reservoir(inout Reservoir r) {

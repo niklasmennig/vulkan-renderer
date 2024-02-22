@@ -47,8 +47,8 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
         }
     }
 
-    float sample_pdf_cdf = cdf_hi - cdf_low;
-    float sample_pdf_conditional = conditional_hi - conditional_low;
+    float sample_pdf_cdf = (cdf_hi - cdf_low) * map_dimensions.y;
+    float sample_pdf_conditional = (conditional_hi - conditional_low) * map_dimensions.x;
 
     // sample pixel offset for environment map intensity sample
     vec2 offset = vec2(random_float(seed), random_float(seed)) * vec2(x_step, y_step);
@@ -57,7 +57,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     float theta = sample_uv.y * PI;
     float phi = sample_uv.x * 2.0 * PI;
 
-    float sample_pdf = sample_pdf_cdf * sample_pdf_conditional / (4.0 * PI);
+    float sample_pdf = sample_pdf_cdf * sample_pdf_conditional * (sin(theta) * 2.0 * PI * PI);
     
     LightSample result;
     result.pdf = sample_pdf;

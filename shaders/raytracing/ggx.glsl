@@ -42,7 +42,7 @@ vec3 eval_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
   vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
   f0 = mix(f0, base_color, metallic);
 
-  // specular
+  // glossy
   vec3 f = fresnel_schlick(oh, f0);
   float d = d_ggx(nh, roughness);
   float g = g_smith(no, ni, roughness);

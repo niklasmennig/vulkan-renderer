@@ -3,7 +3,7 @@
 
 [objects]
     [objects.bistro]
-    path = "./gltf/bistro/untitled.gltf"
+    path = "./gltf/bistro/bistro.gltf"
 
 [instances]
     [instances.bistro]

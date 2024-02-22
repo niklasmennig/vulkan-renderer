@@ -23,6 +23,9 @@ void main() {
         payload.primary_hit_instance = NULL_INSTANCE;
         payload.primary_hit_albedo = env_contribution;
         payload.primary_hit_normal = vec3(0.0);
+
+        payload.environment_cdf = sample_texture(1, vec2(u,v)).r;
+        payload.environment_conditional = sample_texture(2, vec2(u,v)).r;
     }
 
     if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {

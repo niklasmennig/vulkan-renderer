@@ -37,7 +37,7 @@ LightSample sample_light(vec3 position, inout uint seed, Light light) {
             light_sample.distance = distance;
             float attenuation = pow(1.0 / distance, 2.0);
             light_sample.intensity = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]) * attenuation);
-            light_sample.pdf = 1.0;
+            light_sample.pdf = FLT_MAX;
             break;
         case 1: // AREA LIGHT
             uint instance = light.uint_data[1];
