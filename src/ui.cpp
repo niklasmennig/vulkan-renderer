@@ -50,10 +50,7 @@ void UI::draw() {
     changed |= ImGui::Checkbox("Use Processing Pipeline", &use_processing_pipeline);
     
     if (ImGui::Button("Save Screenshot")) {
-        std::cout << "TODO: IMPLEMENT save screenshot" << std::endl;
-        // ImagePixels pixels =  application->get_pipeline().get_output_image(selected_output_image).image.get_pixels();
-        // if (selected_output_image == "Accumulated Color") pixels.multiplier = 1.0f / application->get_samples();
-        // application->save_screenshot("screenshot.exr", pixels);
+        application->save_screenshot("screenshot.exr");
     }
 
     if (ImGui::Button("Rebuild Pipeline")) {

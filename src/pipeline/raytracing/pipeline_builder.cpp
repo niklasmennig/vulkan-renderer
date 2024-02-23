@@ -69,7 +69,7 @@ void RaytracingPipelineBuilder::add_descriptor(std::string name, uint32_t set, u
 
 // adds the specified image to the pipelines' output images
 // hidden: hide in display selection UI
-void RaytracingPipelineBuilder::add_output_buffer(std::string name, bool hidden) {
+void RaytracingPipelineBuilder::add_output_buffer(std::string name, size_t entry_size, bool hidden) {
     if (name.empty()) {
         std::cerr << "unnamed output images are not allowed" << std::endl;
         exit(1);
@@ -77,6 +77,7 @@ void RaytracingPipelineBuilder::add_output_buffer(std::string name, bool hidden)
 
     output_buffers.push_back(RaytracingPipelineBuilderOutputBuffer {
         name,
+        entry_size,
         hidden
     });
 }
@@ -89,7 +90,7 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_output_buffer("Accumulated Color");
     add_output_buffer("Albedo");
     add_output_buffer("Normals");
-    add_output_buffer("Instance Indices", true);
+    add_output_buffer("Instance Indices", sizeof(vec4), true);
     add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Roughness");
     add_output_buffer("Ray Depth");
@@ -226,7 +227,8 @@ void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2
     for (int i = 0; i < created_output_buffers.size(); i++) {
         created_output_buffers[i].buffer.free();
 
-        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * sizeof(vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+        size_t entry_size = created_output_buffers[i].entry_size;
+        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * entry_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
         set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
 
@@ -258,6 +260,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
         OutputBuffer buffer;
         buffer.name = output_buffers[i].name;
         buffer.hidden = output_buffers[i].hidden;
+        buffer.entry_size = output_buffers[i].entry_size;
         result.created_output_buffers.push_back(buffer);
         named_output_buffer_indices[output_buffers[i].name] = i;
     }

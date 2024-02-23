@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <filesystem>
 
+#include "exr_export.h"
+
 #include "loaders/shader_spirv.h"
 #include "loaders/geometry_gltf.h"
 
@@ -766,7 +768,7 @@ void VulkanApplication::recreate_render_images() {
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 
     if (render_transfer_image.width > 0) render_transfer_image.free();
-    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
     accumulated_frames = 0;
     render_images_dirty = false;
@@ -1962,8 +1964,11 @@ void VulkanApplication::set_pipeline_dirty() {
     pipeline_dirty = true;
 }
 
-void VulkanApplication::save_screenshot(std::string path, ImagePixels& pixels) {
-    loaders::save_exr_image(pixels, path);
+void VulkanApplication::save_screenshot(std::string path) {
+    void* image_data;
+    vkMapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory, render_transfer_image.texture_memory_offset, render_transfer_image.memory_requirements.size, 0, &image_data);
+    save_exr_image(path.c_str(), image_data, swap_chain_extent.width, swap_chain_extent.height, sizeof(float) * 4);
+    vkUnmapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory);
 }
 
 double VulkanApplication::get_fps() {

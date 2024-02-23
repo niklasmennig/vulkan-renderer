@@ -8,6 +8,7 @@ target_sources(renderer PRIVATE
     core/device.cpp
     core/buffer.cpp
     core/image.cpp
+    exr_export.cpp
     loaders/mikktspace/mikktspace.c
     loaders/geometry.cpp
     loaders/geometry_gltf.cpp

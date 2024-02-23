@@ -10,10 +10,6 @@ using vec3 = glm::vec3;
 
 struct Device;
 
-struct ImagePixels {
-
-};
-
 struct Image
 {
     Device* device;

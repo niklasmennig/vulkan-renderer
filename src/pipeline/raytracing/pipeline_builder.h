@@ -36,6 +36,7 @@ struct OutputBuffer
     Buffer buffer;
     std::string name;
     bool hidden;
+    size_t entry_size;
 
     vec3 get_color(uint32_t pixel_index);
 };
@@ -83,6 +84,7 @@ struct RaytracingPipelineBuilderDescriptor
 struct RaytracingPipelineBuilderOutputBuffer
 {
     std::string name;
+    size_t entry_size;
     bool hidden;
 };
 
@@ -99,7 +101,7 @@ struct RaytracingPipelineBuilder
     uint32_t callable_stages = 0;
 
     void add_descriptor(std::string name, uint32_t set, uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, size_t descriptor_count = 1);
-    void add_output_buffer(std::string name, bool hidden = false);
+    void add_output_buffer(std::string name, size_t entry_size = sizeof(float) * 4, bool hidden = false);
     void add_stage(std::shared_ptr<RaytracingPipelineStage> stage);
 
 
