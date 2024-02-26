@@ -95,19 +95,18 @@ void main() {
         rayQueryProceedEXT(ray_query);
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
+            vec3 ray_dir_local = transform_object * vec4(ray_out, 0.0);
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
-            vec3 bsdf_eval = eval_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
-            // vec3 bsdf_eval = material.base_color;
+            vec3 bsdf_eval = eval_ggx(ray_dir_local, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
 
-            float bsdf_pdf = pdf_ggx(ray_out, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
+            float bsdf_pdf = pdf_ggx(ray_dir_local, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
 
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity;
-            // vec3 nee_contribution = vec3(1.0);
 
             if (payload.depth >= 0) {
-                // float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
-                float mis = 1.0;
+                float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
+                // float mis = 1.0;
                 payload.color += mis * nee_contribution;
             }
         // } else {
