@@ -104,15 +104,14 @@ void main() {
 
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity;
 
-            if (payload.depth >= 0) {
+            uint di_depth = 1;
+            if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
+
+            if (payload.depth >= di_depth) {
                 float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
                 // float mis = 1.0;
                 payload.color += mis * nee_contribution;
             }
-        // } else {
-        //     if (payload.depth == 1) {
-        //         clear_reservoir(restir_reservoirs[payload.restir_index].reservoirs[payload.pixel_index]);
-        //     }
         }
     }
     payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;

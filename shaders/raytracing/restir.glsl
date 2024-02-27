@@ -25,8 +25,10 @@ void update_reservoir(inout Reservoir r, uint sample_seed, float weight, inout u
 }
 
 void clear_reservoir(inout Reservoir r) {
-    r.sum_weights = 0;
+    r.sum_weights = 0.0;
     r.num_samples = 0;
+    r.sample_seed = 0;
+    r.weight = 0.0;
 }
 
 #endif

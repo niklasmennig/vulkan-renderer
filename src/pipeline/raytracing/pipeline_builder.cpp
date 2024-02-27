@@ -69,7 +69,7 @@ void RaytracingPipelineBuilder::add_descriptor(std::string name, uint32_t set, u
 
 // adds the specified image to the pipelines' output images
 // hidden: hide in display selection UI
-void RaytracingPipelineBuilder::add_output_buffer(std::string name, size_t entry_size, bool hidden) {
+void RaytracingPipelineBuilder::add_output_buffer(std::string name, size_t entry_size, bool hidden, bool exportable) {
     if (name.empty()) {
         std::cerr << "unnamed output images are not allowed" << std::endl;
         exit(1);
@@ -78,7 +78,8 @@ void RaytracingPipelineBuilder::add_output_buffer(std::string name, size_t entry
     output_buffers.push_back(RaytracingPipelineBuilderOutputBuffer {
         name,
         entry_size,
-        hidden
+        hidden,
+        exportable
     });
 }
 
@@ -86,11 +87,11 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
     add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-    add_output_buffer("Result Image");
+    add_output_buffer("Result Image", sizeof(vec4), false, true);
     add_output_buffer("Accumulated Color");
     add_output_buffer("Albedo");
     add_output_buffer("Normals");
-    add_output_buffer("Instance Indices", sizeof(vec4), true);
+    add_output_buffer("Instance Indices", sizeof(vec4), false, false);
     add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Roughness");
     add_output_buffer("Ray Depth");
@@ -228,7 +229,7 @@ void RaytracingPipeline::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2
         created_output_buffers[i].buffer.free();
 
         size_t entry_size = created_output_buffers[i].entry_size;
-        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * entry_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+        created_output_buffers[i].buffer = device->create_buffer(image_extent.width * image_extent.height * entry_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, created_output_buffers[i].exportable);
         set_descriptor_buffer_binding("outputs", created_output_buffers[i].buffer, BufferType::Storage, i); 
     }
 
@@ -260,6 +261,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
         OutputBuffer buffer;
         buffer.name = output_buffers[i].name;
         buffer.hidden = output_buffers[i].hidden;
+        buffer.exportable = output_buffers[i].exportable;
         buffer.entry_size = output_buffers[i].entry_size;
         result.created_output_buffers.push_back(buffer);
         named_output_buffer_indices[output_buffers[i].name] = i;

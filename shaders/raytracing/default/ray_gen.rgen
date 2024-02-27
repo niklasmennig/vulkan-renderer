@@ -115,7 +115,6 @@ void main() {
     clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
     for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
         const uint restir_seed = random_uint(payload.seed);
-        // const uint restir_seed = 0;
         uint current_seed = restir_seed;
         LightSample light_sample = sample_direct_light(current_seed, payload.primary_hit_position);
         float p_hat = luminance(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
@@ -123,22 +122,23 @@ void main() {
     }
 
     // temporal reuse
-    // Reservoir temporal;
+    Reservoir temporal;
+    clear_reservoir(temporal);
 
-    // // update with current sample
-    // uint current_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
-    // LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-    // float p_hat = luminance(current_sample.intensity) * dot(current_sample.direction, payload.primary_hit_normal);
-    // update_reservoir(temporal, current_seed, p_hat, payload.seed);
+    // update with current sample
+    uint current_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
+    LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
+    float p_hat = luminance(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
+    update_reservoir(temporal, current_seed, p_hat, payload.seed);
 
-    // // update with previous sample
-    // uint previous_seed = restir_reservoirs[restir_index_previous].reservoirs[pixel_index].sample_seed;
-    // LightSample previous_sample = sample_direct_light(previous_seed, payload.primary_hit_position);
-    // float p_hat_previous = luminance(previous_sample.intensity) * dot(previous_sample.direction, payload.primary_hit_normal);
-    // update_reservoir(temporal, previous_seed, p_hat_previous, payload.seed);
+    // update with previous sample
+    uint previous_seed = restir_reservoirs[restir_index_previous].reservoirs[pixel_index].sample_seed;
+    LightSample previous_sample = sample_direct_light(previous_seed, payload.primary_hit_position);
+    float p_hat_previous = luminance(previous_sample.intensity) * dot(previous_sample.direction, payload.primary_hit_normal);
+    update_reservoir(temporal, previous_seed, p_hat_previous, payload.seed);
 
-    // // use combined sample
-    // restir_reservoirs[restir_index].reservoirs[pixel_index] = temporal;
+    // use combined sample
+    restir_reservoirs[restir_index].reservoirs[pixel_index] = temporal;
 
     // ReSTIR contribution
     if (payload.primary_hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
@@ -179,9 +179,18 @@ void main() {
     output_buffers[OUTPUT_IMAGE_ALBEDO].color[pixel_index] = vec4(payload.primary_hit_albedo, 1.0);
     output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 0.0);
 
+    uint instance = payload.primary_hit_instance;
+    if (instance != NULL_INSTANCE) {
+        vec3 instance_color = vec3(float(uint(float(instance) / (255.0 * 255.0)) % 255) / 255.0, float(uint(float(instance) / 255.0) % 255) / 255.0, float(instance % 255) / 255.0);
+        output_buffers[OUTPUT_IMAGE_INSTANCE].color[pixel_index] = vec4(instance_color, 1.0);
+        output_buffers[OUTPUT_IMAGE_INSTANCE_COLOR].color[pixel_index] = vec4(random_vec3(instance), 1.0);
+    } else {
+        output_buffers[OUTPUT_IMAGE_INSTANCE].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
+        output_buffers[OUTPUT_IMAGE_INSTANCE_COLOR].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
 
-    uint restir_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
-    output_buffers[7].color[pixel_index] = vec4(random_vec3(restir_seed), 0.0);
+    output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 0.0);
 }

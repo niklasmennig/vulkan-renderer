@@ -898,14 +898,18 @@ void VulkanApplication::draw_frame() {
 
         render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
 
-        // vec2 cursor_pos = get_cursor_position();
-        // if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
-        //     uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
-        //     ui.color_under_cursor = selected_output.get_color(cursor_pixel_offset);
-        // }
-
         vkCmdCopyBufferToImage(command_buffer, output_image_buffer->buffer_handle, render_transfer_image.image_handle, render_transfer_image.layout, 1, &output_buffer_copy);
         render_transfer_image.transition_layout(command_buffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0);
+        
+        vec2 cursor_pos = get_cursor_position();
+        if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
+            uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
+            uint32_t color_byte_offset = cursor_pixel_offset * sizeof(vec4);
+            uint8_t* data;
+            vkMapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory, render_transfer_image.texture_memory_offset, VK_WHOLE_SIZE, 0, (void**)&data);
+            ui.color_under_cursor = *reinterpret_cast<vec3*>(data + color_byte_offset);
+            vkUnmapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory);
+        }
 
         VkImageBlit transfer_blit {};
         transfer_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1665,17 +1669,22 @@ void VulkanApplication::setup() {
             if (action == GLFW_PRESS) {
                 app->mouse_look_active = true;
                 if (!app->ui.is_hovered()) {
-                    // uint32_t pixel_index = (uint32_t)(app->get_cursor_position().x * app->render_scale) + (uint32_t)(app->get_cursor_position().y * app->render_scale) * app->render_image_extent.width;
-                    // vec3 hovered_instance_color = app->rt_pipeline.get_output_buffer("Instance Indices").get_color(pixel_index);
-                    // int instance_index = hovered_instance_color.b + hovered_instance_color.g * (255) + hovered_instance_color.r * (255*255);
-                    // if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
+                    uint32_t pixel_index = (uint32_t)(app->get_cursor_position().x * app->render_scale) + (uint32_t)(app->get_cursor_position().y * app->render_scale) * app->render_image_extent.width;
+                    OutputBuffer& instance_colors = app->rt_pipeline.get_output_buffer("Instance Indices");
+                    uint32_t color_byte_offset = pixel_index * instance_colors.entry_size;
+                    uint8_t* data;
+                    vkMapMemory(instance_colors.buffer.device_handle, instance_colors.buffer.device_memory, instance_colors.buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&data);
+                    vec3 hovered_instance_color = *reinterpret_cast<vec3*>(data + color_byte_offset);
+                    vkUnmapMemory(instance_colors.buffer.device_handle, instance_colors.buffer.device_memory);
+                    int instance_index = hovered_instance_color.b * 255 + hovered_instance_color.g * (255 * 255) + hovered_instance_color.r * (255 * 255 * 255);
+                    if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
-                    // app->ui.selected_instance = instance_index;
-                    // if (instance_index != -1) {
-                    //     app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
-                    // } else {
-                    //     app->ui.selected_instance_parameters = nullptr;
-                    // }
+                    app->ui.selected_instance = instance_index;
+                    if (instance_index != -1) {
+                        app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
+                    } else {
+                        app->ui.selected_instance_parameters = nullptr;
+                    }
                 }
             } else {
                 app->mouse_look_active = false;
