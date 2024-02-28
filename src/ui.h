@@ -26,7 +26,7 @@ public:
     float render_scale = 1.0f;
     vec3 color_under_cursor = vec3(0);
     int max_ray_depth = 5;
-    int frame_samples = 4;
+    int frame_samples = 1;
     bool direct_lighting_enabled;
     bool indirect_lighting_enabled;
     bool restir_enabled;

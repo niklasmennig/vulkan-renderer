@@ -79,35 +79,36 @@ float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float m
 
 BSDFSample sample_ggx(in vec3 out_dir, 
               in vec3 baseColor, float opacity, in float metallicness, 
-              in float fresnelReflect, in float roughness, in float transmission, in float ior, in uint seed, bool inner_reflection) 
+              in float fresnelReflect, in float roughness, in float transmission, in float ior, in uint seed, bool front_facing) 
 {
-    vec3 normal = vec3(0,1,0);
+  vec3 normal = vec3(0,1,0);
 
-    float eta = 1.0 / ior;
-    if (inner_reflection) {
-      eta = 1.0 / eta;
-      normal = -normal;
-    }
+  float eta = 1.0 / ior;
+  if (!front_facing) {
+    eta = 1.0 / eta;
+    normal = -normal;
+  }
 
-    // handle opacity
-    if (random_float(seed) > opacity) {
-      BSDFSample res;
-      res.contribution = vec3(1.0);
-      res.direction = -out_dir;
-      res.pdf = 1.0;
-      res.specular = true;
-      return res;
-    }
+  // handle opacity
+  if (random_float(seed) > opacity) {
+    BSDFSample res;
+    res.contribution = vec3(1.0);
+    res.direction = -out_dir;
+    res.pdf = 1.0;
+    res.specular = true;
+    return res;
+  }
 
-    if(random_float(seed) < 0.5) { // non-specular light
+  if(random_float(seed) < 0.5) { // non-specular light
     if(random_float(seed) * 2.0 < transmission) { // transmitted light
            
       float a = roughness * roughness;
+      float rnd = random_float(seed);
       float theta = acos(sqrt((1.0 - random_float(seed)) / (1.0 + (a * a - 1.0) * random_float(seed))));
       float phi = 2.0 * PI * random_float(seed);
       
       vec3 h_local = dir_from_thetaphi(theta, phi);
-      if (inner_reflection) h_local = -h_local;
+      if (!front_facing) h_local = -h_local;
 
       // compute L from sampled H
       vec3 l_local = refract(-out_dir, h_local, eta);
@@ -173,7 +174,8 @@ BSDFSample sample_ggx(in vec3 out_dir,
   } else {// specular light
 
     float a = roughness * roughness;
-    float theta = acos(sqrt((1.0 - random_float(seed)) / (1.0 + (a * a - 1.0) * random_float(seed))));
+    float rnd = random_float(seed);
+    float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
     float phi = 2.0 * PI * random_float(seed);
     vec3 h_local = dir_from_thetaphi(theta, phi);
 
@@ -200,8 +202,8 @@ BSDFSample sample_ggx(in vec3 out_dir,
     BSDFSample res;
     res.contribution = contrib;
     res.direction = l_local;
-    res.pdf = h_local.y / PI;
-    res.specular = true;
+    res.pdf = h_local.y;
+    res.specular = false;
     return res;
   } 
 }

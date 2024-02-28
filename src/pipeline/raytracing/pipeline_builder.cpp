@@ -447,8 +447,10 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
         throw std::runtime_error("error creating pipeline cache");
     }
 
-    if (device->vkCreateRayTracingPipelinesKHR(device->vulkan_device, VK_NULL_HANDLE, result.pipeline_cache_handle, 1, &pipeline_info, nullptr, &result.pipeline_handle) != VK_SUCCESS)
+    auto err = device->vkCreateRayTracingPipelinesKHR(device->vulkan_device, VK_NULL_HANDLE, result.pipeline_cache_handle, 1, &pipeline_info, nullptr, &result.pipeline_handle);
+    if (err != VK_SUCCESS)
     {
+        std::cout << "ERROR: " << err << std::endl;
         throw std::runtime_error("error creating raytracing pipeline");
     }
 

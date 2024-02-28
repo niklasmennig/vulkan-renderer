@@ -53,10 +53,8 @@ void main() {
     vec2 uv = get_vertex_uv(instance, primitive, barycentrics);
     vec3 tangent = normalize(transform_world * vec4(get_vertex_tangent(instance, primitive, barycentrics), 0.0));
 
-    vec3 ray_direction = gl_ObjectRayDirectionEXT;
+    vec3 ray_direction = gl_WorldRayDirectionEXT;
 
-    vec3 ray_out = normalize(-ray_direction);
-    vec3 new_origin = position;
 
     vec3 bitangent = normalize(cross(normal, tangent));
     mat3 tbn = basis(normal);
@@ -66,6 +64,9 @@ void main() {
     vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
     normal = normalize(tbn * sampled_normal);
     
+    mat3 shading_space = basis(normal);
+    vec3 ray_out = normalize(transpose(shading_space) * -ray_direction);
+
     // material properties
     Material material = get_material(instance, uv);
 
@@ -78,12 +79,14 @@ void main() {
     }
 
 
-    bool front_facing = dot(face_normal, -gl_WorldRayDirectionEXT) > EPSILON;
+    bool front_facing = dot(face_normal, ray_direction) < EPSILON;
 
     BSDFSample bsdf_sample = sample_ggx(ray_out, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior, payload.seed, front_facing);
+    if (!front_facing) bsdf_sample.contribution = vec3(0.0); 
 
     payload.origin = position;
-    payload.direction = normalize(transform_world * vec4(bsdf_sample.direction, 0.0));
+    payload.direction = (shading_space * bsdf_sample.direction);
+    if (payload.depth == 1) payload.primary_hit_normal = bsdf_sample.direction;
     
     // direct lighting
     if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
@@ -114,6 +117,7 @@ void main() {
             }
         }
     }
+    
     payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;
 
     payload.depth += 1;
