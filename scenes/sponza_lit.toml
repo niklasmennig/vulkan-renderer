@@ -17,17 +17,17 @@
     position = [3.903, 1.17, 0.991]
     intensity = [10.0, 0.0, 0.0]
 
-    # [lights.pot2]
-    # type = "point"
-    # position = [3.903, 1.17, -1.6]
-    # intensity = [0.0, 10.0, 0.0]
+    [lights.pot2]
+    type = "point"
+    position = [3.903, 1.17, -1.6]
+    intensity = [0.0, 10.0, 0.0]
 
-    # [lights.pot3]
-    # type = "point"
-    # position = [-5.0, 1.17, 0.991]
-    # intensity = [5.0, 0.0, 0.0]
+    [lights.pot3]
+    type = "point"
+    position = [-5.0, 1.17, 0.991]
+    intensity = [5.0, 0.0, 0.0]
 
-    # [lights.pot4]
-    # type = "point"
-    # position = [-5.0, 1.17, -1.6]
-    # intensity = [0.0, 5.0, 0.0]
+    [lights.pot4]
+    type = "point"
+    position = [-5.0, 1.17, -1.6]
+    intensity = [0.0, 5.0, 0.0]

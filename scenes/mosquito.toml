@@ -1,0 +1,28 @@
+[environment]
+    path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    # path = "./hdri/studio_small_03_4k.hdr"
+    # path = "./hdri/vestibule_4k.hdr"
+    # path = "./hdri/rural_asphalt_road_4k.hdr"
+    # path = "./hdri/moonless_golf_4k.hdr"
+
+[objects]
+
+    [objects.a]
+    path = "./gltf/mosquito/MosquitoInAmber.gltf"
+
+
+[instances]
+    [instances.test]
+    object = "a"
+
+
+[lights]
+    [lights.red]
+    type = "point"
+    position = [-0.5, 1.0, 0.0]
+    intensity = [25.0, 0.0, 0.0]
+
+    [lights.green]
+    type = "point"
+    position = [0.5, 1.0, 0.0]
+    intensity = [0.0, 25.0, 0.0]

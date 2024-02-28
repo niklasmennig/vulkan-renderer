@@ -64,6 +64,9 @@ void main() {
     vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
     normal = normalize(tbn * sampled_normal);
     
+    bool front_facing = dot(face_normal, ray_direction) < 0.0;
+    if (!front_facing) normal *= -1;
+
     mat3 shading_space = basis(normal);
     vec3 ray_out = normalize(transpose(shading_space) * -ray_direction);
 
@@ -79,14 +82,12 @@ void main() {
     }
 
 
-    bool front_facing = dot(face_normal, ray_direction) < EPSILON;
 
     BSDFSample bsdf_sample = sample_ggx(ray_out, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior, payload.seed, front_facing);
-    if (!front_facing) bsdf_sample.contribution = vec3(0.0); 
+    // if (!front_facing) bsdf_sample.contribution = vec3(0.0); 
 
     payload.origin = position;
     payload.direction = (shading_space * bsdf_sample.direction);
-    if (payload.depth == 1) payload.primary_hit_normal = bsdf_sample.direction;
     
     // direct lighting
     if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {

@@ -85,8 +85,8 @@ BSDFSample sample_ggx(in vec3 out_dir,
 
   float eta = 1.0 / ior;
   if (!front_facing) {
-    eta = 1.0 / eta;
     normal = -normal;
+    eta = 1.0 / eta;
   }
 
   // handle opacity
@@ -99,24 +99,26 @@ BSDFSample sample_ggx(in vec3 out_dir,
     return res;
   }
 
-  if(random_float(seed) < 0.5) { // non-specular light
-    if(random_float(seed) * 2.0 < transmission) { // transmitted light
+  if(true) { // non-specular light
+    if(true) { // transmitted light
            
       float a = roughness * roughness;
       float rnd = random_float(seed);
-      float theta = acos(sqrt((1.0 - random_float(seed)) / (1.0 + (a * a - 1.0) * random_float(seed))));
+      // float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+      float theta = 0.01;
       float phi = 2.0 * PI * random_float(seed);
       
       vec3 h_local = dir_from_thetaphi(theta, phi);
-      if (!front_facing) h_local = -h_local;
 
       // compute L from sampled H
-      vec3 l_local = refract(-out_dir, h_local, eta);
+      // vec3 l_local = refract(-out_dir, h_local, eta);
+      vec3 l_local = refract(-out_dir, -normal, 1.0);
+      if (front_facing) l_local = refract(reflect(out_dir, normal), normal, 1.0);
       
       // all required dot products
       float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
-      float NoL = clamp(dot(normal, l_local), 0.0, 1.0);
-      float NoH = clamp(dot(normal, h_local), 0.0, 1.0);
+      float NoL = abs(dot(normal, l_local));
+      float NoH = abs(dot(normal, h_local));
       float VoH = clamp(dot(out_dir, h_local), 0.0, 1.0);     
       
       // F0 for dielectics in range [0.0, 0.16] 
@@ -128,16 +130,16 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 F = fresnel_schlick(VoH, f0);
       float D = d_ggx(NoH, roughness);
       float G = g_smith(NoV, NoL, roughness);
-      // vec3 contrib = baseColor * (vec3(1.0) - F) * G * VoH / max((NoH * NoV), 0.001);
-      vec3 contrib = baseColor * D * G * (vec3(1.0) - F);
+      vec3 contrib = vec3(1.0);
     
-      contrib *= 2.0; // compensate for splitting diffuse and specular
+      // contrib *= 2.0; // compensate for splitting diffuse and specular
       
       BSDFSample res;
       res.contribution = contrib;
       res.direction = l_local;
-      res.pdf = D * sin(theta) * cos(theta);
-      res.specular = true;
+      // res.pdf = D * sin(theta) * cos(theta);
+      res.pdf = 1.0;
+      res.specular = false;
       return res;
       
     } else { // diffuse light
