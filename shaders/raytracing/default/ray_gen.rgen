@@ -117,7 +117,7 @@ void main() {
         const uint restir_seed = random_uint(payload.seed);
         uint current_seed = restir_seed;
         LightSample light_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-        float p_hat = luminance(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
+        float p_hat = length(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
         update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_seed, p_hat, payload.seed);
     }
 
@@ -128,13 +128,13 @@ void main() {
     // update with current sample
     uint current_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
     LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-    float p_hat = luminance(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
+    float p_hat = length(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
     update_reservoir(temporal, current_seed, p_hat, payload.seed);
 
     // update with previous sample
     uint previous_seed = restir_reservoirs[restir_index_previous].reservoirs[pixel_index].sample_seed;
     LightSample previous_sample = sample_direct_light(previous_seed, payload.primary_hit_position);
-    float p_hat_previous = luminance(previous_sample.intensity) * dot(previous_sample.direction, payload.primary_hit_normal);
+    float p_hat_previous = length(previous_sample.intensity) * dot(previous_sample.direction, payload.primary_hit_normal);
     update_reservoir(temporal, previous_seed, p_hat_previous, payload.seed);
 
     // use combined sample

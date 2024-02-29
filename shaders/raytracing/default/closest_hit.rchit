@@ -65,7 +65,7 @@ void main() {
     normal = normalize(tbn * sampled_normal);
     
     bool front_facing = dot(face_normal, ray_direction) < 0.0;
-    if (!front_facing) normal *= -1;
+    // if (!front_facing) normal *= -1;
 
     mat3 shading_space = basis(normal);
     vec3 ray_out = normalize(transpose(shading_space) * -ray_direction);
@@ -84,7 +84,6 @@ void main() {
 
 
     BSDFSample bsdf_sample = sample_ggx(ray_out, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior, payload.seed, front_facing);
-    // if (!front_facing) bsdf_sample.contribution = vec3(0.0); 
 
     payload.origin = position;
     payload.direction = (shading_space * bsdf_sample.direction);
@@ -99,7 +98,7 @@ void main() {
         rayQueryProceedEXT(ray_query);
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-            vec3 ray_dir_local = transform_object * vec4(ray_out, 0.0);
+            vec3 ray_dir_local = ray_out;
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
             vec3 bsdf_eval = eval_ggx(ray_dir_local, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
@@ -123,7 +122,7 @@ void main() {
 
     payload.depth += 1;
 
-    if (payload.depth > 2) {
+    if (payload.depth > 3) {
         float rr_probability = luminance(payload.contribution);
         if (random_float(payload.seed) > rr_probability) {
             payload.contribution /= rr_probability;

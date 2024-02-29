@@ -44,7 +44,7 @@ vec3 dir_from_thetaphi(float theta, float phi) {
     float y = cos(theta);
     float z = sin(theta) * sin(phi);
 
-    return vec3(x,y,z);
+    return normalize(vec3(x,y,z));
 }
 
 vec2 thetaphi_from_dir(vec3 direction) {

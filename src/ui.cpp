@@ -107,7 +107,7 @@ void UI::draw() {
             ImGui::Text("Transmission");
             changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");
-            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 3.0);
+            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 15.0);
             //ImGui::EndChild();
         }
     }

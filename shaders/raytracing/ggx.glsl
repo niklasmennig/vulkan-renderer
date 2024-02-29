@@ -32,29 +32,38 @@ float g_smith(float NoV, float NoL, float roughness) {
 
 vec3 eval_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
   vec3 normal = vec3(0,1,0);
-  vec3 h = normalize(ray_in + ray_out);
 
-  float no = clamp(dot(normal, ray_out), 0.0, 1.0);
-  float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
-  float nh = clamp(dot(normal, h), 0.0, 1.0);
-  float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+  float no = dot(normal, ray_out);
+  float ni = dot(normal, ray_in);
 
-  vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
-  f0 = mix(f0, base_color, metallic);
+  if (no * ni > 0) { // non-transmissive
+    no = abs(no);
+    ni = abs(ni);
 
-  // glossy
-  vec3 f = fresnel_schlick(oh, f0);
-  float d = d_ggx(nh, roughness);
-  float g = g_smith(no, ni, roughness);
-  vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
+    vec3 h = normalize(ray_in + ray_out);
+    float nh = clamp(dot(normal, h), 0.0, 1.0);
+    float oh = clamp(dot(ray_out, h), 0.0, 1.0);
 
-  // diffuse
-  vec3 rho = vec3(1.0) - f;
-  rho *= (1.0 - metallic) * (1.0 - transmission);
-  vec3 diff = rho * base_color / PI;
+    vec3 f0 = vec3(0.16 * (fresnel_reflect * fresnel_reflect));
+    f0 = mix(f0, base_color, metallic);
 
+    // glossy
+    vec3 f = fresnel_schlick(oh, f0);
+    float d = d_ggx(nh, roughness);
+    float g = g_smith(no, ni, roughness);
+    vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
 
-  return (diff+spec) * opacity;
+    // diffuse
+    vec3 rho = vec3(1.0) - f;
+    rho *= (1.0 - metallic) * (1.0 - transmission);
+    vec3 diff = rho * base_color / PI;
+
+    return (diff+spec) * opacity;
+  } else { // transmissive
+    float eta = 1.0 / ior;
+    vec3 h = normalize(ray_in + ray_out * eta);
+
+  }
 }
 
 float pdf_ggx(vec3 ray_in, vec3 ray_out, vec3 base_color, float opacity, float metallic, float fresnel_reflect, float roughness, float transmission, float ior) {
@@ -83,12 +92,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
 {
   vec3 normal = vec3(0,1,0);
 
-  float eta = 1.0 / ior;
-  if (!front_facing) {
-    normal = -normal;
-    eta = 1.0 / eta;
-  }
-
   // handle opacity
   if (random_float(seed) > opacity) {
     BSDFSample res;
@@ -99,21 +102,22 @@ BSDFSample sample_ggx(in vec3 out_dir,
     return res;
   }
 
-  if(true) { // non-specular light
-    if(true) { // transmitted light
+  if(random_float(seed) < 0.5) { // non-specular light
+    if(random_float(seed) * 2.0 < transmission) { // transmitted light
            
       float a = roughness * roughness;
       float rnd = random_float(seed);
-      // float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-      float theta = 0.01;
+      float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+      // float theta = 0.01;
       float phi = 2.0 * PI * random_float(seed);
       
       vec3 h_local = dir_from_thetaphi(theta, phi);
 
       // compute L from sampled H
-      // vec3 l_local = refract(-out_dir, h_local, eta);
-      vec3 l_local = refract(-out_dir, -normal, 1.0);
-      if (front_facing) l_local = refract(reflect(out_dir, normal), normal, 1.0);
+      float eta = 1.0 / ior;
+      // normal.y *= -1;
+      vec3 l_local = refract(out_dir, h_local, eta);
+      if (!front_facing) l_local = refract(out_dir, -h_local, eta);
       
       // all required dot products
       float NoV = clamp(dot(normal, out_dir), 0.0, 1.0);
@@ -138,7 +142,7 @@ BSDFSample sample_ggx(in vec3 out_dir,
       res.contribution = contrib;
       res.direction = l_local;
       // res.pdf = D * sin(theta) * cos(theta);
-      res.pdf = 1.0;
+      res.pdf = 1.0 / transmission;
       res.specular = false;
       return res;
       
@@ -164,12 +168,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
       vec3 notSpec = vec3(1.0) - F; // if not specular, use as diffuse
       notSpec *= (1.0 - metallicness); // no diffuse for metals
     
-      vec3 contrib = notSpec * baseColor * 2.0;
+      vec3 contrib = notSpec * baseColor;
       
       BSDFSample res;
       res.contribution = contrib;
       res.direction = l_local;
-      res.pdf = diffuse_sample.pdf;
+      res.pdf = diffuse_sample.pdf / 2.0;
       res.specular = false;
       return res;
     }
@@ -199,12 +203,12 @@ BSDFSample sample_ggx(in vec3 out_dir,
     vec3 F = fresnel_schlick(VoH, f0);
     float D = d_ggx(NoH, roughness);
     float G = g_smith(NoV, NoL, roughness);
-    vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001) * 2.0;
+    vec3 contrib =  F * G * VoH / max((NoH * NoV), 0.001);
     
     BSDFSample res;
     res.contribution = contrib;
     res.direction = l_local;
-    res.pdf = h_local.y;
+    res.pdf = h_local.y / 2.0;
     res.specular = false;
     return res;
   } 
