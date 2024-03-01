@@ -30,6 +30,7 @@ struct Material {
     float transmission;
     float ior;
     float fresnel;
+    vec3 emission;
 };
 
 Material get_material(uint instance, vec2 uv) {
@@ -47,6 +48,12 @@ Material get_material(uint instance, vec2 uv) {
     result.transmission = material_parameters.transmissive * (1.0 - transmission_tex.x);
     result.ior = material_parameters.ior;
     result.fresnel = 0.5;
+    if (has_texture(instance, TEXTURE_OFFSET_EMISSIVE)) {
+        vec4 emission_tex = sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE);
+        result.emission = emission_tex.rgb * material_parameters.emissive * material_parameters.emission_strength;
+    } else {
+        result.emission = material_parameters.emissive * material_parameters.emission_strength;
+    }
 
     return result;
 }

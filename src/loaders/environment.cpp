@@ -11,7 +11,6 @@
 #include <iostream>
 
 EnvironmentMap loaders::load_environment_map(Device* device, const std::string& path) {
-    std::cout << "TODO: IMPLEMENT loaders::load_environment_map" << std::endl;
     EnvironmentMap result {};
     int width = 100;
     int height = 50;
@@ -105,6 +104,26 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     image_data_buffer.free();
     cdf_data_buffer.free();
     conditional_cdf_data_buffer.free();
+
+    return result;
+}
+
+EnvironmentMap loaders::load_default_environment_map(Device* device) {
+    EnvironmentMap result {};
+    int width = 1;
+    int height = 1;
+
+    result.image = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    result.cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    auto cmd_buffer = device->begin_single_use_command_buffer();
+
+    result.image.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.conditional_cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+
+    device->end_single_use_command_buffer(cmd_buffer);
 
     return result;
 }

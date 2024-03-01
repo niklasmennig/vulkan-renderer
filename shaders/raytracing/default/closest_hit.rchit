@@ -8,7 +8,7 @@
 #include "../material.glsl"
 #include "../common.glsl"
 #include "../random.glsl"
-#include "../ggx.glsl"
+#include "../lambert.glsl"
 #include "../environment.glsl"
 #include "../lights.glsl"
 #include "../restir.glsl"
@@ -83,10 +83,11 @@ void main() {
 
 
 
-    BSDFSample bsdf_sample = sample_ggx(ray_out, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior, payload.seed, front_facing);
+    BSDFSample bsdf_sample = sample_lambert(ray_out, material, payload.seed);
+    vec3 ray_in = bsdf_sample.direction;
 
     payload.origin = position;
-    payload.direction = (shading_space * bsdf_sample.direction);
+    payload.direction = (shading_space * ray_in);
     
     // direct lighting
     if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
@@ -101,9 +102,9 @@ void main() {
             vec3 ray_dir_local = ray_out;
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
-            vec3 bsdf_eval = eval_ggx(ray_dir_local, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
+            vec3 bsdf_eval = eval_lambert(ray_dir_local, light_dir_local, material);
 
-            float bsdf_pdf = pdf_ggx(ray_dir_local, light_dir_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
+            float bsdf_pdf = pdf_lambert(ray_dir_local, light_dir_local, material);
 
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity;
 
@@ -118,6 +119,10 @@ void main() {
         }
     }
     
+    if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
+        payload.color += material.emission * payload.contribution;
+    }
+
     payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;
 
     payload.depth += 1;

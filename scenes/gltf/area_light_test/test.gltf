@@ -1,8 +1,11 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v3.6.27",
+		"generator":"Khronos glTF Blender I/O v4.0.44",
 		"version":"2.0"
 	},
+	"extensionsUsed":[
+		"KHR_materials_emissive_strength"
+	],
 	"scene":0,
 	"scenes":[
 		{
@@ -16,20 +19,30 @@
 	"nodes":[
 		{
 			"mesh":0,
-			"name":"Plane"
+			"name":"Plane",
+			"scale":[
+				4,
+				4,
+				4
+			]
 		},
 		{
 			"mesh":1,
 			"name":"Cube",
 			"rotation":[
-				0.28352996706962585,
-				-0.4349249601364136,
-				-0.2704382538795471,
-				0.8107491731643677
+				-0.08416818827390671,
+				-0.10603709518909454,
+				-0.38747334480285645,
+				0.9118860960006714
+			],
+			"scale":[
+				0.42179274559020996,
+				0.42179277539253235,
+				0.42179277539253235
 			],
 			"translation":[
 				0,
-				1.6697137355804443,
+				1.8249164819717407,
 				0
 			]
 		}
@@ -37,9 +50,17 @@
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"Test",
+			"name":"plane",
+			"normalTexture":{
+				"index":0
+			},
 			"pbrMetallicRoughness":{
-				"metallicFactor":0
+				"baseColorTexture":{
+					"index":1
+				},
+				"metallicRoughnessTexture":{
+					"index":2
+				}
 			}
 		},
 		{
@@ -49,7 +70,12 @@
 				1,
 				1
 			],
-			"name":"Light",
+			"extensions":{
+				"KHR_materials_emissive_strength":{
+					"emissiveStrength":33
+				}
+			},
+			"name":"light",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
 					0.800000011920929,
@@ -92,20 +118,51 @@
 			]
 		}
 	],
+	"textures":[
+		{
+			"sampler":0,
+			"source":0
+		},
+		{
+			"sampler":0,
+			"source":1
+		},
+		{
+			"sampler":0,
+			"source":2
+		}
+	],
+	"images":[
+		{
+			"mimeType":"image/jpeg",
+			"name":"rock_face_03_nor_gl_1k",
+			"uri":"rock_face_03_nor_gl_1k.jpg"
+		},
+		{
+			"mimeType":"image/jpeg",
+			"name":"rock_face_03_diff_1k",
+			"uri":"rock_face_03_diff_1k.jpg"
+		},
+		{
+			"mimeType":"image/png",
+			"name":"rock_face_03_arm_1k-rock_face_03_rough_1k",
+			"uri":"rock_face_03_arm_1k-rock_face_03_rough_1k.png"
+		}
+	],
 	"accessors":[
 		{
 			"bufferView":0,
 			"componentType":5126,
 			"count":4,
 			"max":[
-				5.030929088592529,
+				1,
 				0,
-				5.030929088592529
+				1
 			],
 			"min":[
-				-5.030929088592529,
+				-1,
 				0,
-				-5.030929088592529
+				-1
 			],
 			"type":"VEC3"
 		},
@@ -210,6 +267,12 @@
 			"byteLength":72,
 			"byteOffset":908,
 			"target":34963
+		}
+	],
+	"samplers":[
+		{
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[

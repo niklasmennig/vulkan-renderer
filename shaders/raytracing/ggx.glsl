@@ -98,7 +98,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
     res.contribution = vec3(1.0);
     res.direction = -out_dir;
     res.pdf = 1.0;
-    res.specular = true;
     return res;
   }
 
@@ -143,7 +142,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
       res.direction = l_local;
       // res.pdf = D * sin(theta) * cos(theta);
       res.pdf = 1.0 / transmission;
-      res.specular = false;
       return res;
       
     } else { // diffuse light
@@ -174,7 +172,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
       res.contribution = contrib;
       res.direction = l_local;
       res.pdf = diffuse_sample.pdf / 2.0;
-      res.specular = false;
       return res;
     }
   } else {// specular light
@@ -209,7 +206,6 @@ BSDFSample sample_ggx(in vec3 out_dir,
     res.contribution = contrib;
     res.direction = l_local;
     res.pdf = h_local.y / 2.0;
-    res.specular = false;
     return res;
   } 
 }

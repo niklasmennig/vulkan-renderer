@@ -11,8 +11,10 @@ SceneData loaders::load_scene_description(std::string path) {
 
     // environment
     std::string environment_path;
-    auto environment = scene_table["environment"].as_table();
-    environment_path = scene_table["environment"]["path"].as_string()->get();
+    if (scene_table.contains("environment")) {
+        auto environment = scene_table["environment"].as_table();
+        environment_path = scene_table["environment"]["path"].as_string()->get();
+    }
 
     // objects
     std::vector<std::tuple<std::string, std::string>> object_paths;

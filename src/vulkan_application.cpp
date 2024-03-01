@@ -1510,10 +1510,18 @@ void VulkanApplication::setup() {
     }
 
     // load environment map
-    loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
+    std::cout << "TEST BEFORE" << std::endl;
+    if (loaded_scene_data.environment_path.empty()) {
+        loaded_environment = loaders::load_default_environment_map(&device);
+    } else {
+        loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
+    }
+
     loaded_textures.push_back(loaded_environment.image);
     loaded_textures.push_back(loaded_environment.cdf_map);
     loaded_textures.push_back(loaded_environment.conditional_cdf_map);
+
+    std::cout << "TEST AFTER" << std::endl;
 
     // build blas of loaded meshes
     loaded_objects.clear();

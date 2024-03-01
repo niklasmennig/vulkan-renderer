@@ -1,0 +1,19 @@
+[objects]
+    [objects.a]
+    path = "./gltf/area_light_test/test.gltf"
+
+
+[instances]
+    [instances.test]
+    object = "a"
+
+[lights]
+    [lights.red]
+    type = "point"
+    position = [-0.5, 1.0, 0.0]
+    intensity = [25.0, 0.0, 0.0]
+
+    [lights.green]
+    type = "point"
+    position = [0.5, 1.0, 0.0]
+    intensity = [0.0, 25.0, 0.0]

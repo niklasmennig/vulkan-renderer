@@ -13,4 +13,5 @@ struct EnvironmentMap {
 
 namespace loaders {
     EnvironmentMap load_environment_map(Device* device, const std::string& path);
+    EnvironmentMap load_default_environment_map(Device* device);
 }

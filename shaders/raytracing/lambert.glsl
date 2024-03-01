@@ -1,18 +1,23 @@
 #include "common.glsl"
+#include "random.glsl"
 #include "sampling.glsl"
+#include "material.glsl"
 
-BSDFSample sample_lambert(in vec3 V, in mat3 tbn, in vec3 baseColor, in vec4 random) {
-        DirectionSample dir_sample = sample_uniform_hemisphere(random.x, random.y);
+BSDFSample sample_lambert(vec3 ray_out, Material material, inout uint seed) {
+        DirectionSample dir_sample = sample_uniform_hemisphere(random_float(seed), random_float(seed));
 
         BSDFSample result;
-        result.contribution = baseColor;
-        result.direction = tbn * dir_sample.direction;
+        result.contribution = material.base_color;
+        result.direction = dir_sample.direction;
         result.pdf = dir_sample.pdf;
-        result.specular = false;
 
         return result;
 }
 
-vec3 eval_lambert(in vec3 baseColor) {
-        return baseColor;
+vec3 eval_lambert(vec3 ray_in, vec3 ray_out, Material material) {
+        return material.base_color * material.opacity;
+}
+
+float pdf_lambert(vec3 ray_in, vec3 ray_out, Material material) {
+        return 1.0 / PI;
 }

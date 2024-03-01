@@ -45,7 +45,7 @@ struct LightData {
 
 struct SceneData
 {
-    std::string environment_path;
+    std::string environment_path = "";
     // tuples containing object name and path
     std::vector<std::tuple<std::string, std::string>> object_paths;
     // instance data

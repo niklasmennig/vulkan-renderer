@@ -166,7 +166,7 @@ void main() {
     }
 
     vec3 accumulated_color = output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index].rgb;
-    if (sample_count <= 1) {
+    if (sample_count < 2) {
         accumulated_color = multisample_color_normalized;
     } else {
         accumulated_color += multisample_color_normalized;
