@@ -161,7 +161,8 @@ void main() {
             vec3 bsdf_eval = eval_lambert(ray_out, ray_in, material); 
 
             float restir_weight = restir_reservoirs[restir_index].reservoirs[pixel_index].weight * restir_reservoirs[restir_index].reservoirs[pixel_index].sum_weights / restir_reservoirs[restir_index].reservoirs[pixel_index].num_samples;
-            vec3 restir_nee_contribution = light_sample.intensity * bsdf_eval * clamp(dot(light_direction, payload.primary_hit_normal), 0.0, 1.0) / restir_weight;
+            // divide contribution by weight?
+            vec3 restir_nee_contribution = light_sample.intensity * bsdf_eval * clamp(dot(light_direction, payload.primary_hit_normal), 0.0, 1.0);
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
         }
