@@ -10,7 +10,7 @@
 #include "../random.glsl"
 #include "../lights.glsl"
 #include "../environment.glsl"
-#include "../ggx.glsl"
+#include "../lambert.glsl"
 #include "../restir.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
@@ -117,7 +117,7 @@ void main() {
         const uint restir_seed = random_uint(payload.seed);
         uint current_seed = restir_seed;
         LightSample light_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-        float p_hat = length(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
+        float p_hat = luminance(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
         update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_seed, p_hat, payload.seed);
     }
 
@@ -128,7 +128,7 @@ void main() {
     // update with current sample
     uint current_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
     LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-    float p_hat = length(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
+    float p_hat = luminance(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
     update_reservoir(temporal, current_seed, p_hat, payload.seed);
 
     // update with previous sample
@@ -155,10 +155,11 @@ void main() {
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             mat3x3 shading_space = transpose(basis(payload.primary_hit_normal));
+            vec3 ray_out = shading_space * -normalize(payload.primary_hit_position - ray_origin);
+            vec3 ray_in = shading_space * -light_direction;
 
-            vec3 bsdf_eval = eval_ggx(shading_space * -normalize(payload.primary_hit_position - ray_origin), shading_space * -light_direction, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior); 
+            vec3 bsdf_eval = eval_lambert(ray_out, ray_in, material); 
 
-            // vec3 restir_nee_contribution = bsdf_eval * restir_reservoirs[restir_index].reservoirs[pixel_index].y.light_intensity.rgb * clamp(dot(light_direction, payload.primary_hit_normal), 0, 1);
             vec3 restir_nee_contribution = light_sample.intensity * bsdf_eval / restir_reservoirs[restir_index].reservoirs[pixel_index].weight * restir_reservoirs[restir_index].reservoirs[pixel_index].sum_weights / restir_reservoirs[restir_index].reservoirs[pixel_index].num_samples;
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
@@ -174,7 +175,6 @@ void main() {
     output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index] = vec4(accumulated_color, 0.0);
 
     output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / push_constants.constants.clear_accumulated * pow(2, push_constants.constants.exposure), 0.0);
-    // output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color * pow(2, push_constants.constants.exposure), 0.0);
 
     output_buffers[OUTPUT_IMAGE_ALBEDO].color[pixel_index] = vec4(payload.primary_hit_albedo, 1.0);
     output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 0.0);
@@ -192,5 +192,6 @@ void main() {
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
 
-    output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 0.0);
+    // output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 0.0);
+    output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(random_vec3(restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed), 0.0);
 }

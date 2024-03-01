@@ -61,7 +61,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     
     LightSample result;
     result.pdf = sample_pdf;
-    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, sample_uv).rgb / sample_pdf;
+    result.intensity = max(sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, sample_uv).rgb / sample_pdf, 0.0);
     result.distance = FLT_MAX;
     result.direction = dir_from_thetaphi(theta, phi);
     return result;
