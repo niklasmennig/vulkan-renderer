@@ -106,10 +106,10 @@ void main() {
                 0
             );
 
-        multisample_color += clamp(payload.color, vec3(0.0), vec3(FLT_MAX));
+        multisample_color += max(payload.color, vec3(0.0));
     }
 
-    vec3 multisample_color_normalized = multisample_color / float(push_constants.constants.frame_samples);
+    vec3 multisample_color_normalized = multisample_color / push_constants.constants.frame_samples;
 
     // initial restir samples
     clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
@@ -166,18 +166,20 @@ void main() {
         }
     }
 
+    multisample_color_normalized = max(multisample_color_normalized, vec3(0.0));
+
     vec3 accumulated_color = output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index].rgb;
-    if (sample_count < 2) {
+    if (sample_count == 1) {
         accumulated_color = multisample_color_normalized;
     } else {
         accumulated_color += multisample_color_normalized;
     }
-    output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index] = vec4(accumulated_color, 0.0);
+    output_buffers[OUTPUT_IMAGE_ACCUMULATED].color[pixel_index] = vec4(accumulated_color, 1.0);
 
-    output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / push_constants.constants.clear_accumulated * pow(2, push_constants.constants.exposure), 0.0);
+    output_buffers[OUTPUT_IMAGE_RESULT].color[pixel_index] = vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 1.0);
 
     output_buffers[OUTPUT_IMAGE_ALBEDO].color[pixel_index] = vec4(payload.primary_hit_albedo, 1.0);
-    output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 0.0);
+    output_buffers[OUTPUT_IMAGE_NORMAL].color[pixel_index] = vec4(payload.primary_hit_normal, 1.0);
 
     uint instance = payload.primary_hit_instance;
     if (instance != NULL_INSTANCE) {
@@ -192,6 +194,5 @@ void main() {
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
 
-    // output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 0.0);
-    output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(random_vec3(restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed), 0.0);
+    output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 1.0);
 }

@@ -28,7 +28,7 @@ bool has_texture(uint instance, uint offset) {
 }
 
 vec4 sample_texture(uint id, vec2 uv) {
-    return texture(tex[nonuniformEXT(id)], uv);
+    return max(texture(tex[nonuniformEXT(id)], uv), vec4(0.0));
 }
 
 vec4 sample_texture(uint instance, vec2 uv, uint offset) {

@@ -1847,7 +1847,7 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed | ui.has_changed()) accumulated_frames = 0;
+        if (camera_changed || ui.has_changed()) accumulated_frames = 0;
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
