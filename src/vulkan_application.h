@@ -118,6 +118,7 @@ struct VulkanApplication {
     Buffer camera_buffer;
     bool camera_changed;
 
+    bool clear_frames = true;
     uint32_t accumulated_frames;
 
     bool render_images_dirty = true;
@@ -192,6 +193,7 @@ struct VulkanApplication {
     void save_screenshot(std::string path);
 
     double get_fps();
-    uint32_t get_samples();
+    uint32_t get_accumulated_frames();
+    void clear_accumulated_frames();
     vec2 get_cursor_position();
 };

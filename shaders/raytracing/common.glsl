@@ -6,7 +6,7 @@
 #define PI 3.1415926
 #define NULL_INSTANCE 999999
 
-#define EPSILON 0.001
+#define EPSILON 0.00001
 #define RAY_LEN_MAX 100000.0
 
 // taken from https://www.shadertoy.com/view/tlVczh

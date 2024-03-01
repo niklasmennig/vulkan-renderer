@@ -65,7 +65,7 @@ void main() {
     normal = normalize(tbn * sampled_normal);
     
     bool front_facing = dot(face_normal, ray_direction) < 0.0;
-    // if (!front_facing) normal *= -1;
+    if (!front_facing) normal *= -1;
 
     mat3 shading_space = basis(normal);
     vec3 ray_out = normalize(transpose(shading_space) * -ray_direction);
@@ -106,7 +106,7 @@ void main() {
 
             float bsdf_pdf = pdf_lambert(ray_dir_local, light_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity;
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0.0, 1.0);
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;

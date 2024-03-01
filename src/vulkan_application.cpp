@@ -770,9 +770,10 @@ void VulkanApplication::recreate_render_images() {
     if (render_transfer_image.width > 0) render_transfer_image.free();
     render_transfer_image = device.create_image(swap_chain_extent.width, swap_chain_extent.height, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    accumulated_frames = 0;
     render_images_dirty = false;
     vkDeviceWaitIdle(device.vulkan_device);
+
+    clear_accumulated_frames();
 }
 
 void VulkanApplication::draw_frame() {
@@ -793,7 +794,6 @@ void VulkanApplication::draw_frame() {
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     begin_info.pInheritanceInfo = nullptr;
 
-
     if (!pipeline_dirty && !render_images_dirty) {
 
         if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)    {
@@ -802,6 +802,11 @@ void VulkanApplication::draw_frame() {
 
         material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
         lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
+
+        if (clear_frames) accumulated_frames = 0;
+        clear_frames = false;
+
+        if (accumulated_frames < std::numeric_limits<uint32_t>::max()) accumulated_frames += 1;
 
         Shaders::PushConstants push_constants;
         push_constants.sbt_stride = rt_pipeline.sbt_stride;
@@ -1662,7 +1667,7 @@ void VulkanApplication::setup() {
             app->minimized = false;
             app->recreate_swapchain();
             app->render_images_dirty = true;
-            app->accumulated_frames = 0;
+            app->clear_accumulated_frames();
         } else {
             app->minimized = true;
         }
@@ -1847,12 +1852,10 @@ void VulkanApplication::run() {
         // FoV
         camera_data.fov_x = ui.camera_fov;
 
-        if (camera_changed || ui.has_changed()) accumulated_frames = 0;
+        if (camera_changed || ui.has_changed()) clear_accumulated_frames();
         camera_changed = false;
 
         camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
-
-        if (accumulated_frames < std::numeric_limits<uint32_t>::max()) accumulated_frames += 1;
         
         draw_frame();
 
@@ -1992,8 +1995,12 @@ double VulkanApplication::get_fps() {
     return 1.0 / frame_delta.count();
 }
 
-uint32_t VulkanApplication::get_samples() {
+uint32_t VulkanApplication::get_accumulated_frames() {
     return accumulated_frames;
+}
+
+void VulkanApplication::clear_accumulated_frames() {
+    clear_frames = true;
 }
 
 vec2 VulkanApplication::get_cursor_position() {

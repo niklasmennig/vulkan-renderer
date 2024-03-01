@@ -60,7 +60,7 @@ void UI::draw() {
 
     ImGui::SeparatorText("Application Information");
     ImGui::Text("%.2f FPS", application->get_fps());
-    ImGui::Text("%d Samples", application->get_samples());
+    ImGui::Text("%d Samples", application->get_accumulated_frames());
     ImGui::Text("Mouse Position: %.2f/%.2f", application->get_cursor_position().x, application->get_cursor_position().y);
     ImGui::Text("Color: %.2f/%.2f/%.2f", color_under_cursor.r, color_under_cursor.g, color_under_cursor.b);
 
@@ -73,13 +73,15 @@ void UI::draw() {
         // area lights are edited via the instance editor
         if (light.type == LightData::LightType::AREA) continue;
         auto& data = light_data[i];
-        if (ImGui::CollapsingHeader(light.name.c_str())) {
+        auto light_name = light.name;
+        auto name_suffix = std::string("(").append(light_name).append(")");
+        if (ImGui::CollapsingHeader(light_name.c_str())) {
             if (light.type == LightData::LightType::POINT) {
-                changed |= ImGui::DragFloat3("Position", (float*)&data.float_data);
-                changed |= ImGui::DragFloat3("Intensity", (float*)&data.float_data[3]);
+                changed |= ImGui::DragFloat3(std::string("Position").append(name_suffix).c_str(), (float*)&data.float_data);
+                changed |= ImGui::DragFloat3(std::string("Intensity").append(name_suffix).c_str(), (float*)&data.float_data[3]);
             } else if (light.type == LightData::LightType::DIRECTIONAL) {
-                changed |= ImGui::DragFloat3("Direction", (float*)&data.float_data);
-                changed |= ImGui::DragFloat3("Intensity", (float*)&data.float_data[3]);
+                changed |= ImGui::DragFloat3(std::string("Direction").append(name_suffix).c_str(), (float*)&data.float_data);
+                changed |= ImGui::DragFloat3(std::string("Intensity").append(name_suffix).c_str(), (float*)&data.float_data[3]);
             }
         }
     }
