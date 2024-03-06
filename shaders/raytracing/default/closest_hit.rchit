@@ -8,7 +8,7 @@
 #include "../material.glsl"
 #include "../common.glsl"
 #include "../random.glsl"
-#include "../lambert.glsl"
+#include "../bsdf.glsl"
 #include "../environment.glsl"
 #include "../lights.glsl"
 #include "../restir.glsl"
@@ -68,7 +68,7 @@ void main() {
     if (!front_facing) normal *= -1;
 
     mat3 shading_space = basis(normal);
-    vec3 ray_out = normalize(transpose(shading_space) * -ray_direction);
+    vec3 ray_out = normalize(transpose(shading_space) * ray_direction);
 
     // material properties
     Material material = get_material(instance, uv);
@@ -79,11 +79,12 @@ void main() {
         payload.primary_hit_uv = uv;
         payload.primary_hit_albedo = material.base_color;
         payload.primary_hit_normal = normal;
+        payload.primary_hit_roughness = material.roughness;
     }
 
 
 
-    BSDFSample bsdf_sample = sample_lambert(ray_out, material, payload.seed);
+    BSDFSample bsdf_sample = sample_bsdf(ray_out, material, payload.seed);
     vec3 ray_in = bsdf_sample.direction;
 
     payload.origin = position;
@@ -102,9 +103,9 @@ void main() {
             vec3 ray_dir_local = ray_out;
             vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
 
-            vec3 bsdf_eval = eval_lambert(ray_dir_local, light_dir_local, material);
+            vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            float bsdf_pdf = pdf_lambert(ray_dir_local, light_dir_local, material);
+            float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
 
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0.0, 1.0);
 
@@ -123,7 +124,7 @@ void main() {
         payload.color += material.emission * payload.contribution;
     }
 
-    payload.contribution *= bsdf_sample.contribution / bsdf_sample.pdf;
+    payload.contribution *= bsdf_sample.contribution;
 
     payload.depth += 1;
 

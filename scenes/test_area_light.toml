@@ -1,11 +1,21 @@
+[environment]
+    color = [0.5, 0.5, 0.5]
+
 [objects]
     [objects.a]
     path = "./gltf/area_light_test/test.gltf"
+
+    [objects.bulb]
+    path = "./gltf/lightbulb/lightbulb_01_4k.gltf"
 
 
 [instances]
     [instances.test]
     object = "a"
+
+    [instances.bulb]
+    object = "bulb"
+    position = [0.0, 0.5, 0.0]
 
 [lights]
     [lights.red]

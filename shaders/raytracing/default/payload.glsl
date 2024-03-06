@@ -20,6 +20,7 @@ struct RayPayload {
     vec2 primary_hit_uv;
     vec3 primary_hit_albedo;
     vec3 primary_hit_normal;
+    float primary_hit_roughness;
 
     float environment_cdf;
     float environment_conditional;

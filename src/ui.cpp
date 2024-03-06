@@ -105,7 +105,7 @@ void UI::draw() {
             ImGui::Text("Emission Color");
             changed |= ImGui::ColorPicker3("##emissive_color_picker", (float*)&selected_instance_parameters->emissive_factor);
             ImGui::Text("Emission Strength");
-            changed |= ImGui::SliderFloat("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_factor.a, 0.0, 100.0);
+            changed |= ImGui::DragFloat("##emissive_factor_slider", (float*)&selected_instance_parameters->emissive_factor.a, 1.0, 0.0, FLT_MAX);
             ImGui::Text("Transmission");
             changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");

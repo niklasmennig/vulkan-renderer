@@ -11,9 +11,15 @@ SceneData loaders::load_scene_description(std::string path) {
 
     // environment
     std::string environment_path;
+    vec3 environment_color = vec3(0.0);
     if (scene_table.contains("environment")) {
         auto environment = scene_table["environment"].as_table();
-        environment_path = scene_table["environment"]["path"].as_string()->get();
+        if (environment->contains("path")) environment_path = scene_table["environment"]["path"].as_string()->get();
+        else if (environment->contains("color")) {
+            environment_color.x = scene_table["environment"]["color"][0].as_floating_point()->get();
+            environment_color.y = scene_table["environment"]["color"][1].as_floating_point()->get();
+            environment_color.z = scene_table["environment"]["color"][2].as_floating_point()->get();
+        }
     }
 
     // objects
@@ -109,6 +115,7 @@ SceneData loaders::load_scene_description(std::string path) {
 
     SceneData result;
     result.environment_path = environment_path;
+    result.environment_color = environment_color;
     result.object_paths = object_paths;
     result.instances = instances;
     result.lights = lights;

@@ -1,0 +1,18 @@
+[environment]
+    path = "./hdri/moonless_golf_4k.hdr"
+
+[objects]
+    [objects.bulb]
+    path = "./gltf/lightbulb/lightbulb_01_4k.gltf"
+
+    [objects.bust]
+    path = "./gltf/marble_bust/marble_bust_01_8k.gltf"
+
+
+[instances]
+    [instances.lightbulb]
+    object = "bulb"
+    position = [0.0, 0.3, 0.3]
+
+    [instances.bust]
+    object = "bust"

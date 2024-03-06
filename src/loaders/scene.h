@@ -46,6 +46,7 @@ struct LightData {
 struct SceneData
 {
     std::string environment_path = "";
+    vec3 environment_color = vec3(0.0);
     // tuples containing object name and path
     std::vector<std::tuple<std::string, std::string>> object_paths;
     // instance data

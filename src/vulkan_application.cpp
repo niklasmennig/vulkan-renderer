@@ -1517,7 +1517,7 @@ void VulkanApplication::setup() {
     // load environment map
     std::cout << "TEST BEFORE" << std::endl;
     if (loaded_scene_data.environment_path.empty()) {
-        loaded_environment = loaders::load_default_environment_map(&device);
+        loaded_environment = loaders::load_default_environment_map(&device, loaded_scene_data.environment_color);
     } else {
         loaded_environment = loaders::load_environment_map(&device, (scene_path.parent_path() / std::filesystem::path(loaded_scene_data.environment_path)).string());
     }
