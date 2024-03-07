@@ -1763,6 +1763,7 @@ void VulkanApplication::run() {
         if (minimized) continue;
 
         Shaders::CameraData new_camera_data = camera_data;
+        bool camera_changed = false;
 
         // camera movement
         glm::vec3 cam_up = glm::normalize(glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z));
@@ -1772,26 +1773,32 @@ void VulkanApplication::run() {
         vec3 camera_movement = vec3(0.0f);
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             camera_movement += cam_fwd;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         {
             camera_movement -= cam_r;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         {
             camera_movement -= cam_fwd;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         {
             camera_movement += cam_r;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         {
             camera_movement += cam_up;
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         {
             camera_movement -= cam_up;
+            camera_changed = true;
         }
 
         float camera_speed = frame_delta.count();
@@ -1824,10 +1831,12 @@ void VulkanApplication::run() {
         if (glfwGetKey(window, GLFW_KEY_E))
         {
             rotation_matrix = glm::rotate(rotation_matrix, -angle, new_fwd);
+            camera_changed = true;
         }
         if (glfwGetKey(window, GLFW_KEY_Q))
         {
             rotation_matrix = glm::rotate(rotation_matrix, angle, new_fwd);
+            camera_changed = true;
         }
 
         new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
@@ -1841,19 +1850,15 @@ void VulkanApplication::run() {
         new_camera_data.right = glm::vec4(new_right.x, new_right.y, new_right.z, 1.0f);
         new_camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
 
-        // FoV
-        new_camera_data.fov_x = ui.camera_fov;
+        if (camera_look_x != 0.0 || camera_look_y != 0.0) camera_changed = true;
 
-        camera_changed =    new_camera_data.origin != camera_data.origin || 
-                            new_camera_data.forward != camera_data.forward || 
-                            new_camera_data.right != camera_data.right || 
-                            new_camera_data.up != camera_data.up ||
-                            new_camera_data.fov_x != camera_data.fov_x;
+        // FoV
+        if (ui.camera_fov != camera_data.fov_x) camera_changed = true;
+        new_camera_data.fov_x = ui.camera_fov;
 
         camera_data = new_camera_data;
 
         if (camera_changed || ui.has_changed()) clear_accumulated_frames();
-        camera_changed = false;
 
         camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
         
