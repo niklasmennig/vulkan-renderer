@@ -72,7 +72,7 @@ void main() {
     vec3 multisample_color = vec3(0.0);
 
     for (uint frame_sample = 0; frame_sample < push_constants.constants.frame_samples; frame_sample++) {
-        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(push_constants.constants.clear_accumulated, frame_sample)));
+        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, frame_sample)));
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);

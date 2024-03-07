@@ -114,8 +114,8 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     int height = 1;
 
     result.image = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_NEAREST);
-    result.cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    result.cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT);
+    result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     auto cmd_buffer = device->begin_single_use_command_buffer();
     Buffer image_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);

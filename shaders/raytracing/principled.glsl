@@ -30,7 +30,7 @@ vec3 fresnel_schlick(float cosTheta, vec3 F0) {
 } 
 
 vec3 eval_principled(vec3 ray_in, vec3 ray_out, Material material) {
-        return material.base_color * material.opacity;
+        return material.base_color * material.opacity * (1.0 - material.metallic);
 }
 
 float pdf_principled(vec3 ray_in, vec3 ray_out, Material material) {
