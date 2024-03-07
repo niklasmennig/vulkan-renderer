@@ -29,6 +29,7 @@ void main() {
     }
 
     if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
+        // MIS!!!
         payload.color += payload.contribution * env_contribution;
     }
 

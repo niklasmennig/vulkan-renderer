@@ -43,14 +43,19 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
 
         float pdf = 1.0;
         vec3 direction = vec3(0,1,0);
-        vec3 contribution = vec3(0.0);
+        vec3 weight = vec3(0.0);
 
         if (random_float(seed) > material.opacity) {
                 direction = ray_out;
-                pdf = 1.0;
-                contribution = vec3(1.0);
+                pdf = ;
+                weight = vec3(1.0);
         } else {
                 if (random_float(seed) < material.metallic) {
+                        sample_metallic()
+                        
+                        float lobePdf = (1 - material.opacity) * material.metallic;
+                        pdf *= lobePdf;
+
                         //metallic
                         float rnd = random_float(seed);
                         float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
@@ -59,7 +64,7 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
 
                         direction = reflect(ray_out, h);
                         pdf = 1.0 * material.metallic;
-                        contribution = vec3(1.0);
+                        weight = vec3(1.0);
                 } else {
                         float pdf_difftrans = 1.0 * (1.0 - material.metallic);
                         if (random_float(seed) < material.transmission) {
@@ -72,14 +77,14 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
                                 float eta = 1.0 / material.ior;
 
                                 direction = refract(ray_out, h, eta);
-                                pdf = (1.0 * pdf_difftrans) / material.transmission;
-                                contribution = vec3(1.0);
+                                pdf = (1.0 * pdf_difftrans) * material.transmission;
+                                weight = vec3(1.0);
                         } else {
                                 // diffuse
                                 DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
                                 direction = hemisphere_sample.direction;
-                                pdf = (hemisphere_sample.pdf * pdf_difftrans) / (1.0 - material.transmission);
-                                contribution = material.base_color;
+                                pdf = (hemisphere_sample.pdf * pdf_difftrans) * (1.0 - material.transmission);
+                                weight = material.base_color;
                         }
                 }
         }
@@ -87,6 +92,6 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
         BSDFSample result;
         result.pdf = pdf;
         result.direction = direction;
-        result.contribution = contribution;
+        result.weight = weight;
         return result;
 }
