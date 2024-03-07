@@ -1,9 +1,5 @@
 [environment]
-    #path = "./hdri/kloppenheim_05_puresky_4k.hdr"
-    path = "./hdri/studio_small_03_4k.hdr"
-    # path = "./hdri/vestibule_4k.hdr"
-    # path = "./hdri/rural_asphalt_road_4k.hdr"
-    # path = "./hdri/moonless_golf_4k.hdr"
+    color = [0.8, 0.8, 0.5]
 
 [objects]
     [objects.test]
@@ -12,9 +8,3 @@
 [instances]
     [instances.test]
     object = "test"
-
-[lights]
-    [lights.test0]
-    type = "point"
-    position = [0.0, 3.0, 3.0]
-    intensity = [100.0, 100.0, 100.0]

@@ -118,7 +118,7 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
     auto cmd_buffer = device->begin_single_use_command_buffer();
-    Buffer image_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    Buffer image_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
     float* image_data;
     vkMapMemory(image_buffer.device_handle, image_buffer.device_memory, image_buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&image_data);
@@ -127,6 +127,7 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     image_data[2] = color.b;
     vkUnmapMemory(image_buffer.device_handle, image_buffer.device_memory);
 
+    result.image.transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
     result.image.copy_buffer_to_image(cmd_buffer, image_buffer);
 
     result.image.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);

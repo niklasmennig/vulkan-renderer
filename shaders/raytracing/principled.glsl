@@ -45,36 +45,42 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
         vec3 direction = vec3(0,1,0);
         vec3 contribution = vec3(0.0);
 
-        if (random_float(seed) < material.metallic) {
-                //metallic
-                float rnd = random_float(seed);
-                float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-                float phi = 2.0 * PI * random_float(seed);
-                vec3 h = dir_from_thetaphi(theta, phi);
-
-                direction = reflect(ray_out, h);
-                pdf = 1.0 * material.metallic;
+        if (random_float(seed) > material.opacity) {
+                direction = ray_out;
+                pdf = 1.0;
                 contribution = vec3(1.0);
         } else {
-                float pdf_difftrans = 1.0 * (1.0 - material.metallic);
-                if (random_float(seed) < material.transmission) {
-                        //transmission
+                if (random_float(seed) < material.metallic) {
+                        //metallic
                         float rnd = random_float(seed);
                         float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
                         float phi = 2.0 * PI * random_float(seed);
                         vec3 h = dir_from_thetaphi(theta, phi);
 
-                        float eta = 1.0 / material.ior;
-
-                        direction = refract(ray_out, h, eta);
-                        pdf = (1.0 * pdf_difftrans) / material.transmission;
+                        direction = reflect(ray_out, h);
+                        pdf = 1.0 * material.metallic;
                         contribution = vec3(1.0);
                 } else {
-                        // diffuse
-                        DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
-                        direction = hemisphere_sample.direction;
-                        pdf = (hemisphere_sample.pdf * pdf_difftrans) / (1.0 - material.transmission);
-                        contribution = material.base_color;
+                        float pdf_difftrans = 1.0 * (1.0 - material.metallic);
+                        if (random_float(seed) < material.transmission) {
+                                //transmission
+                                float rnd = random_float(seed);
+                                float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+                                float phi = 2.0 * PI * random_float(seed);
+                                vec3 h = dir_from_thetaphi(theta, phi);
+
+                                float eta = 1.0 / material.ior;
+
+                                direction = refract(ray_out, h, eta);
+                                pdf = (1.0 * pdf_difftrans) / material.transmission;
+                                contribution = vec3(1.0);
+                        } else {
+                                // diffuse
+                                DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
+                                direction = hemisphere_sample.direction;
+                                pdf = (hemisphere_sample.pdf * pdf_difftrans) / (1.0 - material.transmission);
+                                contribution = material.base_color;
+                        }
                 }
         }
         
