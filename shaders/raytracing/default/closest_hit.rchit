@@ -114,7 +114,6 @@ void main() {
 
             if (payload.depth >= di_depth) {
                 float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
-                // float mis = 1.0;
                 payload.color += mis * nee_contribution;
             }
         }
@@ -124,7 +123,8 @@ void main() {
         payload.color += material.emission * payload.contribution;
     }
 
-    payload.contribution *= bsdf_sample.contribution;
+    payload.contribution *= bsdf_sample.weight;
+    payload.last_bsdf_pdf = bsdf_sample.pdf;
 
     payload.depth += 1;
 

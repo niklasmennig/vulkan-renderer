@@ -2,17 +2,11 @@
 #define LIGHTS_GLSL
 
 #include "common.glsl"
+#include "structs.glsl"
 #include "interface.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "material.glsl"
-
-struct LightSample {
-    vec3 direction;
-    float distance;
-    vec3 intensity; // already divided by PDF
-    float pdf;
-};
 
 float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     vec3 v0, v1, v2;

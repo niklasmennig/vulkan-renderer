@@ -37,61 +37,80 @@ float pdf_principled(vec3 ray_in, vec3 ray_out, Material material) {
         return 1.0;
 }
 
+BSDFSample sample_metallic(vec3 ray_out, Material material, inout uint seed) {
+        float a = material.roughness * material.roughness;
+        float rnd = random_float(seed);
+        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+        float phi = 2.0 * PI * random_float(seed);
+        vec3 h = dir_from_thetaphi(theta, phi);
+
+        BSDFSample result;
+        result.direction = reflect(ray_out, h);
+        result.pdf = 1.0;
+        result.weight = vec3(1.0);
+        return result;
+}
+
+BSDFSample sample_transmissive(vec3 ray_out, Material material, inout uint seed) {
+        float a = material.roughness * material.roughness;
+        float rnd = random_float(seed);
+        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+        float phi = 2.0 * PI * random_float(seed);
+        vec3 h = dir_from_thetaphi(theta, phi);
+
+        float eta = 1.0 / material.ior;
+
+        BSDFSample result;
+        result.direction = refract(ray_out, h, eta);
+        result.pdf = 1.0;
+        result.weight = vec3(1.0);
+        return result;
+}
+
+BSDFSample sample_diffuse(vec3 ray_out, Material material, inout uint seed) {
+        DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
+
+        BSDFSample result;
+        result.direction = hemisphere_sample.direction;
+        result.pdf = hemisphere_sample.pdf;
+        result.weight = material.base_color;
+        return result;
+}
+
 BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
         vec3 normal = vec3(0,1,0);
-        float a = material.roughness * material.roughness;
 
-        float pdf = 1.0;
-        vec3 direction = vec3(0,1,0);
-        vec3 weight = vec3(0.0);
+        BSDFSample lobe_sample;
+        float lobe_pdf = 0.0;
 
         if (random_float(seed) > material.opacity) {
-                direction = ray_out;
-                pdf = ;
-                weight = vec3(1.0);
+                //non-opaque
+                lobe_sample.direction = ray_out;
+                lobe_sample.pdf = FLT_MAX;
+                lobe_sample.weight = vec3(1.0);
+                lobe_pdf = material.opacity;
         } else {
                 if (random_float(seed) < material.metallic) {
-                        sample_metallic()
-                        
-                        float lobePdf = (1 - material.opacity) * material.metallic;
-                        pdf *= lobePdf;
-
                         //metallic
-                        float rnd = random_float(seed);
-                        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-                        float phi = 2.0 * PI * random_float(seed);
-                        vec3 h = dir_from_thetaphi(theta, phi);
-
-                        direction = reflect(ray_out, h);
-                        pdf = 1.0 * material.metallic;
-                        weight = vec3(1.0);
+                        lobe_sample = sample_metallic(ray_out, material, seed);
+                        lobe_pdf = (1.0 - material.opacity) * material.metallic;                   
                 } else {
-                        float pdf_difftrans = 1.0 * (1.0 - material.metallic);
+                        float pdf_difftrans = (1.0 - material.opacity) * (1.0 - material.metallic);
                         if (random_float(seed) < material.transmission) {
                                 //transmission
-                                float rnd = random_float(seed);
-                                float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-                                float phi = 2.0 * PI * random_float(seed);
-                                vec3 h = dir_from_thetaphi(theta, phi);
-
-                                float eta = 1.0 / material.ior;
-
-                                direction = refract(ray_out, h, eta);
-                                pdf = (1.0 * pdf_difftrans) * material.transmission;
-                                weight = vec3(1.0);
+                                lobe_sample = sample_transmissive(ray_out, material, seed);
+                                lobe_pdf = pdf_difftrans * material.transmission;
                         } else {
                                 // diffuse
-                                DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
-                                direction = hemisphere_sample.direction;
-                                pdf = (hemisphere_sample.pdf * pdf_difftrans) * (1.0 - material.transmission);
-                                weight = material.base_color;
+                                lobe_sample = sample_diffuse(ray_out, material, seed);
+                                lobe_pdf = pdf_difftrans * (1.0 - material.transmission);
                         }
                 }
         }
         
         BSDFSample result;
-        result.pdf = pdf;
-        result.direction = direction;
-        result.weight = weight;
+        result.pdf = lobe_sample.pdf * lobe_pdf;
+        result.direction = lobe_sample.direction;
+        result.weight = lobe_sample.weight;
         return result;
 }

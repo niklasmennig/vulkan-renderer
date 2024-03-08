@@ -51,7 +51,7 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
                     int pixel_x = (float)u / width * result.image.width + scan_x;
                     int pixel_y = (float)v / height * result.image.height + scan_y;
                     
-                    int pixel_offset = (pixel_x + pixel_y * width) * 4;
+                    int pixel_offset = (pixel_x + pixel_y * result.image.width) * 4;
                     vec3 pixel_color = vec3(image_data[pixel_offset + 0], image_data[pixel_offset + 1], image_data[pixel_offset + 2]);
 
                     luminance_sum += color::luminance(pixel_color);
@@ -78,7 +78,7 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     }
     if (conditional_sum < FLT_EPSILON) {
         for (int v = 0; v < height; v++) {
-            conditional_cdf_data[v] = (float)v / (height-1);
+            conditional_cdf_data[v] = 1.0;
         }
     } else {
         for (int v = 0; v < height; v++) {

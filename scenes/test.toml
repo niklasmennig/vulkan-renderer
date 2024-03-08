@@ -1,7 +1,7 @@
 [environment]
-    color = [0.0, 0.0, 0.0]
+    # color = [0.0, 0.0, 0.0]
     # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
-    # path = "./hdri/studio_small_03_4k.hdr"
+    path = "./hdri/studio_small_03_4k.hdr"
     # path = "./hdri/vestibule_4k.hdr"
     # path = "./hdri/rural_asphalt_road_4k.hdr"
     # path = "./hdri/moonless_golf_4k.hdr"

@@ -24,6 +24,8 @@ struct RayPayload {
 
     float environment_cdf;
     float environment_conditional;
+
+    float last_bsdf_pdf;
 };
 
 #endif

@@ -89,6 +89,7 @@ void main() {
         payload.direction = ray_direction;
 
         payload.contribution = vec3(1.0);
+        payload.last_bsdf_pdf = 1.0;
 
         payload.seed = seed;
 

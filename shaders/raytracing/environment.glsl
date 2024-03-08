@@ -1,8 +1,9 @@
 #ifndef ENVIRONMENT_GLSL
 #define ENVIRONMENT_GLSL
 
-#include "lights.glsl"
 #include "texture_data.glsl"
+#include "structs.glsl"
+#include "random.glsl"
 
 #define TEXTURE_ID_ENVIRONMENT_ALBEDO 0
 #define TEXTURE_ID_ENVIRONMENT_CDF 1
@@ -65,6 +66,20 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     result.distance = FLT_MAX;
     result.direction = dir_from_thetaphi(theta, phi);
     return result;
+}
+
+float pdf_environment(vec3 direction) {
+    vec2 thetaphi = thetaphi_from_dir(direction);
+
+    // uv coordinates from theta and phi
+    float u = thetaphi.y / (2.0 * PI);
+    float v = thetaphi.x / PI;
+
+    // query environment map color
+    float cdf = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(u, v)).r;
+    float conditional = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(u, v)).r;
+
+    return cdf * conditional * (sin(thetaphi.x) * 2.0 * PI * PI);
 }
 
 #endif
