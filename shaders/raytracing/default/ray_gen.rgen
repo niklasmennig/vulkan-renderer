@@ -12,6 +12,7 @@
 #include "../environment.glsl"
 #include "../bsdf.glsl"
 #include "../restir.glsl"
+#include "../environment.glsl"
 
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
@@ -45,17 +46,22 @@ vec3 compute_ray_direction(vec2 ndc) {
 
 LightSample sample_direct_light(inout uint seed, vec3 position) {
     LightSample light_sample;
-    if (random_float(seed) < 0.5) {
-        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+    if (push_constants.constants.light_count > 0) {
+        if (random_float(seed) < 0.5) {
+            uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+            Light light = lights_data.lights[light_idx];
+            light_sample = sample_light(position, seed, light);
+            light_sample.intensity *= push_constants.constants.light_count;
+        } else {
+            light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+        }
+        light_sample.intensity *= 2.0;
     } else {
-        uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
-        Light light = lights_data.lights[light_idx];
-        light_sample = sample_light(position, seed, light);
-        light_sample.intensity *= push_constants.constants.light_count;
+        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
     }
-    light_sample.intensity *= 2.0;
     return light_sample;
 }
+
 
 void main() {
     uint sample_count = push_constants.constants.clear_accumulated;
@@ -89,7 +95,7 @@ void main() {
         payload.direction = ray_direction;
 
         payload.contribution = vec3(1.0);
-        payload.last_bsdf_pdf = 1.0;
+        payload.last_bsdf_pdf_inv = 0.0;
 
         payload.seed = seed;
 
@@ -195,7 +201,9 @@ void main() {
         output_buffers[OUTPUT_IMAGE_INSTANCE_COLOR].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
+    // output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
+    output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(pdf_environment(payload.direction, push_constants.constants.environment_cdf_dimensions));
+
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
 
     output_buffers[OUTPUT_IMAGE_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 1.0);

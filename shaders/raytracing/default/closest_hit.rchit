@@ -27,15 +27,19 @@ layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_REST
 
 LightSample sample_direct_light(inout uint seed, vec3 position) {
     LightSample light_sample;
-    if (random_float(seed) < 0.5) {
-        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+    if (push_constants.constants.light_count > 0) {
+        if (random_float(seed) < 0.5) {
+            uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+            Light light = lights_data.lights[light_idx];
+            light_sample = sample_light(position, seed, light);
+            light_sample.intensity *= push_constants.constants.light_count;
+        } else {
+            light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+        }
+        light_sample.intensity *= 2.0;
     } else {
-        uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
-        Light light = lights_data.lights[light_idx];
-        light_sample = sample_light(position, seed, light);
-        light_sample.intensity *= push_constants.constants.light_count;
+        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
     }
-    light_sample.intensity *= 2.0;
     return light_sample;
 }
 
@@ -113,7 +117,8 @@ void main() {
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
 
             if (payload.depth >= di_depth) {
-                float mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
+                float mis = balance_heuristic(1.0f, 1.0, 1.0f, bsdf_pdf / light_sample.pdf); 
+                mis = 1;
                 payload.color += mis * nee_contribution;
             }
         }
@@ -124,7 +129,7 @@ void main() {
     }
 
     payload.contribution *= bsdf_sample.weight;
-    payload.last_bsdf_pdf = bsdf_sample.pdf;
+    payload.last_bsdf_pdf_inv = 1.0 / bsdf_sample.pdf;
 
     payload.depth += 1;
 

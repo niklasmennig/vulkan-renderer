@@ -801,7 +801,7 @@ void VulkanApplication::draw_frame() {
         }
 
         material_parameter_buffer.set_data(material_parameters.data(), 0, sizeof(InstanceData::MaterialParameters) * material_parameters.size());
-        lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
+        if (lights.size() > 0) lights_buffer.set_data(lights.data(), 0, sizeof(Shaders::Light) * lights.size());
 
         if (clear_frames) accumulated_frames = 0;
         clear_frames = false;
@@ -816,7 +816,7 @@ void VulkanApplication::draw_frame() {
         push_constants.max_depth = ui.max_ray_depth;
         push_constants.frame_samples = ui.frame_samples;
         push_constants.exposure = ui.exposure;
-        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.cdf_map.width, loaded_environment.cdf_map.height);
+        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
         push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
@@ -1523,8 +1523,8 @@ void VulkanApplication::setup() {
     }
 
     loaded_textures.push_back(loaded_environment.image);
-    loaded_textures.push_back(loaded_environment.cdf_map);
     loaded_textures.push_back(loaded_environment.conditional_cdf_map);
+    loaded_textures.push_back(loaded_environment.marginal_cdf_map);
 
     std::cout << "TEST AFTER" << std::endl;
 

@@ -6,80 +6,84 @@
 #include "random.glsl"
 
 #define TEXTURE_ID_ENVIRONMENT_ALBEDO 0
-#define TEXTURE_ID_ENVIRONMENT_CDF 1
+#define TEXTURE_ID_ENVIRONMENT_MARGINAL 1
 #define TEXTURE_ID_ENVIRONMENT_CONDITIONAL 2
 
-LightSample sample_environment(uint seed, uvec2 map_dimensions) {
-    uint width = map_dimensions.x;
-    uint height = map_dimensions.y;
 
-    float x_step = 1.0 / width;
-    float y_step = 1.0 / height;
+float pdf_environment(vec3 direction, uvec2 map_dimensions) {
+    vec2 thetaphi = thetaphi_from_dir(direction);
+
+    // uv coordinates from theta and phi
+    float u = mod(thetaphi.y / (2.0 * PI) + 1.0, 1.0);
+    float v = thetaphi.x / PI;
+
+    uint pixel_x = uint(floor(u * map_dimensions.x));
+    uint pixel_y = uint(floor(v * map_dimensions.y));
+
+    float conditional = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, pixel_y)).r;
+    float conditional_lo = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, pixel_y - 1)).r;
+    if (pixel_y == 0) conditional_lo = 0.0;
+
+    float cdf = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(pixel_x, pixel_y)).r;
+    float cdf_lo = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(pixel_x - 1, pixel_y)).r;
+    if (pixel_x % map_dimensions.x == 0) cdf_lo = 0.0;
+
+    return (cdf - cdf_lo) * (conditional - conditional_lo) * (sin(thetaphi.x) * 2.0 * PI * PI);
+}
+
+LightSample sample_environment(uint seed, uvec2 map_dimensions) {
+    int width = int(map_dimensions.x);
+    int height = int(map_dimensions.y);
 
     float conditional_target = random_float(seed);
-    float conditional_y = 0;
-    float conditional_low = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y)).r;
-    float conditional_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y + y_step)).r;
+    int conditional_y = 0;
+    float conditional_low = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y)).r;
+    float conditional_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y + 1)).r;
 
     while (!(conditional_target < conditional_hi && conditional_target >= conditional_low)) {
         conditional_low = conditional_hi;
-        conditional_y += y_step;
-        conditional_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(0, conditional_y)).r;
+        conditional_y += 1;
+        conditional_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y)).r;
 
-        if (conditional_y + y_step >= 1) {
-            conditional_y = 1;
+        if (conditional_y + 1 >= height) {
+            conditional_y = height - 1;
             break;
         }
     }
 
     float cdf_target = random_float(seed);
-    float cdf_x = 0;
-    float cdf_low = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(cdf_x, conditional_y)).r;
-    float cdf_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(cdf_x + x_step, conditional_y)).r;
+    int cdf_x = 0;
+    float cdf_low = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(cdf_x, conditional_y)).r;
+    float cdf_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(cdf_x + 1, conditional_y)).r;
 
     while (!(cdf_target <= cdf_hi && cdf_target > cdf_low)) {
         cdf_low = cdf_hi;
-        cdf_x += x_step;
-        cdf_hi = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(cdf_x, conditional_y)).r;
+        cdf_x += 1;
+        cdf_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(cdf_x, conditional_y)).r;
 
-        if (cdf_x + x_step >= 1) {
-            cdf_x = 1;
+        if (cdf_x + 1 >= width) {
+            cdf_x = width - 1;
             break;
         }
     }
 
-    float sample_pdf_cdf = (cdf_hi - cdf_low) * map_dimensions.y;
-    float sample_pdf_conditional = (conditional_hi - conditional_low) * map_dimensions.x;
+    float u = ((float(cdf_x) + random_float(seed)) / width);
+    float v = ((float(conditional_y) + random_float(seed)) / height);
 
-    // sample pixel offset for environment map intensity sample
-    vec2 offset = vec2(random_float(seed), random_float(seed)) * vec2(x_step, y_step);
-    vec2 sample_uv = vec2(cdf_x, conditional_y) + offset;
+    float theta = v * PI;
+    float phi = u * 2.0 * PI;
 
-    float theta = sample_uv.y * PI;
-    float phi = sample_uv.x * 2.0 * PI;
+    vec3 direction = dir_from_thetaphi(theta, phi);
 
-    float sample_pdf = sample_pdf_cdf * sample_pdf_conditional * (sin(theta) * 2.0 * PI * PI);
+    float pdf = pdf_environment(direction, map_dimensions);
     
     LightSample result;
-    result.pdf = sample_pdf;
-    result.intensity = max(sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, sample_uv).rgb / sample_pdf, 0.0);
+    result.pdf = pdf;
+    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb / (map_dimensions.x * map_dimensions.y);
     result.distance = FLT_MAX;
-    result.direction = dir_from_thetaphi(theta, phi);
+    result.direction = direction;
     return result;
 }
 
-float pdf_environment(vec3 direction) {
-    vec2 thetaphi = thetaphi_from_dir(direction);
-
-    // uv coordinates from theta and phi
-    float u = thetaphi.y / (2.0 * PI);
-    float v = thetaphi.x / PI;
-
-    // query environment map color
-    float cdf = sample_texture(TEXTURE_ID_ENVIRONMENT_CDF, vec2(u, v)).r;
-    float conditional = sample_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, vec2(u, v)).r;
-
-    return cdf * conditional * (sin(thetaphi.x) * 2.0 * PI * PI);
-}
 
 #endif

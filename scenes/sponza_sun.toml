@@ -12,7 +12,7 @@
     object = "sponza"
 
 [lights]
-    [lights.sun]
-    type = "directional"
-    direction = [0.1, -1.0, 0.1]
-    intensity = [1.0, 1.0, 1.0]
+    # [lights.sun]
+    # type = "directional"
+    # direction = [0.1, -1.0, 0.1]
+    # intensity = [1.0, 1.0, 1.0]

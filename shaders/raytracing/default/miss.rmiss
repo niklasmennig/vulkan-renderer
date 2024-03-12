@@ -28,14 +28,13 @@ void main() {
 
         payload.environment_cdf = sample_texture(1, vec2(u,v)).r;
         payload.environment_conditional = sample_texture(2, vec2(u,v)).r;
-        payload.color = env_contribution;
-        return;
     }
 
     if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
         // MIS!!!
-        float env_pdf = pdf_environment(gl_WorldRayDirectionEXT);
-        float mis = balance_heuristic(1.0f, payload.last_bsdf_pdf, 1.0f, env_pdf); 
+        float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, push_constants.constants.environment_cdf_dimensions);
+        float mis = balance_heuristic(1.0, 1.0, 1.0, env_pdf * payload.last_bsdf_pdf_inv);
+        mis = 1.0;
         payload.color += payload.contribution * env_contribution * mis;
     }
 
