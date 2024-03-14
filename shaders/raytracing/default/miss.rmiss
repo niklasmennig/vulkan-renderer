@@ -32,9 +32,11 @@ void main() {
 
     if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
         // MIS!!!
-        float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, push_constants.constants.environment_cdf_dimensions);
-        float mis = balance_heuristic(1.0, 1.0, 1.0, env_pdf * payload.last_bsdf_pdf_inv);
-        mis = 1.0;
+        float mis = 1.0;
+        if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
+            float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, push_constants.constants.environment_cdf_dimensions);
+            mis = balance_heuristic(1.0, 1.0, 1.0, env_pdf * payload.last_bsdf_pdf_inv);
+        }
         payload.color += payload.contribution * env_contribution * mis;
     }
 

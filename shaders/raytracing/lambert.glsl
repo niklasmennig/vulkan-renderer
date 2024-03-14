@@ -15,7 +15,7 @@ BSDFSample sample_lambert(vec3 ray_out, Material material, inout uint seed) {
 }
 
 vec3 eval_lambert(vec3 ray_in, vec3 ray_out, Material material) {
-        return material.base_color * material.opacity;
+        return material.base_color * material.opacity / PI;
 }
 
 float pdf_lambert(vec3 ray_in, vec3 ray_out, Material material) {

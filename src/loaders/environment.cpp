@@ -78,7 +78,7 @@ EnvironmentMap loaders::load_environment_map(Device* device, const std::string& 
     }
     if (marginal_sum < FLT_EPSILON) {
         for (int v = 0; v < height; v++) {
-            marginal_cdf_data[v] = 1.0;
+            marginal_cdf_data[v] = (float)v / (height - 1);
         }
     } else {
         for (int v = 0; v < height; v++) {

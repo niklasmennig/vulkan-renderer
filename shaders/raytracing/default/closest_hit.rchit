@@ -117,8 +117,8 @@ void main() {
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
 
             if (payload.depth >= di_depth) {
-                float mis = balance_heuristic(1.0f, 1.0, 1.0f, bsdf_pdf / light_sample.pdf); 
-                mis = 1;
+                float mis = 1.0;
+                if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0f, 1.0, 1.0f, bsdf_pdf / light_sample.pdf); 
                 payload.color += mis * nee_contribution;
             }
         }

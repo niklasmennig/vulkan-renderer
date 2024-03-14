@@ -74,6 +74,7 @@ void main() {
     payload.restir_index = restir_index;
 
     vec3 ray_origin = raygen_data.camera.origin.xyz;
+    vec3 ray_direction;
 
     vec3 multisample_color = vec3(0.0);
 
@@ -86,7 +87,7 @@ void main() {
         ndc.y *= -1;
 
         // initialize payload
-        vec3 ray_direction = compute_ray_direction(ndc);
+        ray_direction = compute_ray_direction(ndc);
 
         payload.color = vec3(0.0);
         payload.depth = 1;
@@ -162,14 +163,15 @@ void main() {
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             mat3x3 shading_space = transpose(basis(payload.primary_hit_normal));
-            vec3 ray_out = shading_space * -normalize(payload.primary_hit_position - ray_origin);
-            vec3 ray_in = shading_space * -light_direction;
 
-            vec3 bsdf_eval = eval_bsdf(ray_out, ray_in, material); 
+            vec3 ray_dir_local = shading_space * ray_direction;
+            vec3 light_dir_local = shading_space * -light_sample.direction;
+
+            vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
             float restir_weight = restir_reservoirs[restir_index].reservoirs[pixel_index].weight * restir_reservoirs[restir_index].reservoirs[pixel_index].sum_weights / restir_reservoirs[restir_index].reservoirs[pixel_index].num_samples;
             // divide contribution by weight?
-            vec3 restir_nee_contribution = light_sample.intensity * bsdf_eval * clamp(dot(light_direction, payload.primary_hit_normal), 0.0, 1.0);
+            vec3 restir_nee_contribution = bsdf_eval * light_sample.intensity * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0.0, 1.0);
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
         }
@@ -201,8 +203,8 @@ void main() {
         output_buffers[OUTPUT_IMAGE_INSTANCE_COLOR].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    // output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
-    output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(pdf_environment(payload.direction, push_constants.constants.environment_cdf_dimensions));
+    output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
+    // output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CDF].color[pixel_index] = vec4(pdf_environment(payload.direction, push_constants.constants.environment_cdf_dimensions));
 
     output_buffers[OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
 

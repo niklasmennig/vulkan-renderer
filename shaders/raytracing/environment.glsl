@@ -28,7 +28,7 @@ float pdf_environment(vec3 direction, uvec2 map_dimensions) {
     float cdf_lo = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(pixel_x - 1, pixel_y)).r;
     if (pixel_x % map_dimensions.x == 0) cdf_lo = 0.0;
 
-    return (cdf - cdf_lo) * (conditional - conditional_lo) * (sin(thetaphi.x) * 2.0 * PI * PI);
+    return (cdf - cdf_lo) * (conditional - conditional_lo) * (abs(sin(thetaphi.x)) * 2.0 * PI * PI) * (map_dimensions.x * map_dimensions.y);
 }
 
 LightSample sample_environment(uint seed, uvec2 map_dimensions) {
@@ -40,6 +40,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     float conditional_low = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y)).r;
     float conditional_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y + 1)).r;
 
+    // TODO: conditional_low != conditional_hi if no gradient in cdf
     while (!(conditional_target < conditional_hi && conditional_target >= conditional_low)) {
         conditional_low = conditional_hi;
         conditional_y += 1;
@@ -75,11 +76,11 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
 
     vec3 direction = dir_from_thetaphi(theta, phi);
 
-    float pdf = pdf_environment(direction, map_dimensions);
+    float pdf = (cdf_hi - cdf_low) * (conditional_hi - conditional_low) / (abs(sin(theta)) * 2.0 * PI * PI) * (width * height);
     
     LightSample result;
     result.pdf = pdf;
-    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb / (map_dimensions.x * map_dimensions.y);
+    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb / pdf;
     result.distance = FLT_MAX;
     result.direction = direction;
     return result;
