@@ -136,7 +136,7 @@ void main() {
 
         uint restir_seed = current_reservoir.sample_seed;
         LightSample restir_sample = sample_direct_light(restir_seed, payload.primary_hit_position);
-        current_reservoir.weight = 1.0 / restir_phat(restir_sample, payload.primary_hit_normal) * (1.0 / current_reservoir.num_samples * current_reservoir.sum_weights);
+        current_reservoir.weight = (1.0 / restir_phat(restir_sample, payload.primary_hit_normal)) * (current_reservoir.sum_weights / current_reservoir.num_samples);
         restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
 
         // temporal reuse
@@ -160,7 +160,7 @@ void main() {
 
         uint temporal_seed = temporal_reservoir.sample_seed;
         LightSample temporal_sample = sample_direct_light(temporal_seed, payload.primary_hit_position);
-        temporal_reservoir.weight = 1.0 / restir_phat(temporal_sample, payload.primary_hit_normal) * (1.0 / temporal_reservoir.num_samples * temporal_reservoir.sum_weights);
+        temporal_reservoir.weight = (1.0 / restir_phat(temporal_sample, payload.primary_hit_normal)) * (temporal_reservoir.sum_weights / temporal_reservoir.num_samples);
 
         // use combined sample
         restir_reservoirs[restir_index].reservoirs[pixel_index] = temporal_reservoir;
@@ -191,7 +191,7 @@ void main() {
         }
     } else {
         Reservoir r = restir_reservoirs[restir_index].reservoirs[pixel_index];
-        clear_reservoir(r);
+        r.weight = 0;
         restir_reservoirs[restir_index].reservoirs[pixel_index] = r;
     }
 
