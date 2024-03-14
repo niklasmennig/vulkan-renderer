@@ -30,7 +30,7 @@ LightSample sample_light(vec3 position, inout uint seed, Light light) {
             light_sample.direction = direction / distance;
             light_sample.distance = distance;
             float attenuation = pow(1.0 / distance, 2.0);
-            light_sample.intensity = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]) * attenuation);
+            light_sample.weight = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]) * attenuation);
             light_sample.pdf = FLT_MAX;
             break;
         case 1: // AREA LIGHT
@@ -71,13 +71,13 @@ LightSample sample_light(vec3 position, inout uint seed, Light light) {
 
             MaterialParameters material_parameters = get_material_parameters(instance);
             vec2 uv = get_vertex_uv(instance, primitive, vec2(random_float(seed), random_float(seed)));
-            light_sample.intensity = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength / pdf;
+            light_sample.weight = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength / pdf;
             light_sample.pdf = pdf;
             break;
         case 2: // DIRECTIONAL LIGHT
             light_sample.direction = -normalize(vec3(light.float_data[0], light.float_data[1], light.float_data[2]));
             light_sample.distance = FLT_MAX;
-            light_sample.intensity = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]));
+            light_sample.weight = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]));
             light_sample.pdf = FLT_MAX;
             break;
     }

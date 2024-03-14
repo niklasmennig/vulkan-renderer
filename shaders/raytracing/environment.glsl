@@ -80,7 +80,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     
     LightSample result;
     result.pdf = pdf;
-    result.intensity = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb / pdf;
+    result.weight = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb / pdf;
     result.distance = FLT_MAX;
     result.direction = direction;
     return result;

@@ -89,8 +89,8 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_output_buffer("Result Image", sizeof(vec4), false, true);
     add_output_buffer("Accumulated Color");
-    add_output_buffer("Albedo");
-    add_output_buffer("Normals");
+    add_output_buffer("Albedo", 16, false, true);
+    add_output_buffer("Normals", 16, false, true);
     add_output_buffer("Instance Indices", sizeof(vec4), false, false);
     add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Roughness");

@@ -32,11 +32,11 @@ LightSample sample_direct_light(inout uint seed, vec3 position) {
             uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
             Light light = lights_data.lights[light_idx];
             light_sample = sample_light(position, seed, light);
-            light_sample.intensity *= push_constants.constants.light_count;
+            light_sample.weight *= push_constants.constants.light_count;
         } else {
             light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
         }
-        light_sample.intensity *= 2.0;
+        light_sample.weight *= 2.0;
     } else {
         light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
     }
@@ -111,7 +111,7 @@ void main() {
 
             float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.intensity * clamp(dot(light_sample.direction, normal), 0.0, 1.0);
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * clamp(dot(light_sample.direction, normal), 0.0, 1.0);
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;

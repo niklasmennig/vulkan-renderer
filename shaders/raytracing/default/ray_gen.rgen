@@ -51,11 +51,11 @@ LightSample sample_direct_light(inout uint seed, vec3 position) {
             uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
             Light light = lights_data.lights[light_idx];
             light_sample = sample_light(position, seed, light);
-            light_sample.intensity *= push_constants.constants.light_count;
+            light_sample.weight *= push_constants.constants.light_count;
         } else {
             light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
         }
-        light_sample.intensity *= 2.0;
+        light_sample.weight *= 2.0;
     } else {
         light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
     }
@@ -119,46 +119,62 @@ void main() {
 
     vec3 multisample_color_normalized = multisample_color / push_constants.constants.frame_samples;
 
-    // initial restir samples
-    clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
-    for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
-        const uint restir_seed = random_uint(payload.seed);
-        uint current_seed = restir_seed;
-        LightSample light_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-        float p_hat = luminance(light_sample.intensity) * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0, 1);
-        update_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index], restir_seed, p_hat, payload.seed);
+    // RESTIR
+    {
+        // initial restir samples
+        Reservoir current_reservoir = restir_reservoirs[restir_index].reservoirs[pixel_index];
+        clear_reservoir(current_reservoir);
+
+        for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
+            const uint restir_seed = hash_combine(payload.seed, 0xdeadbeef);
+            uint current_seed = restir_seed;
+            LightSample light_sample = sample_direct_light(current_seed, payload.primary_hit_position);
+            float p_hat = restir_phat(light_sample, payload.primary_hit_normal);
+            update_reservoir(current_reservoir, restir_seed, p_hat, payload.seed);
+        }
+
+
+        uint restir_seed = current_reservoir.sample_seed;
+        LightSample restir_sample = sample_direct_light(restir_seed, payload.primary_hit_position);
+        current_reservoir.weight = 1.0 / restir_phat(restir_sample, payload.primary_hit_normal) * (1.0 / current_reservoir.num_samples * current_reservoir.sum_weights);
+        restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
+
+        // temporal reuse
+        Reservoir temporal_reservoir;
+        clear_reservoir(temporal_reservoir);
+
+        // update with current sample
+        uint current_seed = current_reservoir.sample_seed;
+        LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
+        float p_hat = restir_phat(current_sample, payload.primary_hit_normal);
+        update_reservoir(temporal_reservoir, current_seed, p_hat * current_reservoir.weight * current_reservoir.num_samples, payload.seed);
+
+        // update with previous sample
+        Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[pixel_index];
+        uint previous_seed = previous_reservoir.sample_seed;
+        LightSample previous_sample = sample_direct_light(previous_seed, payload.primary_hit_position);
+        float p_hat_previous = restir_phat(previous_sample, payload.primary_hit_normal);
+        update_reservoir(temporal_reservoir, previous_seed, p_hat_previous * previous_reservoir.weight * previous_reservoir.num_samples, payload.seed);
+
+        temporal_reservoir.num_samples = current_reservoir.num_samples + previous_reservoir.num_samples;
+
+        uint temporal_seed = temporal_reservoir.sample_seed;
+        LightSample temporal_sample = sample_direct_light(temporal_seed, payload.primary_hit_position);
+        temporal_reservoir.weight = 1.0 / restir_phat(temporal_sample, payload.primary_hit_normal) * (1.0 / temporal_reservoir.num_samples * temporal_reservoir.sum_weights);
+
+        // use combined sample
+        restir_reservoirs[restir_index].reservoirs[pixel_index] = temporal_reservoir;
     }
-
-    // temporal reuse
-    Reservoir temporal;
-    clear_reservoir(temporal);
-
-    // update with current sample
-    uint current_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
-    LightSample current_sample = sample_direct_light(current_seed, payload.primary_hit_position);
-    float p_hat = luminance(current_sample.intensity) * clamp(dot(current_sample.direction, payload.primary_hit_normal), 0, 1);
-    update_reservoir(temporal, current_seed, p_hat, payload.seed);
-
-    // update with previous sample
-    uint previous_seed = restir_reservoirs[restir_index_previous].reservoirs[pixel_index].sample_seed;
-    LightSample previous_sample = sample_direct_light(previous_seed, payload.primary_hit_position);
-    float p_hat_previous = length(previous_sample.intensity) * dot(previous_sample.direction, payload.primary_hit_normal);
-    update_reservoir(temporal, previous_seed, p_hat_previous, payload.seed);
-
-    // use combined sample
-    restir_reservoirs[restir_index].reservoirs[pixel_index] = temporal;
 
     // ReSTIR contribution
     if (payload.primary_hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
         Material material = get_material(payload.primary_hit_instance, payload.primary_hit_uv);
 
-        uint nee_seed = restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
-        // uint nee_seed = 0;
+        uint nee_seed =  restir_reservoirs[restir_index].reservoirs[pixel_index].sample_seed;
         LightSample light_sample = sample_direct_light(nee_seed, payload.primary_hit_position);
-        vec3 light_direction = light_sample.direction;
 
         rayQueryEXT ray_query;
-        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, payload.primary_hit_position, EPSILON, light_direction, light_sample.distance - 2.0 * EPSILON);
+        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, payload.primary_hit_position, EPSILON, light_sample.direction, light_sample.distance - 2.0 * EPSILON);
         rayQueryProceedEXT(ray_query);
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
@@ -169,12 +185,14 @@ void main() {
 
             vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            float restir_weight = restir_reservoirs[restir_index].reservoirs[pixel_index].weight * restir_reservoirs[restir_index].reservoirs[pixel_index].sum_weights / restir_reservoirs[restir_index].reservoirs[pixel_index].num_samples;
-            // divide contribution by weight?
-            vec3 restir_nee_contribution = bsdf_eval * light_sample.intensity * clamp(dot(light_sample.direction, payload.primary_hit_normal), 0.0, 1.0);
+            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, payload.primary_hit_normal)) * restir_reservoirs[restir_index].reservoirs[pixel_index].weight;
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
         }
+    } else {
+        Reservoir r = restir_reservoirs[restir_index].reservoirs[pixel_index];
+        clear_reservoir(r);
+        restir_reservoirs[restir_index].reservoirs[pixel_index] = r;
     }
 
     multisample_color_normalized = max(multisample_color_normalized, vec3(0.0));

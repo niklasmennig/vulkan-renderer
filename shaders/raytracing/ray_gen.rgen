@@ -236,7 +236,7 @@ void main() {
                         } else {
                             vec3 bsdf_eval = eval_ggx(light_dir_local, ray_out_local, material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);  
                             float mis = balance_heuristic(1.0f, light_pdf, 1.0f, bsdf_pdf); 
-                            color += mis * bsdf_eval * contribution * (light_sample.intensity) * abs(dot(light_dir, normal));
+                            color += mis * bsdf_eval * contribution * (light_sample.weight) * abs(dot(light_dir, normal));
                         }
                     } else {
                         restir_reservoirs[current_reservoir_index].reservoirs[pixel_index].sum_weights = 0;
@@ -297,7 +297,7 @@ void main() {
             mat3 to_local = inverse(basis(primary_hit_normal));
             vec3 local_light_dir = to_local * restir_light_sample.direction;
             vec3 bsdf_eval = eval_ggx(local_light_dir, reflect(local_light_dir, primary_hit_normal), material.base_color, material.opacity, material.metallic, material.fresnel, material.roughness, material.transmission, material.ior);
-            color_sum += bsdf_eval * restir_light_sample.intensity * abs(dot(restir_light_sample.direction, primary_hit_normal));
+            color_sum += bsdf_eval * restir_light_sample.weight * abs(dot(restir_light_sample.direction, primary_hit_normal));
             frame_samples += 1;
         }
     }
