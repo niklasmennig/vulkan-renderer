@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+#extension GL_GOOGLE_include_directive : enable
 
 #include "payload.glsl"
 #include "../mesh_data.glsl"
@@ -20,28 +21,7 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
-layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
-layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
-
 layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
-
-LightSample sample_direct_light(inout uint seed, vec3 position) {
-    LightSample light_sample;
-    if (push_constants.constants.light_count > 0) {
-        if (random_float(seed) < 0.5) {
-            uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
-            Light light = lights_data.lights[light_idx];
-            light_sample = sample_light(position, seed, light);
-            light_sample.weight *= push_constants.constants.light_count;
-        } else {
-            light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
-        }
-        light_sample.weight *= 2.0;
-    } else {
-        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
-    }
-    return light_sample;
-}
 
 void main() {
 

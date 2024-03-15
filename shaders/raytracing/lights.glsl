@@ -3,10 +3,14 @@
 
 #include "common.glsl"
 #include "structs.glsl"
-#include "interface.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "material.glsl"
+#include "random.glsl"
+#include "push_constants.glsl"
+#include "environment.glsl"
+
+layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
 
 float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     vec3 v0, v1, v2;
@@ -83,4 +87,23 @@ LightSample sample_light(vec3 position, inout uint seed, Light light) {
     }
     return light_sample;
 }
+
+LightSample sample_direct_light(inout uint seed, vec3 position) {
+    LightSample light_sample;
+    if (push_constants.constants.light_count > 0) {
+        if (random_float(seed) < 0.5) {
+            uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+            Light light = lights_data.lights[light_idx];
+            light_sample = sample_light(position, seed, light);
+            light_sample.weight *= push_constants.constants.light_count;
+        } else {
+            light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+        }
+        light_sample.weight *= 2.0;
+    } else {
+        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+    }
+    return light_sample;
+}
+
 #endif

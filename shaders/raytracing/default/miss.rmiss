@@ -1,14 +1,15 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_GOOGLE_include_directive : enable
 
 #include "payload.glsl"
+#include "../push_constants.glsl"
 #include "../common.glsl"
 #include "../texture_data.glsl"
 #include "../mis.glsl"
 #include "../environment.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
-layout(std430, push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
 void main() {
     // calculate theta and phi for environment map

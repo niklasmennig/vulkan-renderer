@@ -42,33 +42,6 @@
 #define OUTPUT_IMAGE_ENVIRONMENT_CDF 8
 #define OUTPUT_IMAGE_ENVIRONMENT_CONDITIONAL 9
 
-struct CameraData
-{
-    vec4 origin;
-    vec4 forward;
-    vec4 right;
-    vec4 up;
-    float fov_x;
-};
-
-struct Light {
-    uint uint_data[4];
-    float float_data[16];
-};
-
-struct PushConstants {
-    uint sbt_stride;
-    float time;
-    uint clear_accumulated;
-    uint light_count;
-    //
-    uint max_depth;
-    uint flags;
-    uint frame_samples;
-    float exposure;
-    //
-    uvec2 environment_cdf_dimensions;
-    uvec2 image_extent;
-};
+#include "structs.glsl"
 
 #endif

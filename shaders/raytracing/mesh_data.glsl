@@ -4,13 +4,13 @@
 #include "payload.glsl"
 #include "interface.glsl"
 
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 0) readonly buffer IndexData {uint data[];} indices;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 1) readonly buffer VertexData {vec4 data[];} vertices;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 2) readonly buffer NormalData {vec4 data[];} normals;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 3) readonly buffer TexcoordData {vec2 data[];} texcoords;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 4) readonly buffer TangentData {vec4 data[];} tangents;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 5) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 6) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_INDICES) readonly buffer IndexData {uint data[];} indices;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_VERTICES) readonly buffer VertexData {vec4 data[];} vertices;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_NORMALS) readonly buffer NormalData {vec4 data[];} normals;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_TEXCOORDS) readonly buffer TexcoordData {vec2 data[];} texcoords;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_TANGENTS) readonly buffer TangentData {vec4 data[];} tangents;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_DATA_OFFSETS) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_OFFSET_INDICES) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
 
 #define OFFSET_ENTRIES 5
 
