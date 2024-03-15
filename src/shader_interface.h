@@ -12,8 +12,4 @@ namespace Shaders
     using vec3 = glm::vec3;
     using vec4 = glm::vec4;
     #include "../shaders/raytracing/interface.glsl"
-
-    namespace ReSTIR {
-        #include "../shaders/raytracing/restir.glsl"
-    }
 }

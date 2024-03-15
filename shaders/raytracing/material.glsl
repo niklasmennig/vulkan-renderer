@@ -1,37 +1,13 @@
 #ifndef MATERIAL_GLSL
 #define MATERIAL_GLSL
 
-struct MaterialParameters {
-    // diffuse rgb, opacity a
-    vec3 diffuse;
-    float opacity;
-    // emissive rgb, emission strength a
-    vec3 emissive;
-    float emission_strength;
-    // roughness x, metallic y, transmissive z, ior a
-    float roughness;
-    float metallic;
-    float transmissive;
-    float ior;
-};
+#include "structs.glsl"
 
-layout(std430, set = 1, binding = 9) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
+layout(std430, set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MATERIAL_PARAMETERS) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 
 MaterialParameters get_material_parameters(uint instance) {
     return material_parameters.data[instance];
 }
-
-
-struct Material {
-    vec3 base_color;
-    float opacity;
-    float roughness;
-    float metallic;
-    float transmission;
-    float ior;
-    float fresnel;
-    vec3 emission;
-};
 
 Material get_material(uint instance, vec2 uv) {
     Material result;

@@ -8,6 +8,7 @@
 #include "../texture_data.glsl"
 #include "../mis.glsl"
 #include "../environment.glsl"
+#include "../output.glsl"
 
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
@@ -23,9 +24,9 @@ void main() {
     vec3 env_contribution = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb;
 
     if (payload.depth == 1) {
-        payload.primary_hit_instance = NULL_INSTANCE;
-        payload.primary_hit_albedo = env_contribution;
-        payload.primary_hit_normal = vec3(0.0);
+        write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(NULL_INSTANCE), 0));
+        write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(env_contribution, 1.0));
+        write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(0.0));
 
         payload.environment_cdf = sample_texture(1, vec2(u,v)).r;
         payload.environment_conditional = sample_texture(2, vec2(u,v)).r;

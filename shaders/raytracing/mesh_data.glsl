@@ -1,7 +1,6 @@
 #ifndef MESH_DATA_GLSL
 #define MESH_DATA_GLSL
 
-#include "payload.glsl"
 #include "interface.glsl"
 
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_INDICES) readonly buffer IndexData {uint data[];} indices;
@@ -12,15 +11,15 @@ layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_TANGENTS)
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_DATA_OFFSETS) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_OFFSET_INDICES) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
 
-#define OFFSET_ENTRIES 5
+#define MESH_DATA_OFFSET_ENTRIES 5
 
 void get_vertices(uint instance, uint primitive, out vec3 v0, out vec3 v1, out vec3 v2) {
     uint idx0 = primitive * 3 + 0;
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
 
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 1];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 0];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 1];
 
     v0 = vertices.data[data_offset + indices.data[index_offset + idx0]].xyz;
     v1 = vertices.data[data_offset + indices.data[index_offset + idx1]].xyz;
@@ -41,8 +40,8 @@ vec3 get_vertex_normal(uint instance, uint primitive, vec2 barycentrics) {
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
 
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 2];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 0];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 2];
 
     vec3 norm0 = normals.data[data_offset + indices.data[index_offset + idx0]].xyz;
     vec3 norm1 = normals.data[data_offset + indices.data[index_offset + idx1]].xyz;
@@ -64,8 +63,8 @@ vec2 get_vertex_uv(uint instance, uint primitive, vec2 barycentrics) {
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
 
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 3];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 0];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 3];
 
     vec2 uv0 = texcoords.data[data_offset + indices.data[index_offset + idx0]];
     vec2 uv1 = texcoords.data[data_offset + indices.data[index_offset + idx1]];
@@ -80,8 +79,8 @@ vec3 get_vertex_tangent(uint instance, uint primitive, vec2 barycentrics) {
     uint idx1 = primitive * 3 + 1;
     uint idx2 = primitive * 3 + 2;
 
-    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 0];
-    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * OFFSET_ENTRIES + 4];
+    uint index_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 0];
+    uint data_offset = mesh_data_offsets.data[mesh_offset_indices.data[instance] * MESH_DATA_OFFSET_ENTRIES + 4];
 
     vec3 tang0 = tangents.data[data_offset + indices.data[index_offset + idx0]].xyz;
     vec3 tang1 = tangents.data[data_offset + indices.data[index_offset + idx1]].xyz;

@@ -515,8 +515,8 @@ void VulkanApplication::create_default_descriptor_writes() {
 
     // ReSTIR
     std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
-    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
@@ -761,10 +761,10 @@ void VulkanApplication::recreate_render_images() {
     device.end_single_use_command_buffer(cmdbuf);
 
     restir_reservoir_buffer_0.free();
-    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
     restir_reservoir_buffer_1.free();
-    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::ReSTIR::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * render_image_extent.width * render_image_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
 
     if (render_transfer_image.width > 0) render_transfer_image.free();
@@ -811,7 +811,7 @@ void VulkanApplication::draw_frame() {
         Shaders::PushConstants push_constants;
         push_constants.sbt_stride = rt_pipeline.sbt_stride;
         push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
-        push_constants.clear_accumulated = accumulated_frames;
+        push_constants.sample_count = accumulated_frames;
         push_constants.light_count = lights.size();
         push_constants.max_depth = ui.max_ray_depth;
         push_constants.frame_samples = ui.frame_samples;
