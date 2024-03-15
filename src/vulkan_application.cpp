@@ -1692,10 +1692,11 @@ void VulkanApplication::setup() {
                     int instance_index = hovered_instance_color.b * 255 + hovered_instance_color.g * (255 * 255) + hovered_instance_color.r * (255 * 255 * 255);
                     if (1 - hovered_instance_color.r < FLT_EPSILON && 1 - hovered_instance_color.g < FLT_EPSILON && 1 - hovered_instance_color.b < FLT_EPSILON) instance_index = -1;
                     
-                    app->ui.selected_instance = instance_index;
-                    if (instance_index != -1) {
+                    if (instance_index != NULL_INSTANCE) {
+                        app->ui.selected_instance = instance_index;
                         app->ui.selected_instance_parameters = &app->material_parameters[instance_index];
                     } else {
+                        app->ui.selected_instance = -1;
                         app->ui.selected_instance_parameters = nullptr;
                     }
                 }

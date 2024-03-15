@@ -23,6 +23,8 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
 void main() {
+    uint sample_count = push_constants.constants.sample_count;
+
     uint instance = gl_InstanceID;
     uint primitive = gl_PrimitiveID;
 
@@ -61,6 +63,8 @@ void main() {
 
         if (sample_count == 1) {
             write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(instance), 0.0)); 
+            write_output(OUTPUT_BUFFER_INSTANCE_COLOR, payload.pixel_index, vec4(random_vec3(instance), 1.0));
+
             write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(material.base_color, 1.0)); 
             write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(normal, 0.0)); 
             write_output(OUTPUT_BUFFER_ROUGHNESS, payload.pixel_index, vec4(material.roughness)); 

@@ -184,20 +184,5 @@ void main() {
     write_output(OUTPUT_BUFFER_ACCUMULATED, pixel_index, vec4(accumulated_color, 1.0));
     write_output(OUTPUT_BUFFER_RESULT, pixel_index, vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 1.0));
 
-    uint instance = decode_uint(read_output(OUTPUT_BUFFER_INSTANCE, pixel_index).xyz);
-    if (instance != NULL_INSTANCE) {
-        vec3 instance_color = read_output(OUTPUT_BUFFER_INSTANCE, pixel_index).rgb;
-        output_buffers[OUTPUT_BUFFER_INSTANCE].color[pixel_index] = vec4(instance_color, 1.0);
-        output_buffers[OUTPUT_BUFFER_INSTANCE_COLOR].color[pixel_index] = vec4(random_vec3(instance), 1.0);
-    } else {
-        output_buffers[OUTPUT_BUFFER_INSTANCE].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
-        output_buffers[OUTPUT_BUFFER_INSTANCE_COLOR].color[pixel_index] = vec4(0.0, 0.0, 0.0, 1.0);
-    }
-
-    output_buffers[OUTPUT_BUFFER_ENVIRONMENT_CDF].color[pixel_index] = vec4(vec3(payload.environment_cdf), 1.0);
-    // output_buffers[OUTPUT_BUFFER_ENVIRONMENT_CDF].color[pixel_index] = vec4(pdf_environment(payload.direction, push_constants.constants.environment_cdf_dimensions));
-
-    output_buffers[OUTPUT_BUFFER_ENVIRONMENT_CONDITIONAL].color[pixel_index] = vec4(vec3(payload.environment_conditional), 1.0);
-
-    output_buffers[OUTPUT_BUFFER_RAY_DEPTH].color[pixel_index] = vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 1.0);
+    write_output(OUTPUT_BUFFER_RAY_DEPTH, pixel_index, vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 1.0));
 }

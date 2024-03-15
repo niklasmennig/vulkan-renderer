@@ -18,9 +18,6 @@ struct RayPayload {
     vec3 primary_hit_position;
     vec2 primary_hit_uv;
 
-    float environment_cdf;
-    float environment_conditional;
-
     float last_bsdf_pdf_inv;
 };
 
