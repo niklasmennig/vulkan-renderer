@@ -110,7 +110,7 @@ void main() {
 
         // initial restir sample generation
         for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
-            const uint restir_seed = hash_combine(payload.seed, 0xdeadbeef);
+            const uint restir_seed = random_uint(payload.seed);
             uint current_seed = restir_seed;
             float p_hat = restir_p_hat(pixel_index, current_seed);
             update_reservoir(current_reservoir, restir_seed, p_hat, payload.seed);
@@ -131,7 +131,7 @@ void main() {
 
         // temporal reuse
         Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[pixel_index];
-        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, payload.seed);
+        // current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, payload.seed);
         
         restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
 
