@@ -4,11 +4,19 @@
 // https://research.nvidia.com/publication/2020-07_spatiotemporal-reservoir-resampling-real-time-ray-tracing-dynamic-direct
 // https://research.nvidia.com/sites/default/files/pubs/2020-07_Spatiotemporal-reservoir-resampling/ReSTIR.pdf
 #include "structs.glsl"
+#include "lights.glsl"
+#include "output.glsl"
 
 
 layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
 
 // reservoirs are continuously resampled and updated to find good NEE paths to reproduce
+float restir_p_hat(uint pixel_index, uint seed) {
+    vec3 position = read_output(OUTPUT_BUFFER_POSITION, pixel_index).xyz;
+    vec3 normal = read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz;
+    LightSample light_sample = sample_direct_light(seed, position);
+    return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+}
 
 void update_reservoir(inout Reservoir r, uint sample_seed, float weight, inout uint seed) {
     r.sum_weights = r.sum_weights + weight;
@@ -25,8 +33,19 @@ void clear_reservoir(inout Reservoir r) {
     r.weight = 0.0;
 }
 
-float restir_phat(LightSample light_sample, vec3 normal) {
-    return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, inout uint seed) {
+    Reservoir s;
+    clear_reservoir(s);
+
+    update_reservoir(s, r0.sample_seed, restir_p_hat(pixel_index, r0.sample_seed) * r0.weight * r0.num_samples, seed);
+    update_reservoir(s, r1.sample_seed, restir_p_hat(pixel_index, r1.sample_seed) * r1.weight * r1.num_samples, seed);
+
+    s.num_samples = r0.num_samples + r1.num_samples;
+    s.weight = (1.0 / restir_p_hat(pixel_index, s.sample_seed)) * (s.sum_weights / s.num_samples);
+
+    return s;
 }
+
+
 
 #endif

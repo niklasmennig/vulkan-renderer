@@ -117,6 +117,7 @@ struct VulkanApplication {
     Shaders::CameraData camera_data;
     Buffer camera_buffer;
 
+    std::uint32_t application_frames = 0;
     bool clear_frames = true;
     uint32_t accumulated_frames;
 

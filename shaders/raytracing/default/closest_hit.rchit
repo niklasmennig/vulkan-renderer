@@ -68,6 +68,7 @@ void main() {
             write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(material.base_color, 1.0)); 
             write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(normal, 0.0)); 
             write_output(OUTPUT_BUFFER_ROUGHNESS, payload.pixel_index, vec4(material.roughness)); 
+            write_output(OUTPUT_BUFFER_POSITION, payload.pixel_index, vec4(position, 1.0));
         }
     }
 

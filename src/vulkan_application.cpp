@@ -810,7 +810,7 @@ void VulkanApplication::draw_frame() {
 
         Shaders::PushConstants push_constants;
         push_constants.sbt_stride = rt_pipeline.sbt_stride;
-        push_constants.time = std::chrono::duration_cast<std::chrono::milliseconds>(last_frame_time - startup_time).count();
+        push_constants.frame = application_frames;
         push_constants.sample_count = accumulated_frames;
         push_constants.light_count = lights.size();
         push_constants.max_depth = ui.max_ray_depth;
@@ -1008,6 +1008,8 @@ void VulkanApplication::draw_frame() {
 
     vkWaitForFences(logical_device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
     vkResetFences(logical_device, 1, &in_flight_fence);
+
+    application_frames++;
 }
 
 void VulkanApplication::setup_device() {

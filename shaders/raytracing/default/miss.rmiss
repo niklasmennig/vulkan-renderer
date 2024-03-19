@@ -27,6 +27,7 @@ void main() {
         write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(NULL_INSTANCE), 0));
         write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(env_contribution, 1.0));
         write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(0.0));
+        write_output(OUTPUT_BUFFER_POSITION, payload.pixel_index, vec4(payload.origin, 1.0));
 
         write_output(OUTPUT_BUFFER_ENVIRONMENT_CONDITIONAL, payload.pixel_index, vec4(sample_texture(1, vec2(u,v)).r));
         write_output(OUTPUT_BUFFER_ENVIRONMENT_MARGINAL, payload.pixel_index, vec4(sample_texture(2, vec2(u,v)).r));

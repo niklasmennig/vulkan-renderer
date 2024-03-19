@@ -94,6 +94,7 @@ RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     add_output_buffer("Instance Indices", sizeof(vec4), false, false);
     add_output_buffer("Instance Indices(Colored)");
     add_output_buffer("Roughness");
+    add_output_buffer("Position");
     add_output_buffer("Ray Depth");
     add_output_buffer("Environment Conditional");
     add_output_buffer("Environment Marginal");

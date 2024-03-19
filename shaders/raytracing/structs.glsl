@@ -17,7 +17,7 @@ struct Light {
 
 struct PushConstants {
     uint sbt_stride;
-    float time;
+    uint frame;
     uint sample_count;
     uint light_count;
     //
