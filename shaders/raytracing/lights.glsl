@@ -22,7 +22,7 @@ float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     return 1.0 / area;
 }
 
-LightSample sample_light(vec3 position, inout uint seed, Light light) {
+LightSample sample_light(vec3 position, uint seed, Light light) {
     LightSample light_sample;
     uint type = light.uint_data[0];
     vec3 direction;
@@ -88,7 +88,7 @@ LightSample sample_light(vec3 position, inout uint seed, Light light) {
     return light_sample;
 }
 
-LightSample sample_direct_light(inout uint seed, vec3 position) {
+LightSample sample_direct_light(uint seed, vec3 position) {
     LightSample light_sample;
     if (push_constants.constants.light_count > 0) {
         if (random_float(seed) < 0.5) {

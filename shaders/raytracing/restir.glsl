@@ -18,7 +18,7 @@ float restir_p_hat(uint pixel_index, uint seed) {
     return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
 }
 
-void update_reservoir(inout Reservoir r, uint sample_seed, float weight, inout uint seed) {
+void update_reservoir(inout Reservoir r, uint sample_seed, float weight, uint seed) {
     r.sum_weights = r.sum_weights + weight;
     r.num_samples = r.num_samples + 1;
     if (random_float(seed) < weight / r.sum_weights) {
@@ -33,7 +33,7 @@ void clear_reservoir(inout Reservoir r) {
     r.weight = 0.0;
 }
 
-Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, inout uint seed) {
+Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint seed) {
     Reservoir s;
     clear_reservoir(s);
 

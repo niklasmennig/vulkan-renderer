@@ -6,7 +6,7 @@
 #include "lambert.glsl"
 #include "principled.glsl"
 
-BSDFSample sample_bsdf(vec3 ray_out, Material material, inout uint seed) {
+BSDFSample sample_bsdf(vec3 ray_out, Material material, uint seed) {
     return sample_lambert(ray_out, material, seed);
     // return sample_principled(ray_out, material, seed);
 }

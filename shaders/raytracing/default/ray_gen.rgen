@@ -52,6 +52,7 @@ void main() {
         clear_reservoir(restir_reservoirs[restir_index_previous].reservoirs[pixel_index]);
     }
 
+    payload.seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, hash_combine(push_constants.constants.frame, hash_init))));
     payload.pixel_index = pixel_index;
     payload.restir_index = restir_index;
 
@@ -61,10 +62,9 @@ void main() {
     vec3 multisample_color = vec3(0.0);
 
     for (uint frame_sample = 0; frame_sample < push_constants.constants.frame_samples; frame_sample++) {
-        uint seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, frame_sample)));
 
         vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-        vec2 pixel_offset = vec2(random_float(seed), random_float(seed)) - vec2(0.5);
+        vec2 pixel_offset = vec2(random_float(payload.seed), random_float(payload.seed)) - vec2(0.5);
         if (frame_sample == 0) pixel_offset *= 0;
         vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
         ndc.y *= -1;
@@ -81,7 +81,6 @@ void main() {
         payload.contribution = vec3(1.0);
         payload.last_bsdf_pdf_inv = 0.0;
 
-        payload.seed = seed;
 
         traceRayEXT(
                 as,
@@ -110,10 +109,10 @@ void main() {
 
         // initial restir sample generation
         for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
-            const uint restir_seed = random_uint(payload.seed);
-            uint current_seed = restir_seed;
-            float p_hat = restir_p_hat(pixel_index, current_seed);
-            update_reservoir(current_reservoir, restir_seed, p_hat, payload.seed);
+            uint restir_seed = random_uint(payload.seed);
+            float p_hat = restir_p_hat(pixel_index, restir_seed);
+            uint update_seed = random_uint(payload.seed);
+            update_reservoir(current_reservoir, restir_seed, p_hat, update_seed);
         }
 
         uint restir_seed = current_reservoir.sample_seed;
@@ -142,14 +141,16 @@ void main() {
             uint nee_seed =  current_reservoir.sample_seed;
             LightSample light_sample = sample_direct_light(nee_seed, payload.primary_hit_position);
 
-            mat3x3 shading_space = transpose(basis(read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz));
+            vec3 normal = read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz;
+
+            mat3x3 shading_space = transpose(basis(normal));
 
             vec3 ray_dir_local = shading_space * ray_direction;
             vec3 light_dir_local = shading_space * -light_sample.direction;
 
             vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz)) * restir_reservoirs[restir_index].reservoirs[pixel_index].weight;
+            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, normal)) * restir_reservoirs[restir_index].reservoirs[pixel_index].weight;
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
             

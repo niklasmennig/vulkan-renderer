@@ -3,7 +3,7 @@
 #include "sampling.glsl"
 #include "material.glsl"
 
-BSDFSample sample_lambert(vec3 ray_out, Material material, inout uint seed) {
+BSDFSample sample_lambert(vec3 ray_out, Material material, uint seed) {
         DirectionSample dir_sample = sample_uniform_hemisphere(random_float(seed), random_float(seed));
 
         BSDFSample result;

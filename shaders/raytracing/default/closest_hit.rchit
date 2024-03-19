@@ -73,8 +73,8 @@ void main() {
     }
 
 
-
-    BSDFSample bsdf_sample = sample_bsdf(ray_out, material, payload.seed);
+    uint bsdf_seed = random_uint(payload.seed);
+    BSDFSample bsdf_sample = sample_bsdf(ray_out, material, bsdf_seed);
     vec3 ray_in = bsdf_sample.direction;
 
     payload.origin = position;
@@ -82,8 +82,8 @@ void main() {
     
     // direct lighting
     if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
-        uint nee_seed = payload.seed;
-        LightSample light_sample = sample_direct_light(payload.seed, position);
+        uint nee_seed = random_uint(payload.seed);
+        LightSample light_sample = sample_direct_light(nee_seed, position);
 
         rayQueryEXT ray_query;
         rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, position, EPSILON, light_sample.direction, light_sample.distance - 2.0 * EPSILON);
@@ -91,13 +91,15 @@ void main() {
 
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             vec3 ray_dir_local = ray_out;
-            vec3 light_dir_local = transform_object * vec4(-light_sample.direction, 0.0);
+
+            mat3x3 shading_space = transpose(basis(normal));
+            vec3 light_dir_local = shading_space * -light_sample.direction;
 
             vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
             float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * clamp(dot(light_sample.direction, normal), 0.0, 1.0);
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * abs(dot(light_sample.direction, normal));
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
