@@ -37,8 +37,8 @@ Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint 
     Reservoir s;
     clear_reservoir(s);
 
-    update_reservoir(s, r0.sample_seed, restir_p_hat(pixel_index, r0.sample_seed) * r0.weight * r0.num_samples, seed);
-    update_reservoir(s, r1.sample_seed, restir_p_hat(pixel_index, r1.sample_seed) * r1.weight * r1.num_samples, seed);
+    update_reservoir(s, r0.sample_seed, restir_p_hat(pixel_index, r0.sample_seed) * r0.weight * r0.num_samples, random_uint(seed));
+    update_reservoir(s, r1.sample_seed, restir_p_hat(pixel_index, r1.sample_seed) * r1.weight * r1.num_samples, random_uint(seed));
 
     s.num_samples = r0.num_samples + r1.num_samples;
     s.weight = (1.0 / restir_p_hat(pixel_index, s.sample_seed)) * (s.sum_weights / s.num_samples);
