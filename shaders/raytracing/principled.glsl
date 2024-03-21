@@ -30,11 +30,60 @@ vec3 fresnel_schlick(float cosTheta, vec3 F0) {
 } 
 
 vec3 eval_principled(vec3 ray_in, vec3 ray_out, Material material) {
-        return material.base_color * material.opacity * (1.0 - material.metallic);
+        vec3 normal = vec3(0,1,0);
+
+        float no = dot(normal, ray_out);
+        float ni = dot(normal, ray_in);
+
+        if (dot(ray_out, ray_in) > 0) { // non-transmissive
+                return vec3(1.0);
+                no = abs(no);
+                ni = abs(ni);
+
+                vec3 h = normalize(ray_in + ray_out);
+                float nh = clamp(dot(normal, h), 0.0, 1.0);
+                float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+                vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
+                f0 = mix(f0, material.base_color, material.metallic);
+
+                // glossy
+                vec3 f = fresnel_schlick(oh, f0);
+                float d = d_ggx(nh, material.roughness);
+                float g = g_smith(no, ni, material.roughness);
+                vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
+
+                // diffuse
+                vec3 rho = vec3(1.0) - f;
+                rho *= (1.0 - material.metallic) * (1.0 - material.transmission);
+                vec3 diff = rho * material.base_color / PI;
+
+                return (diff+spec) * material.opacity;
+        } else { // transmissive
+                float eta = 1.0 / material.ior;
+                vec3 h = normalize(ray_in + ray_out * eta);
+                return vec3(0.0);
+        }
 }
 
 float pdf_principled(vec3 ray_in, vec3 ray_out, Material material) {
-        return 1.0;
+        vec3 normal = vec3(0,1,0);
+        vec3 h = normalize(ray_in + ray_out);
+
+        float no = clamp(dot(normal, ray_out), 0.0, 1.0);
+        float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
+        float nh = clamp(dot(normal, h), 0.0, 1.0);
+        float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+        float d = d_ggx(nh, material.roughness);
+        float g = g_smith(no, ni, material.roughness);
+
+        float theta = dot(ray_out, normal);
+
+        float pdf_diffuse = cos(theta) * sin(theta) / PI;
+        float pdf_specular = d * cos(theta) * sin(theta);
+
+        return (pdf_diffuse + pdf_specular) / 2.0;
 }
 
 BSDFSample sample_metallic(vec3 ray_out, Material material, inout uint seed) {

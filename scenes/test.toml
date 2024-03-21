@@ -1,8 +1,8 @@
 [environment]
-    # color = [0.0, 0.0, 0.0]
+    # color = [0.0, 0.05, 0.25]
     # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
-    path = "./hdri/studio_small_03_4k.hdr"
-    # path = "./hdri/vestibule_4k.hdr"
+    # path = "./hdri/studio_small_03_4k.hdr"
+    path = "./hdri/vestibule_4k.hdr"
     # path = "./hdri/rural_asphalt_road_4k.hdr"
     # path = "./hdri/moonless_golf_4k.hdr"
 
@@ -97,10 +97,10 @@
     # position = [4.0, 2.0, 0.0]
 
 [lights]
-    # [lights.red]
-    # type = "point"
-    # position = [-0.5, 1.0, 0.0]
-    # intensity = [1.0, 0.0, 0.0]
+    [lights.red]
+    type = "point"
+    position = [-0.5, 1.0, 0.0]
+    intensity = [1.0, 0.0, 0.0]
 
     # [lights.green]
     # type = "point"

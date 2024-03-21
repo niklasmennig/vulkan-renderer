@@ -47,10 +47,10 @@ void main() {
     uint restir_index_previous = (restir_index + 1) % 2;
 
     // clear restir reservoirs when camera is moved
-    if (sample_count == 1) {
-        clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
-        clear_reservoir(restir_reservoirs[restir_index_previous].reservoirs[pixel_index]);
-    }
+    // if (sample_count == 1) {
+        // clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
+        // clear_reservoir(restir_reservoirs[restir_index_previous].reservoirs[pixel_index]);
+    // }
 
     payload.seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, hash_combine(push_constants.constants.frame, hash_init))));
     payload.pixel_index = pixel_index;
@@ -130,9 +130,7 @@ void main() {
 
         // temporal reuse
         Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[pixel_index];
-        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, payload.seed);
-        
-        restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
+        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, payload.seed);        
 
         // ReSTIR contribution
         if (hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
@@ -150,11 +148,13 @@ void main() {
 
             vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, normal)) * restir_reservoirs[restir_index].reservoirs[pixel_index].weight;
+            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, normal)) * current_reservoir.weight;
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
             
         }
+
+        restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
     }
 
     multisample_color_normalized = max(multisample_color_normalized, vec3(0.0));

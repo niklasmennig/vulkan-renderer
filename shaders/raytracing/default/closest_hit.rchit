@@ -37,8 +37,6 @@ void main() {
     vec2 uv = get_vertex_uv(instance, primitive, barycentrics);
     vec3 tangent = normalize(transform_world * vec4(get_vertex_tangent(instance, primitive, barycentrics), 0.0));
 
-    vec3 ray_direction = gl_WorldRayDirectionEXT;
-
 
     vec3 bitangent = normalize(cross(normal, tangent));
     mat3 tbn = basis(normal);
@@ -48,11 +46,14 @@ void main() {
     vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
     normal = normalize(tbn * sampled_normal);
     
-    bool front_facing = dot(face_normal, ray_direction) < 0.0;
+    bool front_facing = dot(face_normal, -gl_WorldRayDirectionEXT) >= 0.0;
     if (!front_facing) normal *= -1;
 
-    mat3 shading_space = basis(normal);
-    vec3 ray_out = normalize(transpose(shading_space) * ray_direction);
+    mat3 to_world_space = basis(normal);
+    mat3 to_shading_space = transpose(to_world_space);
+
+    // pointing away from surface
+    vec3 ray_out = to_shading_space * -gl_WorldRayDirectionEXT;
 
     // material properties
     Material material = get_material(instance, uv);
@@ -75,10 +76,12 @@ void main() {
 
     uint bsdf_seed = random_uint(payload.seed);
     BSDFSample bsdf_sample = sample_bsdf(ray_out, material, bsdf_seed);
-    vec3 ray_in = bsdf_sample.direction;
+
+    // pointing away from surface
+    vec3 ray_in = -bsdf_sample.direction;
 
     payload.origin = position;
-    payload.direction = (shading_space * ray_in);
+    payload.direction = (to_world_space * ray_in);
     
     // direct lighting
     if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
@@ -92,14 +95,14 @@ void main() {
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             vec3 ray_dir_local = ray_out;
 
-            mat3x3 shading_space = transpose(basis(normal));
-            vec3 light_dir_local = shading_space * -light_sample.direction;
+            // pointing in direction of light source
+            vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
 
             vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
             float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * abs(dot(light_sample.direction, normal));
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * dot(light_sample.direction, normal);
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
