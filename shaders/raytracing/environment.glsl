@@ -77,6 +77,9 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     vec3 direction = dir_from_thetaphi(theta, phi);
 
     float pdf = (cdf_hi - cdf_low) * (conditional_hi - conditional_low) / (abs(sin(theta)) * 2.0 * PI * PI) * (width * height);
+    if (width == 1 && height == 1) {
+        pdf = 1.0 / (abs(sin(theta)) * 2.0 * PI * PI);
+    }
     
     LightSample result;
     result.pdf = pdf;

@@ -92,7 +92,7 @@ LightSample sample_direct_light(uint seed, vec3 position) {
     LightSample light_sample;
     if (push_constants.constants.light_count > 0) {
         if (random_float(seed) < 0.5) {
-            uint light_idx = uint(floor(push_constants.constants.light_count * random_float(seed)));
+            uint light_idx = random_uint(seed) % push_constants.constants.light_count;
             Light light = lights_data.lights[light_idx];
             light_sample = sample_light(position, seed, light);
             light_sample.weight *= push_constants.constants.light_count;

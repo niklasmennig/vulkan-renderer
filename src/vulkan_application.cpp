@@ -514,7 +514,6 @@ void VulkanApplication::create_default_descriptor_writes() {
     rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
 
     // ReSTIR
-    std::cout << "TODO: Free ReSTIR Pipeline Buffers" << std::endl;
     restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 

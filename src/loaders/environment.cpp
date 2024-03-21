@@ -114,8 +114,8 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     int height = 1;
 
     result.image = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_NEAREST);
-    result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT);
-    result.marginal_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT);
+    result.conditional_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_NEAREST);
+    result.marginal_cdf_map = device->create_image(1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FILTER_NEAREST);
 
     auto cmd_buffer = device->begin_single_use_command_buffer();
     Buffer image_buffer = device->create_buffer(result.image.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
@@ -130,6 +130,17 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     result.image.transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
     result.image.copy_buffer_to_image(cmd_buffer, image_buffer);
 
+    Buffer cdf_buffer = device->create_buffer(result.marginal_cdf_map.memory_requirements.size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    float* cdf_data;
+    vkMapMemory(cdf_buffer.device_handle, cdf_buffer.device_memory, cdf_buffer.device_memory_offset, VK_WHOLE_SIZE, 0, (void**)&cdf_data);
+    cdf_data[0] = 1.0;
+    vkUnmapMemory(cdf_buffer.device_handle, cdf_buffer.device_memory);
+
+    result.marginal_cdf_map.transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.marginal_cdf_map.copy_buffer_to_image(cmd_buffer, cdf_buffer);
+    result.conditional_cdf_map.transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
+    result.conditional_cdf_map.copy_buffer_to_image(cmd_buffer, cdf_buffer);
+
     result.image.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
     result.conditional_cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
     result.marginal_cdf_map.transition_layout(cmd_buffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT);
@@ -137,6 +148,7 @@ EnvironmentMap loaders::load_default_environment_map(Device* device, vec3 color)
     device->end_single_use_command_buffer(cmd_buffer);
 
     image_buffer.free();
+    cdf_buffer.free();
 
     return result;
 }
