@@ -130,7 +130,8 @@ void main() {
 
         // temporal reuse
         Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[pixel_index];
-        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, payload.seed);        
+        uint temporal_seed = random_uint(payload.seed);
+        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, temporal_seed);        
 
         // ReSTIR contribution
         if (hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
