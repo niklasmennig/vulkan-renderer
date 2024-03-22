@@ -114,7 +114,7 @@ struct VulkanApplication {
     float camera_look_x, camera_look_y;
     bool mouse_look_active = false;
 
-    mat4 camera_matrix;
+    mat4 camera_matrix, prev_camera_matrix;
     vec3 camera_position = vec3(0.0);
     float camera_yaw = 0.0f;
     float camera_pitch = 0.0f;
@@ -127,6 +127,7 @@ struct VulkanApplication {
     bool pipeline_dirty = false;
 
     Buffer restir_reservoir_buffer_0, restir_reservoir_buffer_1;
+    Buffer prev_camera_matrix_buffer;
 
     std::filesystem::path scene_path;
     SceneData loaded_scene_data;

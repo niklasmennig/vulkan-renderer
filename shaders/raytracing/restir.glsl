@@ -8,7 +8,7 @@
 #include "output.glsl"
 
 
-layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
+layout(std430, set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
 
 // reservoirs are continuously resampled and updated to find good NEE paths to reproduce
 float restir_p_hat(uint pixel_index, uint seed) {

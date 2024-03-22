@@ -500,13 +500,17 @@ void VulkanApplication::create_default_descriptor_writes() {
     restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
+    prev_camera_matrix_buffer = device.create_buffer(sizeof(mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_1.buffer_handle, 0, VK_WHOLE_SIZE, 0);
+    vkCmdFillBuffer(cmdbuf, prev_camera_matrix_buffer.buffer_handle, 0, VK_WHOLE_SIZE, 0);
     device.end_single_use_command_buffer(cmdbuf);
 
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_0, BufferType::Storage, 0);
     rt_pipeline.set_descriptor_buffer_binding("restir_reservoirs", restir_reservoir_buffer_1, BufferType::Storage, 1);
+    rt_pipeline.set_descriptor_buffer_binding("previous_camera_matrix", prev_camera_matrix_buffer, BufferType::Uniform);
 }
 
 void VulkanApplication::create_synchronization() {
@@ -801,6 +805,7 @@ void VulkanApplication::draw_frame() {
         push_constants.environment_cdf_dimensions = uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
         push_constants.image_extent = uvec2(render_image_extent.width, render_image_extent.height);
         push_constants.inv_camera_matrix = glm::inverse(camera_matrix);
+        push_constants.camera_position = camera_position;
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
@@ -892,10 +897,10 @@ void VulkanApplication::draw_frame() {
         vec2 cursor_pos = get_cursor_position();
         if (cursor_pos.x >= 0 && cursor_pos.x < swap_chain_extent.width && cursor_pos.y >= 0 && cursor_pos.y < swap_chain_extent.height) {
             uint32_t cursor_pixel_offset = (uint32_t)(cursor_pos.x * render_scale) + (uint32_t)(cursor_pos.y * render_scale) * render_image_extent.width;
-            uint32_t color_byte_offset = cursor_pixel_offset * sizeof(vec4);
-            uint8_t* data;
+            vec4* data;
             vkMapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory, render_transfer_image.texture_memory_offset, VK_WHOLE_SIZE, 0, (void**)&data);
-            ui.color_under_cursor = *reinterpret_cast<vec3*>(data + color_byte_offset);
+            vec4 color = data[cursor_pixel_offset];
+            ui.color_under_cursor = vec3(color.r, color.g, color.b);
             vkUnmapMemory(render_transfer_image.device->vulkan_device, render_transfer_image.texture_memory);
         }
 
@@ -1748,10 +1753,12 @@ void VulkanApplication::run() {
         glfwPollEvents();
         if (minimized) continue;
 
+        prev_camera_matrix = camera_matrix;
+        prev_camera_matrix_buffer.set_data(&prev_camera_matrix);
         // camera matrix
         // perspective projection
         float aspect = (float)swap_chain_extent.width / swap_chain_extent.height;
-        camera_matrix = glm::perspective(glm::radians(ui.camera_fov), aspect, 0.1f, 100.0f);
+        camera_matrix = glm::infinitePerspective(glm::radians(ui.camera_fov), aspect, 0.1f);
 
         camera_pitch += camera_look_y;
         camera_pitch = std::clamp(camera_pitch, -glm::pi<float>() / 2.0f, glm::pi<float>() / 2.0f);
@@ -1760,13 +1767,12 @@ void VulkanApplication::run() {
         camera_yaw += camera_look_x;
         camera_matrix = glm::rotate(camera_matrix, camera_yaw, vec3(0.0f, 1.0f, 0.0f));
 
-        vec3 cam_fwd = glm::normalize(vec3(camera_matrix * vec4(0.0f, 0.0f, -1.0f, 0.0f)));
-        cam_fwd.y = 0;
+        vec3 cam_fwd = vec3(glm::sin(camera_yaw), 0.0, -glm::cos(camera_yaw));
         vec3 cam_right = glm::normalize(glm::cross(cam_fwd, vec3(0.0f, 1.0f, 0.0f)));
 
         vec3 camera_movement(0.0);
-        if (glfwGetKey(window, GLFW_KEY_Q)) camera_movement.y += 1;
-        if (glfwGetKey(window, GLFW_KEY_E)) camera_movement.y -= 1;
+        if (glfwGetKey(window, GLFW_KEY_E)) camera_movement.y += 1;
+        if (glfwGetKey(window, GLFW_KEY_Q)) camera_movement.y -= 1;
         if (glfwGetKey(window, GLFW_KEY_W)) camera_movement += cam_fwd;
         if (glfwGetKey(window, GLFW_KEY_S)) camera_movement -= cam_fwd;
         if (glfwGetKey(window, GLFW_KEY_D)) camera_movement += cam_right;
@@ -1775,13 +1781,12 @@ void VulkanApplication::run() {
         float camera_speed = frame_delta.count();
         if (fabsf(camera_speed) > 1.0) camera_speed = 1.0;
         if (glm::length(camera_movement) > glm::epsilon<float>()) {
-            camera_position += glm::normalize(camera_movement) * camera_speed;
+            camera_position += glm::normalize(camera_movement) * camera_speed * ui.camera_speed;
         }
 
-        camera_matrix = glm::translate(camera_matrix, camera_position);
+        std::cout << camera_position.x << camera_position.y << camera_position.z << std::endl;
 
-
-        if (ui.has_changed() || glm::length(camera_movement) > glm::epsilon<float>() || fabsf(camera_look_x) > 0 || fabsf(camera_look_y) > 0) clear_accumulated_frames();
+        clear_accumulated_frames();
         
         draw_frame();
 
@@ -1812,6 +1817,7 @@ void VulkanApplication::cleanup() {
     lights_buffer.free();
     restir_reservoir_buffer_0.free();
     restir_reservoir_buffer_1.free();
+    prev_camera_matrix_buffer.free();
     for (Image i : loaded_textures) {
         i.free();
     }

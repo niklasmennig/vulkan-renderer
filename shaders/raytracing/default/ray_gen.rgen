@@ -19,18 +19,32 @@ layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
+layout(set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_PREVIOUS_CAMERA_MATRIX) uniform CameraMatrixBuffer {mat4 matrix;} previous_camera_matrix;
+
 vec3 compute_ray_direction(vec2 ndc) {
     // homogeneous pixel coordinates
-    vec4 hpc = vec4(ndc, 1, 1);
+    vec4 hpc = vec4(ndc, -1, 1);
 
     vec4 transformed = push_constants.constants.inv_camera_matrix * hpc;
 
     return normalize(transformed.xyz);
 }
 
+uint pixel_to_index(uvec2 pixel_coordinates) {
+    return pixel_coordinates.x + pixel_coordinates.y * push_constants.constants.image_extent.x;
+}
+
+vec2 pixel_to_ndc(vec2 pixel_coordinates) {
+    return ((pixel_coordinates / push_constants.constants.image_extent) * 2.0) - 1.0;
+}
+
+vec2 ndc_to_pixel(vec2 ndc) {
+    return ((ndc + 1.0) / 2.0) * push_constants.constants.image_extent;
+}
+
 void main() {
     uint sample_count = push_constants.constants.sample_count;
-    uint pixel_index = gl_LaunchIDEXT.x + gl_LaunchIDEXT.y * push_constants.constants.image_extent.x;
+    uint pixel_index = pixel_to_index(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y));
 
     uint restir_index = push_constants.constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
@@ -45,17 +59,17 @@ void main() {
     payload.pixel_index = pixel_index;
     payload.restir_index = restir_index;
 
-    vec3 ray_origin = (push_constants.constants.inv_camera_matrix * vec4(0,0,0,1)).xyz;
+    vec3 ray_origin = push_constants.constants.camera_position;
     vec3 ray_direction;
 
     vec3 multisample_color = vec3(0.0);
 
     for (uint frame_sample = 0; frame_sample < push_constants.constants.frame_samples; frame_sample++) {
 
-        vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-        vec2 pixel_offset = vec2(random_float(payload.seed), random_float(payload.seed)) - vec2(0.5);
-        if (frame_sample == 0) pixel_offset *= 0;
-        vec2 ndc = ((pixel_center + pixel_offset) / vec2(gl_LaunchSizeEXT.xy)) * 2 - 1;
+        // vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+        // vec2 pixel_offset = vec2(random_float(payload.seed), random_float(payload.seed)) - vec2(0.5);
+        // if (frame_sample == 0) pixel_offset *= 0;
+        vec2 ndc = pixel_to_ndc(gl_LaunchIDEXT.xy);
         ndc.y *= -1;
 
         // initialize payload
@@ -118,9 +132,19 @@ void main() {
         }
 
         // temporal reuse
-        Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[pixel_index];
-        uint temporal_seed = random_uint(payload.seed);
-        current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, temporal_seed);        
+        vec3 hit_position = read_output(OUTPUT_BUFFER_POSITION, pixel_index).xyz;
+        vec4 hit_direction_ortho = vec4(normalize(payload.primary_hit_position - ray_origin), 0.0);
+        vec2 prev_pixel_ndc = ((previous_camera_matrix.matrix) * hit_direction_ortho).xy;
+        // write_output(OUTPUT_BUFFER_RESULT, pixel_index, vec4(prev_pixel_ndc, 0.0, 1.0));
+        // return;
+        vec2 prev_pixel = ((prev_pixel_ndc + vec2(1,1)) / 2.0) * push_constants.constants.image_extent;
+        uint prev_pixel_index = pixel_to_index(uvec2(prev_pixel.x, prev_pixel.y));
+        if (abs(prev_pixel_ndc.x) <= 1.0 && abs(prev_pixel_ndc.y) <= 1.0) {
+
+            Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[prev_pixel_index];
+            uint temporal_seed = random_uint(payload.seed);
+            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, temporal_seed);       
+        }
 
         // ReSTIR contribution
         if (hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {

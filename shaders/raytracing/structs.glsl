@@ -21,6 +21,7 @@ struct PushConstants {
     uvec2 image_extent;
     //
     mat4 inv_camera_matrix;
+    vec3 camera_position;
 };
 
 struct LightSample {
