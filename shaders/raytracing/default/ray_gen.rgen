@@ -18,25 +18,14 @@
 layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
-layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = 1) uniform RayGenerationData {
-    CameraData camera;
-} raygen_data;
 
 vec3 compute_ray_direction(vec2 ndc) {
-    vec3 right = raygen_data.camera.right.xyz;
-    vec3 up = raygen_data.camera.up.xyz;
-    vec3 forward = raygen_data.camera.forward.xyz;
+    // homogeneous pixel coordinates
+    vec4 hpc = vec4(ndc, 1, 1);
 
-    float fov_x = radians(raygen_data.camera.fov_x);
+    vec4 transformed = push_constants.constants.inv_camera_matrix * hpc;
 
-    float aspect_ratio = float(gl_LaunchSizeEXT.y) / float(gl_LaunchSizeEXT.x);
-    float fov_y = fov_x * aspect_ratio;
-
-    float fov_x_half = fov_x / 2.0;
-    float fov_y_half = fov_y / 2.0;
-
-    vec3 dir = normalize(forward) + ndc.x * abs(tan(fov_x_half)) * normalize(right) + ndc.y * abs(tan(fov_y_half)) * normalize(up);
-    return normalize(dir);
+    return normalize(transformed.xyz);
 }
 
 void main() {
@@ -56,7 +45,7 @@ void main() {
     payload.pixel_index = pixel_index;
     payload.restir_index = restir_index;
 
-    vec3 ray_origin = raygen_data.camera.origin.xyz;
+    vec3 ray_origin = (push_constants.constants.inv_camera_matrix * vec4(0,0,0,1)).xyz;
     vec3 ray_direction;
 
     vec3 multisample_color = vec3(0.0);

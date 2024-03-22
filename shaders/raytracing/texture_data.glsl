@@ -8,8 +8,6 @@
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = 7) uniform sampler2D tex[];
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = 8) readonly buffer TextureIndexData {uint data[];} texture_indices;
 
-#define NULL_TEXTURE_INDEX 10000
-
 #define TEXTURE_OFFSET_DIFFUSE 0
 #define TEXTURE_OFFSET_NORMAL 1
 #define TEXTURE_OFFSET_ROUGHNESS 2

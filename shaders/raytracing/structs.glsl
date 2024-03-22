@@ -1,15 +1,6 @@
 #ifndef STRUCTS_GLSL
 #define STRUCTS_GLSL
 
-struct CameraData
-{
-    vec4 origin;
-    vec4 forward;
-    vec4 right;
-    vec4 up;
-    float fov_x;
-};
-
 struct Light {
     uint uint_data[4];
     float float_data[16];
@@ -28,6 +19,8 @@ struct PushConstants {
     //
     uvec2 environment_cdf_dimensions;
     uvec2 image_extent;
+    //
+    mat4 inv_camera_matrix;
 };
 
 struct LightSample {

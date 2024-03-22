@@ -86,7 +86,6 @@ void RaytracingPipelineBuilder::add_output_buffer(std::string name, size_t entry
 RaytracingPipelineBuilder RaytracingPipelineBuilder::with_default_pipeline() {
     // framework descriptors (set 0)
     add_descriptor("acceleration_structure", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-    add_descriptor("camera_parameters", DESCRIPTOR_SET_FRAMEWORK, DESCRIPTOR_BINDING_CAMERA_PARAMETERS, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
     add_output_buffer("Result Image", sizeof(vec4), false, true);
     add_output_buffer("Accumulated Color");
     add_output_buffer("Albedo", 16, false, true);

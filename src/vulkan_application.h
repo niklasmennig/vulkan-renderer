@@ -114,8 +114,10 @@ struct VulkanApplication {
     float camera_look_x, camera_look_y;
     bool mouse_look_active = false;
 
-    Shaders::CameraData camera_data;
-    Buffer camera_buffer;
+    mat4 camera_matrix;
+    vec3 camera_position = vec3(0.0);
+    float camera_yaw = 0.0f;
+    float camera_pitch = 0.0f;
 
     std::uint32_t application_frames = 0;
     bool clear_frames = true;

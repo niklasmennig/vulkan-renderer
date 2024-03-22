@@ -338,24 +338,7 @@ AccelerationStructure VulkanApplication::build_tlas() {
 }
 
 void VulkanApplication::create_default_descriptor_writes() {
-    VkBufferCreateInfo cam_buffer_info{};
-    cam_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    cam_buffer_info.size = sizeof(Shaders::CameraData);
-    cam_buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-    camera_buffer = device.create_buffer(&cam_buffer_info);
-
-    camera_data.fov_x = 90.0f;
-    camera_data.origin = vec4(0.0f, 1.0f, -3.0f, 0.0f);
-    camera_data.forward = vec4(0.0f, 0.0f, 1.0f, 0.0f);
-    camera_data.right = vec4(1.0f, 0.0f, 0.0f, 0.0f);
-    camera_data.up = vec4(0.0f, 1.0f, 0.0f, 0.0f);
-
-    camera_buffer.set_data(&camera_data);
-
     rt_pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
-
-    rt_pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
 
     // prepare mesh data for buffers
     std::vector<uint32_t> indices;
@@ -815,8 +798,9 @@ void VulkanApplication::draw_frame() {
         push_constants.max_depth = ui.max_ray_depth;
         push_constants.frame_samples = ui.frame_samples;
         push_constants.exposure = ui.exposure;
-        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
-        push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
+        push_constants.environment_cdf_dimensions = uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
+        push_constants.image_extent = uvec2(render_image_extent.width, render_image_extent.height);
+        push_constants.inv_camera_matrix = glm::inverse(camera_matrix);
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
@@ -1745,12 +1729,12 @@ void VulkanApplication::run() {
     std::filesystem::path cam_path(camera_data_path);
     if (std::filesystem::exists(cam_path)) {
         std::cout << "found saved camera data. loading..." << std::endl;
-        toml::table data = toml::parse_file(cam_path.string());
-        camera_data.origin = vec4(data["origin"][0].value_or(0.0), data["origin"][1].value_or(0.0), data["origin"][2].value_or(0.0), 1.0);
-        camera_data.forward = vec4(data["forward"][0].value_or(0.0), data["forward"][1].value_or(0.0), data["forward"][2].value_or(1.0), 0.0);
-        camera_data.right = vec4(data["right"][0].value_or(1.0), data["right"][1].value_or(0.0), data["right"][2].value_or(0.0), 0.0);
-        camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
-        ui.camera_fov = data["fov_x"].value_or(70.0);
+        // toml::table data = toml::parse_file(cam_path.string());
+        // camera_data.origin = vec4(data["origin"][0].value_or(0.0), data["origin"][1].value_or(0.0), data["origin"][2].value_or(0.0), 1.0);
+        // camera_data.forward = vec4(data["forward"][0].value_or(0.0), data["forward"][1].value_or(0.0), data["forward"][2].value_or(1.0), 0.0);
+        // camera_data.right = vec4(data["right"][0].value_or(1.0), data["right"][1].value_or(0.0), data["right"][2].value_or(0.0), 0.0);
+        // camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
+        // ui.camera_fov = data["fov_x"].value_or(70.0);
     }
 
     delta_cursor_x = 0;
@@ -1764,122 +1748,56 @@ void VulkanApplication::run() {
         glfwPollEvents();
         if (minimized) continue;
 
-        Shaders::CameraData new_camera_data = camera_data;
-        bool camera_changed = false;
+        // camera matrix
+        // perspective projection
+        float aspect = (float)swap_chain_extent.width / swap_chain_extent.height;
+        camera_matrix = glm::perspective(glm::radians(ui.camera_fov), aspect, 0.1f, 100.0f);
 
-        // camera movement
-        glm::vec3 cam_up = glm::normalize(glm::vec3(camera_data.up.x, camera_data.up.y, camera_data.up.z));
-        glm::vec3 cam_fwd = glm::normalize(glm::vec3(camera_data.forward.x, camera_data.forward.y, camera_data.forward.z));
-        glm::vec3 cam_r = glm::normalize(glm::vec3(camera_data.right.x, camera_data.right.y, camera_data.right.z));
+        camera_pitch += camera_look_y;
+        camera_pitch = std::clamp(camera_pitch, -glm::pi<float>() / 2.0f, glm::pi<float>() / 2.0f);
+        camera_matrix = glm::rotate(camera_matrix, camera_pitch, vec3(1.0f, 0.0f, 0.0f));
 
-        vec3 camera_movement = vec3(0.0f);
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            camera_movement += cam_fwd;
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        {
-            camera_movement -= cam_r;
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        {
-            camera_movement -= cam_fwd;
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        {
-            camera_movement += cam_r;
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        {
-            camera_movement += cam_up;
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        {
-            camera_movement -= cam_up;
-            camera_changed = true;
-        }
+        camera_yaw += camera_look_x;
+        camera_matrix = glm::rotate(camera_matrix, camera_yaw, vec3(0.0f, 1.0f, 0.0f));
+
+        vec3 cam_fwd = glm::normalize(vec3(camera_matrix * vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        cam_fwd.y = 0;
+        vec3 cam_right = glm::normalize(glm::cross(cam_fwd, vec3(0.0f, 1.0f, 0.0f)));
+
+        vec3 camera_movement(0.0);
+        if (glfwGetKey(window, GLFW_KEY_Q)) camera_movement.y += 1;
+        if (glfwGetKey(window, GLFW_KEY_E)) camera_movement.y -= 1;
+        if (glfwGetKey(window, GLFW_KEY_W)) camera_movement += cam_fwd;
+        if (glfwGetKey(window, GLFW_KEY_S)) camera_movement -= cam_fwd;
+        if (glfwGetKey(window, GLFW_KEY_D)) camera_movement += cam_right;
+        if (glfwGetKey(window, GLFW_KEY_A)) camera_movement -= cam_right;
 
         float camera_speed = frame_delta.count();
-        if (fabsf(camera_speed) > 1) camera_speed = 0;
-        glm::vec3 cam_delta = camera_movement * camera_speed * ui.camera_speed;
-        new_camera_data.origin += glm::vec4(cam_delta.x, cam_delta.y, cam_delta.z, 0.0f);
-
-        // camera rotation
-        // horizontal rotation
-        glm::mat4 rotation_matrix = glm::mat4(1.0f);
-        float camera_rotation_speed = frame_delta.count();
-        if (fabsf(camera_rotation_speed) > 1) camera_rotation_speed = 0;
-        float angle = camera_rotation_speed;
-        
-
-        rotation_matrix = glm::rotate(rotation_matrix, camera_look_x, cam_up);
-
-        glm::vec3 new_fwd = camera_data.forward * rotation_matrix;
-        glm::vec3 new_right = glm::cross(new_fwd, cam_up);
-
-        // vertical rotation
-        rotation_matrix = glm::rotate(rotation_matrix, camera_look_y, new_right);
-
-        glm::vec3 new_up = camera_data.up * rotation_matrix;
-        new_fwd = glm::cross(new_up, new_right);
-
-        // roll rotation
-        rotation_matrix = glm::mat4(1.0f);
-
-        if (glfwGetKey(window, GLFW_KEY_E))
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, -angle, new_fwd);
-            camera_changed = true;
-        }
-        if (glfwGetKey(window, GLFW_KEY_Q))
-        {
-            rotation_matrix = glm::rotate(rotation_matrix, angle, new_fwd);
-            camera_changed = true;
+        if (fabsf(camera_speed) > 1.0) camera_speed = 1.0;
+        if (glm::length(camera_movement) > glm::epsilon<float>()) {
+            camera_position += glm::normalize(camera_movement) * camera_speed;
         }
 
-        new_up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f) * rotation_matrix;
-        new_fwd = glm::cross(new_up, new_right);
+        camera_matrix = glm::translate(camera_matrix, camera_position);
 
-        new_fwd = glm::normalize(new_fwd);
-        new_up = glm::normalize(new_up);
-        new_right = glm::normalize(new_right);
 
-        new_camera_data.forward = glm::vec4(new_fwd.x, new_fwd.y, new_fwd.z, 1.0f);
-        new_camera_data.right = glm::vec4(new_right.x, new_right.y, new_right.z, 1.0f);
-        new_camera_data.up = glm::vec4(new_up.x, new_up.y, new_up.z, 1.0f);
-
-        if (camera_look_x != 0.0 || camera_look_y != 0.0) camera_changed = true;
-
-        // FoV
-        if (ui.camera_fov != camera_data.fov_x) camera_changed = true;
-        new_camera_data.fov_x = ui.camera_fov;
-
-        camera_data = new_camera_data;
-
-        if (camera_changed || ui.has_changed()) clear_accumulated_frames();
-
-        camera_buffer.set_data(&camera_data, 0, sizeof(Shaders::CameraData));
+        if (ui.has_changed() || glm::length(camera_movement) > glm::epsilon<float>() || fabsf(camera_look_x) > 0 || fabsf(camera_look_y) > 0) clear_accumulated_frames();
         
         draw_frame();
 
         camera_look_x = 0;
         camera_look_y = 0;
-
     }
 
     // persist camera data
-    toml::table camera_data_out;
-    camera_data_out.insert("origin", toml::array{camera_data.origin.x, camera_data.origin.y, camera_data.origin.z});
-    camera_data_out.insert("forward", toml::array{camera_data.forward.x, camera_data.forward.y, camera_data.forward.z});
-    camera_data_out.insert("right", toml::array{camera_data.right.x, camera_data.right.y, camera_data.right.z});
-    camera_data_out.insert("up", toml::array{camera_data.up.x, camera_data.up.y, camera_data.up.z});
-    camera_data_out.insert("fov_x", camera_data.fov_x);
-    std::ofstream camera_data_out_file(camera_data_path);
-    camera_data_out_file << camera_data_out;
+    // toml::table camera_data_out;
+    // camera_data_out.insert("origin", toml::array{camera_data.origin.x, camera_data.origin.y, camera_data.origin.z});
+    // camera_data_out.insert("forward", toml::array{camera_data.forward.x, camera_data.forward.y, camera_data.forward.z});
+    // camera_data_out.insert("right", toml::array{camera_data.right.x, camera_data.right.y, camera_data.right.z});
+    // camera_data_out.insert("up", toml::array{camera_data.up.x, camera_data.up.y, camera_data.up.z});
+    // camera_data_out.insert("fov_x", camera_data.fov_x);
+    // std::ofstream camera_data_out_file(camera_data_path);
+    // camera_data_out_file << camera_data_out;
 
     vkDeviceWaitIdle(logical_device);
 }
@@ -1892,7 +1810,6 @@ void VulkanApplication::cleanup() {
     ImGui::DestroyContext();
     // deinitialization
     lights_buffer.free();
-    camera_buffer.free();
     restir_reservoir_buffer_0.free();
     restir_reservoir_buffer_1.free();
     for (Image i : loaded_textures) {
@@ -1972,7 +1889,6 @@ void VulkanApplication::rebuild_pipeline() {
     rt_pipeline.set_descriptor_buffer_binding("texture_indices", texture_index_buffer, BufferType::Storage);
     rt_pipeline.set_descriptor_buffer_binding("material_parameters", material_parameter_buffer, BufferType::Storage);
     rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
-    rt_pipeline.set_descriptor_buffer_binding("camera_parameters", camera_buffer, BufferType::Uniform);
     recreate_render_images();
     vkDeviceWaitIdle(device.vulkan_device);
     old_pipeline.free();
