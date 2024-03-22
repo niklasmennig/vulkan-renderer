@@ -1784,9 +1784,7 @@ void VulkanApplication::run() {
             camera_position += glm::normalize(camera_movement) * camera_speed * ui.camera_speed;
         }
 
-        std::cout << camera_position.x << camera_position.y << camera_position.z << std::endl;
-
-        clear_accumulated_frames();
+        if (ui.has_changed() || glm::length(camera_movement) > 0.0 || fabsf(camera_look_x) > 0 || fabsf(camera_look_y) > 0) clear_accumulated_frames();
         
         draw_frame();
 
