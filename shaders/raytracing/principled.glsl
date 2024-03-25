@@ -35,8 +35,7 @@ vec3 eval_principled(vec3 ray_in, vec3 ray_out, Material material) {
         float no = dot(normal, ray_out);
         float ni = dot(normal, ray_in);
 
-        if (dot(ray_out, ray_in) > 0) { // non-transmissive
-                return vec3(1.0);
+        if (no >= 0 && ni >= 0) { // non-transmissive
                 no = abs(no);
                 ni = abs(ni);
 
@@ -95,7 +94,7 @@ BSDFSample sample_metallic(vec3 ray_out, Material material, inout uint seed) {
 
         BSDFSample result;
         result.direction = reflect(ray_out, h);
-        result.pdf = 1.0;
+        result.pdf = FLT_MAX;
         result.weight = vec3(1.0);
         return result;
 }
@@ -111,7 +110,7 @@ BSDFSample sample_transmissive(vec3 ray_out, Material material, inout uint seed)
 
         BSDFSample result;
         result.direction = refract(ray_out, h, eta);
-        result.pdf = 1.0;
+        result.pdf = FLT_MAX;
         result.weight = vec3(1.0);
         return result;
 }
@@ -137,14 +136,14 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
                 lobe_sample.direction = ray_out;
                 lobe_sample.pdf = FLT_MAX;
                 lobe_sample.weight = vec3(1.0);
-                lobe_pdf = material.opacity;
+                lobe_pdf = 1.0 - material.opacity;
         } else {
                 if (random_float(seed) < material.metallic) {
                         //metallic
                         lobe_sample = sample_metallic(ray_out, material, seed);
-                        lobe_pdf = (1.0 - material.opacity) * material.metallic;                   
+                        lobe_pdf = (material.opacity) * material.metallic;             
                 } else {
-                        float pdf_difftrans = (1.0 - material.opacity) * (1.0 - material.metallic);
+                        float pdf_difftrans = (material.opacity) * (1.0 - material.metallic);
                         if (random_float(seed) < material.transmission) {
                                 //transmission
                                 lobe_sample = sample_transmissive(ray_out, material, seed);

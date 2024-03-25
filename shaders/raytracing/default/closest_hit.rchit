@@ -53,7 +53,7 @@ void main() {
     mat3 to_shading_space = transpose(to_world_space);
 
     // pointing away from surface
-    vec3 ray_out = to_shading_space * -gl_WorldRayDirectionEXT;
+    vec3 ray_out = normalize(to_shading_space * -gl_WorldRayDirectionEXT);
 
     // material properties
     Material material = get_material(instance, uv);
@@ -98,11 +98,11 @@ void main() {
             // pointing in direction of light source
             vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
 
-            vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
+            vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material);
 
-            float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
+            float bsdf_pdf = pdf_bsdf(light_dir_local, ray_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * dot(light_sample.direction, normal);
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight;
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
