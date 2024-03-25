@@ -15,7 +15,8 @@ float restir_p_hat(uint pixel_index, uint seed) {
     vec3 position = read_output(OUTPUT_BUFFER_POSITION, pixel_index).xyz;
     vec3 normal = read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz;
     LightSample light_sample = sample_direct_light(seed, position);
-    return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+    // return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+    return length(light_sample.weight);
 }
 
 void update_reservoir(inout Reservoir r, uint sample_seed, float weight, uint seed) {

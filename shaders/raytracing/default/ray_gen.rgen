@@ -19,7 +19,7 @@ layout(location = 0) rayPayloadEXT RayPayload payload;
 
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
-layout(set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_PREVIOUS_CAMERA_MATRIX) uniform CameraMatrixBuffer {mat4 matrix;} previous_camera_matrix;
+layout(set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_PREVIOUS_CAMERA_MATRIX) uniform CameraMatrixBuffer {mat4 matrix; vec4 position;} previous_camera_matrix;
 
 vec3 compute_ray_direction(vec2 ndc) {
     // homogeneous pixel coordinates
@@ -132,7 +132,7 @@ void main() {
         }
 
         // temporal reuse
-        vec3 hit_position = read_output(OUTPUT_BUFFER_POSITION, pixel_index).xyz;
+        vec3 hit_position = previous_camera_matrix.position.xyz;
         vec3 hit_direction = normalize(hit_position - ray_origin);
         vec4 hit_direction_ortho = vec4(hit_direction, 0.0);
         vec3 center_direction = compute_ray_direction(vec2(0,0));

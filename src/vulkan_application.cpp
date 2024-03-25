@@ -500,7 +500,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-    prev_camera_matrix_buffer = device.create_buffer(sizeof(mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    prev_camera_matrix_buffer = device.create_buffer(sizeof(mat4) + sizeof(vec4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
@@ -1754,7 +1754,8 @@ void VulkanApplication::run() {
         if (minimized) continue;
 
         prev_camera_matrix = camera_matrix;
-        prev_camera_matrix_buffer.set_data(&prev_camera_matrix);
+        prev_camera_matrix_buffer.set_data(&prev_camera_matrix, 0, sizeof(mat4));
+        prev_camera_matrix_buffer.set_data(&camera_position, sizeof(mat4), sizeof(vec4));
         // camera matrix
         // perspective projection
         float aspect = (float)swap_chain_extent.width / swap_chain_extent.height;
