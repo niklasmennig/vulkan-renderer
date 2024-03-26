@@ -100,18 +100,25 @@ BSDFSample sample_metallic(vec3 ray_out, Material material, inout uint seed) {
 }
 
 BSDFSample sample_transmissive(vec3 ray_out, Material material, inout uint seed) {
+        float eta = 1.0 / material.ior;
+        bool front_facing = ray_out.y > 0;
+
         float a = material.roughness * material.roughness;
         float rnd = random_float(seed);
         float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
         float phi = 2.0 * PI * random_float(seed);
         vec3 h = dir_from_thetaphi(theta, phi);
 
-        float eta = 1.0 / material.ior;
+        if (front_facing) {
+                h.y *= -1;
+                // eta = material.ior;
+        }
+
 
         BSDFSample result;
         result.direction = refract(ray_out, h, eta);
         result.pdf = FLT_MAX;
-        result.weight = vec3(1.0);
+        result.weight = material.base_color;
         return result;
 }
 

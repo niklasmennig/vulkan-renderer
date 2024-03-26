@@ -156,14 +156,14 @@ void main() {
 
             vec3 normal = read_output(OUTPUT_BUFFER_NORMAL, pixel_index).xyz;
 
-            mat3x3 shading_space = transpose(basis(normal));
+            mat3x3 to_shading_space = transpose(basis(normal));
 
-            vec3 ray_dir_local = shading_space * ray_direction;
-            vec3 light_dir_local = shading_space * -light_sample.direction;
+            vec3 ray_dir_local = normalize(to_shading_space * -ray_direction);
+            vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
 
-            vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
+            vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material);
 
-            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * abs(dot(light_sample.direction, normal)) * current_reservoir.weight;
+            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight;
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
             

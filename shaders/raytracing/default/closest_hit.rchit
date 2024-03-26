@@ -42,12 +42,11 @@ void main() {
     mat3 tbn = basis(normal);
     
     //normal mapping
-    vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rbg;
-    vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
-    normal = normalize(tbn * sampled_normal);
-    
-    bool front_facing = dot(face_normal, -gl_WorldRayDirectionEXT) >= 0.0;
-    if (!front_facing) normal *= -1;
+    if (has_texture(instance, TEXTURE_OFFSET_NORMAL)) {
+        vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rbg;
+        vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
+        normal = normalize(tbn * sampled_normal);
+    }
 
     mat3 to_world_space = basis(normal);
     mat3 to_shading_space = transpose(to_world_space);

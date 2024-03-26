@@ -45,6 +45,7 @@
 [instances]
     [instances.test]
     object = "c"
+    rotation = [90.0, 0.0, 0.0]
 
     # [instances.test2]
     # object = "d"
