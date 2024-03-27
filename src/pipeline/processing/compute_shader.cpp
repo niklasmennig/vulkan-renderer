@@ -27,9 +27,9 @@ void ComputeShader::set_image(int index, Image* img) {
 
     VkWriteDescriptorSet compute_descriptor_write{};
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    compute_descriptor_write.dstSet = descriptor_set;
-    compute_descriptor_write.dstBinding = 0;
-    compute_descriptor_write.dstArrayElement = index;
+    compute_descriptor_write.dstSet = descriptor_set_images;
+    compute_descriptor_write.dstBinding = index;
+    compute_descriptor_write.dstArrayElement = 0;
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
@@ -45,9 +45,9 @@ void ComputeShader::set_buffer(int index, Buffer* buffer) {
 
     VkWriteDescriptorSet compute_descriptor_write{};
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    compute_descriptor_write.dstSet = descriptor_set;
-    compute_descriptor_write.dstBinding = 0;
-    compute_descriptor_write.dstArrayElement = index;
+    compute_descriptor_write.dstSet = descriptor_set_buffers;
+    compute_descriptor_write.dstBinding = index;
+    compute_descriptor_write.dstArrayElement = 0;
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pBufferInfo = &compute_descriptor_buffer_info;
@@ -117,24 +117,40 @@ void ComputeShader::build() {
 
     std::cout << "after load" << std::endl;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> layout_bindings{};
+    std::vector<VkDescriptorSetLayoutBinding> buffer_layout_bindings;
 
-    layout_bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    layout_bindings[0].binding = 0;
-    layout_bindings[0].descriptorCount = num_buffer_descriptors;
-    layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    for (int i = 0; i < num_buffer_descriptors; i++) {
+        VkDescriptorSetLayoutBinding layout_binding;
+        layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        layout_binding.binding = i;
+        layout_binding.descriptorCount = 1;
+        layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        buffer_layout_bindings.push_back(layout_binding);
+    }
 
-    layout_bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    layout_bindings[1].binding = 1;
-    layout_bindings[1].descriptorCount = num_image_descriptors;
-    layout_bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+    std::vector<VkDescriptorSetLayoutBinding> image_layout_bindings;
+
+    for (int i = 0; i < num_image_descriptors; i++) {
+        VkDescriptorSetLayoutBinding layout_binding;
+        layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        layout_binding.binding = i;
+        layout_binding.descriptorCount = 1;
+        layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        image_layout_bindings.push_back(layout_binding);
+    }
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
     descriptor_set_layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_set_layout_create_info.bindingCount = layout_bindings.size();
-    descriptor_set_layout_create_info.pBindings = layout_bindings.data();
+    descriptor_set_layout_create_info.bindingCount = buffer_layout_bindings.size();
+    descriptor_set_layout_create_info.pBindings = buffer_layout_bindings.data();
 
-    vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout);
+    vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout_buffers);
+
+    descriptor_set_layout_create_info.bindingCount = image_layout_bindings.size();
+    descriptor_set_layout_create_info.pBindings = image_layout_bindings.data();
+
+    vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout_images);
 
     VkDescriptorPoolSize pool_size_buffers{};
     pool_size_buffers.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -151,19 +167,28 @@ void ComputeShader::build() {
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{};
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptor_pool_create_info.maxSets = 1;
+    descriptor_pool_create_info.maxSets = 2;
     descriptor_pool_create_info.poolSizeCount = 2;
     descriptor_pool_create_info.pPoolSizes = pool_sizes;
 
     vkCreateDescriptorPool(device->vulkan_device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
 
+    std::array<VkDescriptorSetLayout, 2> descriptor_set_layouts = {
+        descriptor_set_layout_buffers,
+        descriptor_set_layout_images
+    };
+
     VkDescriptorSetAllocateInfo descriptor_set_allocate_info{};
     descriptor_set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     descriptor_set_allocate_info.descriptorPool = descriptor_pool;
-    descriptor_set_allocate_info.descriptorSetCount = 1;
-    descriptor_set_allocate_info.pSetLayouts = &descriptor_set_layout;
+    descriptor_set_allocate_info.descriptorSetCount = 2;
+    descriptor_set_allocate_info.pSetLayouts = descriptor_set_layouts.data();
 
-    vkAllocateDescriptorSets(device->vulkan_device, &descriptor_set_allocate_info, &descriptor_set);
+    std::array<VkDescriptorSet, 2> descriptor_sets;
+
+    vkAllocateDescriptorSets(device->vulkan_device, &descriptor_set_allocate_info, descriptor_sets.data());
+    descriptor_set_buffers = descriptor_sets[0];
+    descriptor_set_images = descriptor_sets[1];
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;
@@ -172,8 +197,8 @@ void ComputeShader::build() {
 
     VkPipelineLayoutCreateInfo layout_create_info{};
     layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_create_info.setLayoutCount = 1;
-    layout_create_info.pSetLayouts = &descriptor_set_layout;
+    layout_create_info.setLayoutCount = 2;
+    layout_create_info.pSetLayouts = descriptor_set_layouts.data();
     layout_create_info.pushConstantRangeCount = 1;
     layout_create_info.pPushConstantRanges = &push_constant_range;
     vkCreatePipelineLayout(device->vulkan_device, &layout_create_info, nullptr, &layout);
@@ -205,7 +230,11 @@ void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchai
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) {
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descriptor_set, 0, nullptr);
+    std::array<VkDescriptorSet, 2> descriptor_sets = {
+        descriptor_set_buffers,
+        descriptor_set_images
+    };
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 2, descriptor_sets.data(), 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdDispatch(command_buffer, groups_x, groups_y, groups_z);
 }
@@ -214,7 +243,8 @@ void ComputeShader::free() {
     vkDestroyPipelineCache(device->vulkan_device, cache, nullptr);
     vkDestroyPipeline(device->vulkan_device, pipeline, nullptr);
     vkDestroyDescriptorPool(device->vulkan_device, descriptor_pool, nullptr);
-    vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout, nullptr);
+    vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout_buffers, nullptr);
+    vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout_images, nullptr);
     vkDestroyPipelineLayout(device->vulkan_device, layout, nullptr);
 }
 

@@ -10,9 +10,9 @@ struct Device;
 struct ComputeShader {
     Device* device;
 
-    VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorSetLayout descriptor_set_layout_buffers, descriptor_set_layout_images;
     VkDescriptorPool descriptor_pool;
-    VkDescriptorSet descriptor_set;
+    VkDescriptorSet descriptor_set_buffers, descriptor_set_images;
 
     VkPipeline pipeline;
     VkPipelineCache cache;

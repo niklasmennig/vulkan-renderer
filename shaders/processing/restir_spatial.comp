@@ -6,11 +6,15 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 #include "interface.glsl"
 
-layout(set = 0, binding = 0) buffer Vec4Buffer {vec4[] data;} buffers[];
+layout(set = 0, binding = 0) buffer ImageBuffer {vec4[] data;} image_buffer;
 
 layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
 
 void main() {
-    if (gl_GlobalInvocationID.x % 15 == 0) buffers[0].data[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * push_constants.constants.render_extent.x] = vec4(1.0);
+    uint pixel_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * push_constants.constants.render_extent.x;
+    if (gl_GlobalInvocationID.x % 15 == 0) {
+        vec4 color = vec4(1,0,1,1);
+        image_buffer.data[pixel_index] = color;
+    } 
 }
