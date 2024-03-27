@@ -1,12 +1,10 @@
 #version 460
-
-#define NUM_BUFFERS 1
-
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 #include "interface.glsl"
 
-layout(set = 0, binding = 0) buffer ImageBuffer {vec4[] data;} image_buffer;
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer ImageBuffer {vec4[] data;} image_buffer;
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer RestirBuffer {float [] data;} restir_buffers[2];
 
 layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
@@ -17,4 +15,6 @@ void main() {
         vec4 color = vec4(1,0,1,1);
         image_buffer.data[pixel_index] = color;
     } 
+
+    restir_buffers[0].data[0] = 1.0;
 }

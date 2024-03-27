@@ -61,10 +61,12 @@ void ComputeShader::build() {
     std::string line;
     std::cout << "detecting shader information for compute shader at " << this->code_path << std::endl;
     while(std::getline(in_file, line)) {
-        if (line.find("layout") != std::string::npos) {
+        line.erase(remove_if(line.begin(), line.end(), isspace), line.end());
+        if (line.find("layout") == 0) {
             size_t size_x_pos = line.find("local_size_x");
             size_t size_y_pos = line.find("local_size_y");
             size_t size_z_pos = line.find("local_size_z");
+            // shader group size declaration
             if (size_x_pos != std::string::npos && size_y_pos != std::string::npos && size_z_pos != std::string::npos) {
                 size_t size_x_string_start = line.find("=", size_x_pos) + 1;
                 size_t size_x_string_end = line.find(",", size_x_string_start);
@@ -83,23 +85,32 @@ void ComputeShader::build() {
 
                 std::cout << "shader group sizes detected: " << (int)local_dispatch_size_x << ", " << (int)local_dispatch_size_y << ", " << (int)local_dispatch_size_z << std::endl;
             }
-        }
 
-        auto define_pos = line.find("#define");
-        if (define_pos != std::string::npos) {
+            // buffer declaration
+            auto buffer_set_pos = line.find("set=DESCRIPTOR_SET_BUFFERS");
+            auto image_set_pos = line.find("set=DESCRIPTOR_SET_IMAGES");
+            if (buffer_set_pos != std::string::npos || image_set_pos != std::string::npos) {
+                size_t count = 1;
+                auto array_brace_start = line.rfind("[");
+                auto array_brace_end = line.rfind("];");
+                // descriptor is array descriptor
+                if (array_brace_start != std::string::npos && array_brace_end != std::string::npos) {
+                    auto count_literal_length = array_brace_end - array_brace_start;
+                    // array has count literal
+                    if (count_literal_length > 1) {
+                        count = std::stoi(line.substr(array_brace_start+1, count_literal_length-1));
+                    } else {
+                        count = 16;
+                    }
+                }
 
-            // NUM_BUFFERS
-            auto num_buffers_pos = line.find("NUM_BUFFERS", define_pos + 7);
-            if (num_buffers_pos != std::string::npos) {
-                num_buffer_descriptors = std::stoi(line.substr(num_buffers_pos + 11));
-                std::cout << "buffer descriptor count detected: " << (int)num_buffer_descriptors << std::endl;
-            }
-
-            // NUM_IMAGES
-            auto num_images_pos = line.find("NUM_IMAGES", define_pos + 7);
-            if (num_images_pos != std::string::npos) {
-                num_image_descriptors = std::stoi(line.substr(num_images_pos + 10));
-                std::cout << "image descriptor count detected: " << (int)num_image_descriptors << std::endl;
+                if (buffer_set_pos != std::string::npos) {
+                    buffer_descriptor_counts.push_back(count);
+                    std::cout << "buffer descriptor detected, descriptor count: " << count << std::endl;
+                } else {
+                    image_descriptor_counts.push_back(count);
+                    std::cout << "image descriptor detected, descriptor count: " << count << std::endl;
+                }
             }
         }
     }
@@ -119,11 +130,11 @@ void ComputeShader::build() {
 
     std::vector<VkDescriptorSetLayoutBinding> buffer_layout_bindings;
 
-    for (int i = 0; i < num_buffer_descriptors; i++) {
+    for (int i = 0; i < buffer_descriptor_counts.size(); i++) {
         VkDescriptorSetLayoutBinding layout_binding;
         layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
         layout_binding.binding = i;
-        layout_binding.descriptorCount = 1;
+        layout_binding.descriptorCount = buffer_descriptor_counts[i];
         layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         buffer_layout_bindings.push_back(layout_binding);
     }
@@ -131,11 +142,11 @@ void ComputeShader::build() {
 
     std::vector<VkDescriptorSetLayoutBinding> image_layout_bindings;
 
-    for (int i = 0; i < num_image_descriptors; i++) {
+    for (int i = 0; i < image_descriptor_counts.size(); i++) {
         VkDescriptorSetLayoutBinding layout_binding;
         layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
         layout_binding.binding = i;
-        layout_binding.descriptorCount = 1;
+        layout_binding.descriptorCount = image_descriptor_counts[i];
         layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         image_layout_bindings.push_back(layout_binding);
     }
@@ -154,11 +165,15 @@ void ComputeShader::build() {
 
     VkDescriptorPoolSize pool_size_buffers{};
     pool_size_buffers.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    pool_size_buffers.descriptorCount = num_buffer_descriptors;
+    pool_size_buffers.descriptorCount = 0;
+    for (auto count : buffer_descriptor_counts) pool_size_buffers.descriptorCount += count;
+    if (pool_size_buffers.descriptorCount < 1) pool_size_buffers.descriptorCount = 1;
 
     VkDescriptorPoolSize pool_size_images{};
     pool_size_images.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    pool_size_images.descriptorCount = num_image_descriptors;
+    pool_size_images.descriptorCount = 0;
+    for (auto count : image_descriptor_counts) pool_size_images.descriptorCount += count;
+    if (pool_size_images.descriptorCount < 1) pool_size_images.descriptorCount = 1;
 
     VkDescriptorPoolSize pool_sizes[] = {
         pool_size_buffers,
@@ -187,8 +202,8 @@ void ComputeShader::build() {
     std::array<VkDescriptorSet, 2> descriptor_sets;
 
     vkAllocateDescriptorSets(device->vulkan_device, &descriptor_set_allocate_info, descriptor_sets.data());
-    descriptor_set_buffers = descriptor_sets[0];
-    descriptor_set_images = descriptor_sets[1];
+    descriptor_set_buffers = descriptor_sets[DESCRIPTOR_SET_BUFFERS];
+    descriptor_set_images = descriptor_sets[DESCRIPTOR_SET_IMAGES];
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;

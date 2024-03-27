@@ -19,7 +19,7 @@ struct ComputeShader {
 
     VkPipelineLayout layout;
     uint8_t local_dispatch_size_x, local_dispatch_size_y, local_dispatch_size_z;
-    uint8_t num_buffer_descriptors, num_image_descriptors;
+    std::vector<uint8_t> buffer_descriptor_counts, image_descriptor_counts;
 
     std::string code_path;
 
