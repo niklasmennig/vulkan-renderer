@@ -101,7 +101,7 @@ void main() {
 
             float bsdf_pdf = pdf_bsdf(light_dir_local, ray_dir_local, material);
 
-            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight;
+            vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * abs(light_dir_local.y);
 
             uint di_depth = 1;
             if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;

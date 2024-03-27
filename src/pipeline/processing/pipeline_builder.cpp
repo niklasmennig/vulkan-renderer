@@ -17,6 +17,9 @@ ProcessingPipelineBuilder Device::create_processing_pipeline_builder() {
 }
 
 void ProcessingPipeline::run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
+    builder->output_buffer = builder->input_buffer;
+    builder->output_extent = render_extent;
+
     for (auto stage: builder->stages) {
         stage->process(command_buffer, swapchain_extent, render_extent);
     }
@@ -87,16 +90,22 @@ ProcessingPipeline ProcessingPipelineBuilder::build() {
     return result;
 }
 
-void ProcessingPipelineBuilder::free() {
-    for (auto stage : stages) {
-        stage->free();
-    }
-
+void ProcessingPipelineBuilder::free_stage_resources() {
     for (auto created_image: created_images) {
         created_image.image.free();
     }
+    created_images.clear();
 
     for (auto created_compute_shader: created_compute_shaders) {
         created_compute_shader.free();
+    }
+    created_compute_shaders.clear();
+}
+
+void ProcessingPipelineBuilder::free() {
+    free_stage_resources();
+
+    for (auto stage : stages) {
+        stage->free();
     }
 }

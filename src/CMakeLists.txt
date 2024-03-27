@@ -22,6 +22,7 @@ target_sources(renderer PRIVATE
     pipeline/processing/compute_shader.cpp
     pipeline/processing/pipeline_stage_upscale.cpp
     pipeline/processing/pipeline_stage_oidn.cpp
+    pipeline/processing/pipeline_stage_restir_spatial.cpp
     pipeline/processing/pipeline_builder.cpp
     ui.cpp
     vulkan_application.cpp

@@ -54,5 +54,6 @@ struct ProcessingPipelineBuilder {
     void cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);
     ProcessingPipeline build();
 
+    void free_stage_resources();
     void free();
 };

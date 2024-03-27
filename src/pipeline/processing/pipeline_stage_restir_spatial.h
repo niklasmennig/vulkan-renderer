@@ -1,12 +1,9 @@
 #pragma once
 
 #include "pipeline/processing/pipeline_stage.h"
-
-#include "core/buffer.h"
 #include "pipeline/processing/compute_shader.h"
 
-struct ProcessingPipelineStageUpscale : ProcessingPipelineStage {
-    Buffer output_buffer;
+struct ProcessingPipelineStageRestir : ProcessingPipelineStage {
     ComputeShader* compute_shader;
 
     void initialize();

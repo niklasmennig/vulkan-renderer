@@ -7,8 +7,6 @@
 
 #include <OpenImageDenoise/oidn.hpp>
 
-struct OutputBuffer;
-
 struct ProcessingPipelineStageOIDN : ProcessingPipelineStage {
     OIDNDevice oidn_device;
     OIDNFilter oidn_filter;

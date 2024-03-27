@@ -19,6 +19,7 @@
 #include "pipeline/raytracing/pipeline_stage_simple.h"
 #include "pipeline/processing/pipeline_stage_upscale.h"
 #include "pipeline/processing/pipeline_stage_oidn.h"
+#include "pipeline/processing/pipeline_stage_restir_spatial.h"
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -1630,6 +1631,7 @@ void VulkanApplication::setup() {
     p_pipeline_builder = device.create_processing_pipeline_builder()
                     // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
                     // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
+                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir()));
                     ;
 
     p_pipeline = p_pipeline_builder.build();
@@ -1879,9 +1881,9 @@ void VulkanApplication::cleanup() {
 }
 
 void VulkanApplication::rebuild_pipeline() {
-    RaytracingPipeline new_pipeline = rt_pipeline_builder.build();
-    RaytracingPipeline old_pipeline = rt_pipeline;
-    rt_pipeline = new_pipeline;
+    RaytracingPipeline new_rt_pipeline = rt_pipeline_builder.build();
+    RaytracingPipeline old_rt_pipeline = rt_pipeline;
+    rt_pipeline = new_rt_pipeline;
     rt_pipeline.set_descriptor_acceleration_structure_binding(scene_tlas.acceleration_structure);
     rt_pipeline.set_descriptor_buffer_binding("mesh_indices", index_buffer, BufferType::Storage);
     rt_pipeline.set_descriptor_buffer_binding("mesh_vertices", vertex_buffer, BufferType::Storage);
@@ -1896,7 +1898,12 @@ void VulkanApplication::rebuild_pipeline() {
     rt_pipeline.set_descriptor_buffer_binding("lights", lights_buffer, BufferType::Storage);
     recreate_render_images();
     vkDeviceWaitIdle(device.vulkan_device);
-    old_pipeline.free();
+    old_rt_pipeline.free();
+
+    p_pipeline.free();
+    p_pipeline_builder.free_stage_resources();
+    p_pipeline = p_pipeline_builder.build();
+
     pipeline_dirty = false;
 }
 

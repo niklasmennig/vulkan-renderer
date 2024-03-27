@@ -35,7 +35,7 @@ vec3 eval_principled(vec3 ray_in, vec3 ray_out, Material material) {
         float no = dot(normal, ray_out);
         float ni = dot(normal, ray_in);
 
-        if (no >= 0 && ni >= 0) { // non-transmissive
+        if (no * ni > 0) { // non-transmissive
                 no = abs(no);
                 ni = abs(ni);
 

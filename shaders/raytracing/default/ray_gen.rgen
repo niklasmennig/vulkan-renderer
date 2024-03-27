@@ -163,7 +163,7 @@ void main() {
 
             vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material);
 
-            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight;
+            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight * abs(light_dir_local.y);
 
             multisample_color_normalized = multisample_color_normalized + restir_nee_contribution;
             
