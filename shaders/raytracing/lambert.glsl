@@ -1,4 +1,4 @@
-#include "common.glsl"
+#include "../common.glsl"
 #include "random.glsl"
 #include "sampling.glsl"
 #include "material.glsl"

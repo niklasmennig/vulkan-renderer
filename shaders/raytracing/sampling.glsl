@@ -1,7 +1,7 @@
 #ifndef SAMPLING_GLSL
 #define SAMPLING_GLSL
 
-#include "common.glsl"
+#include "../common.glsl"
 
 struct BSDFSample {
     vec3 weight; // BSDF value / pdf

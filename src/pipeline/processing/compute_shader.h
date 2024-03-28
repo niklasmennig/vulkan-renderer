@@ -23,8 +23,8 @@ struct ComputeShader {
 
     std::string code_path;
 
-    void set_image(int index, Image* image);
-    void set_buffer(int index, Buffer* buffer);
+    void set_image(int index, Image* image, int array_index = 0);
+    void set_buffer(int index, Buffer* buffer, int array_index = 0);
 
     void build();
     void dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);

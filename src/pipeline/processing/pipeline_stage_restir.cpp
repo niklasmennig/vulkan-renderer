@@ -1,4 +1,4 @@
-#include "pipeline/processing/pipeline_stage_restir_spatial.h"
+#include "pipeline/processing/pipeline_stage_restir.h"
 
 #include "pipeline/processing/pipeline_builder.h"
 #include "pipeline/processing/compute_shader.h"

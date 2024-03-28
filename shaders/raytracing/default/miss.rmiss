@@ -4,7 +4,7 @@
 
 #include "payload.glsl"
 #include "../push_constants.glsl"
-#include "../common.glsl"
+#include "../../common.glsl"
 #include "../texture_data.glsl"
 #include "../mis.glsl"
 #include "../environment.glsl"

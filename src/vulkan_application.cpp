@@ -19,7 +19,7 @@
 #include "pipeline/raytracing/pipeline_stage_simple.h"
 #include "pipeline/processing/pipeline_stage_upscale.h"
 #include "pipeline/processing/pipeline_stage_oidn.h"
-#include "pipeline/processing/pipeline_stage_restir_spatial.h"
+#include "pipeline/processing/pipeline_stage_restir.h"
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {
@@ -795,7 +795,7 @@ void VulkanApplication::draw_frame() {
 
         if (accumulated_frames < std::numeric_limits<uint32_t>::max()) accumulated_frames += 1;
 
-        Shaders::PushConstants push_constants;
+        Shaders::PushConstantsRT push_constants;
         push_constants.sbt_stride = rt_pipeline.sbt_stride;
         push_constants.frame = application_frames;
         push_constants.sample_count = accumulated_frames;
@@ -803,8 +803,8 @@ void VulkanApplication::draw_frame() {
         push_constants.max_depth = ui.max_ray_depth;
         push_constants.frame_samples = ui.frame_samples;
         push_constants.exposure = ui.exposure;
-        push_constants.environment_cdf_dimensions = uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
-        push_constants.image_extent = uvec2(render_image_extent.width, render_image_extent.height);
+        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
+        push_constants.image_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
         push_constants.inv_camera_matrix = glm::inverse(camera_matrix);
         push_constants.camera_position = camera_position;
         uint32_t flags = 0;
@@ -812,7 +812,7 @@ void VulkanApplication::draw_frame() {
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
         if (ui.restir_enabled) flags |= ENABLE_RESTIR;
         push_constants.flags = flags;
-        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstantsRT), &push_constants);
 
         // raytracer draw
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
@@ -1630,8 +1630,8 @@ void VulkanApplication::setup() {
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
                     // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
-                    .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
-                    // .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir()));
+                    // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
+                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir()));
                     ;
 
     p_pipeline = p_pipeline_builder.build();

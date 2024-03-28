@@ -1,7 +1,7 @@
 #ifndef MATERIAL_GLSL
 #define MATERIAL_GLSL
 
-#include "structs.glsl"
+#include "../structs.glsl"
 
 layout(std430, set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MATERIAL_PARAMETERS) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
 

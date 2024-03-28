@@ -3,12 +3,13 @@
 
 // https://research.nvidia.com/publication/2020-07_spatiotemporal-reservoir-resampling-real-time-ray-tracing-dynamic-direct
 // https://research.nvidia.com/sites/default/files/pubs/2020-07_Spatiotemporal-reservoir-resampling/ReSTIR.pdf
-#include "structs.glsl"
+#include "../structs.glsl"
 #include "lights.glsl"
 #include "output.glsl"
 
-
+#ifndef NO_LAYOUT
 layout(std430, set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
+#endif
 
 // reservoirs are continuously resampled and updated to find good NEE paths to reproduce
 float restir_p_hat(uint pixel_index, uint seed) {

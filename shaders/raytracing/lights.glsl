@@ -1,8 +1,8 @@
 #ifndef LIGHTS_GLSL
 #define LIGHTS_GLSL
 
-#include "common.glsl"
-#include "structs.glsl"
+#include "../common.glsl"
+#include "../structs.glsl"
 #include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "material.glsl"
@@ -10,7 +10,9 @@
 #include "push_constants.glsl"
 #include "environment.glsl"
 
+#ifndef NO_LAYOUT
 layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
+#endif
 
 float pdf_area_light(uint instance, uint primitive, mat4x3 transform) {
     vec3 v0, v1, v2;

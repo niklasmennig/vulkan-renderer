@@ -49,6 +49,4 @@
 #define OUTPUT_BUFFER_ENVIRONMENT_CONDITIONAL 9
 #define OUTPUT_BUFFER_ENVIRONMENT_MARGINAL 10
 
-#include "structs.glsl"
-
 #endif

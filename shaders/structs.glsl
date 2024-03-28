@@ -6,7 +6,7 @@ struct Light {
     float float_data[16];
 };
 
-struct PushConstants {
+struct PushConstantsRT {
     uint sbt_stride;
     uint frame;
     uint sample_count;
@@ -22,6 +22,12 @@ struct PushConstants {
     //
     mat4 inv_camera_matrix;
     vec3 camera_position;
+};
+
+struct PushConstantsP
+{
+    ivec2 swapchain_extent;
+    ivec2 render_extent;
 };
 
 struct LightSample {

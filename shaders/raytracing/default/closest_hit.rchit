@@ -7,7 +7,7 @@
 #include "../mesh_data.glsl"
 #include "../texture_data.glsl"
 #include "../material.glsl"
-#include "../common.glsl"
+#include "../../common.glsl"
 #include "../random.glsl"
 #include "../bsdf.glsl"
 #include "../environment.glsl"

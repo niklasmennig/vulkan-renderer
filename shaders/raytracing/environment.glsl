@@ -2,7 +2,7 @@
 #define ENVIRONMENT_GLSL
 
 #include "texture_data.glsl"
-#include "structs.glsl"
+#include "../structs.glsl"
 #include "random.glsl"
 
 #define TEXTURE_ID_ENVIRONMENT_ALBEDO 0

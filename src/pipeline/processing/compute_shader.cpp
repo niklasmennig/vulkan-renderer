@@ -8,19 +8,15 @@
 #include "core/device.h"
 #include "loaders/shader_spirv.h"
 #include "shader_compiler.h"
+#include "shader_interface.h"
 
 #include <glm/vec2.hpp>
-
-namespace ShaderInterface {
-    using ivec2 = glm::ivec2;
-    #include "../shaders/processing/interface.glsl"
-}
 
 ComputeShader Device::create_compute_shader(std::string code_path) {
     return ComputeShader(this, code_path);
 }
 
-void ComputeShader::set_image(int index, Image* img) {
+void ComputeShader::set_image(int index, Image* img, int array_index) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
     compute_descriptor_image_info.imageLayout = img->layout;
     compute_descriptor_image_info.imageView = img->view_handle;
@@ -29,7 +25,7 @@ void ComputeShader::set_image(int index, Image* img) {
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     compute_descriptor_write.dstSet = descriptor_set_images;
     compute_descriptor_write.dstBinding = index;
-    compute_descriptor_write.dstArrayElement = 0;
+    compute_descriptor_write.dstArrayElement = array_index;
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
@@ -37,7 +33,7 @@ void ComputeShader::set_image(int index, Image* img) {
     vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
 }
 
-void ComputeShader::set_buffer(int index, Buffer* buffer) {
+void ComputeShader::set_buffer(int index, Buffer* buffer, int array_index) {
     VkDescriptorBufferInfo compute_descriptor_buffer_info{};
     compute_descriptor_buffer_info.buffer = buffer->buffer_handle;
     compute_descriptor_buffer_info.offset = 0;
@@ -47,7 +43,7 @@ void ComputeShader::set_buffer(int index, Buffer* buffer) {
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     compute_descriptor_write.dstSet = descriptor_set_buffers;
     compute_descriptor_write.dstBinding = index;
-    compute_descriptor_write.dstArrayElement = 0;
+    compute_descriptor_write.dstArrayElement = array_index;
     compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pBufferInfo = &compute_descriptor_buffer_info;
@@ -207,7 +203,7 @@ void ComputeShader::build() {
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;
-    push_constant_range.size = sizeof(ShaderInterface::PushConstants);
+    push_constant_range.size = sizeof(Shaders::PushConstantsP);
     push_constant_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkPipelineLayoutCreateInfo layout_create_info{};
@@ -235,11 +231,11 @@ void ComputeShader::build() {
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
-    ShaderInterface::PushConstants push_constants;
-    push_constants.swapchain_extent = ShaderInterface::ivec2(swapchain_extent.width, swapchain_extent.height);
-    push_constants.render_extent = ShaderInterface::ivec2(render_extent.width, render_extent.height);
+    Shaders::PushConstantsP push_constants;
+    push_constants.swapchain_extent = Shaders::ivec2(swapchain_extent.width, swapchain_extent.height);
+    push_constants.render_extent = Shaders::ivec2(render_extent.width, render_extent.height);
 
-    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShaderInterface::PushConstants), &push_constants);
+    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstantsP), &push_constants);
 
     dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1);
 }
