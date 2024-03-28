@@ -16,5 +16,5 @@ void main() {
         image_buffer.data[pixel_index] = color;
     } 
 
-    restir_buffers[0].data[0] = 1.0;
+    // restir_buffers[0].data[0] = 1.0;
 }

@@ -17,9 +17,6 @@ ProcessingPipelineBuilder Device::create_processing_pipeline_builder() {
 }
 
 void ProcessingPipeline::run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
-    builder->output_buffer = builder->input_buffer;
-    builder->output_extent = render_extent;
-
     for (auto stage: builder->stages) {
         stage->process(command_buffer, swapchain_extent, render_extent);
     }
@@ -52,6 +49,9 @@ Buffer ProcessingPipelineBuilder::create_buffer(uint32_t size) {
 }
 
 void ProcessingPipelineBuilder::cmd_on_resize(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
+    output_buffer = input_buffer;
+    output_extent = render_extent;
+
     for (auto stage: stages) {
         // stage->builder = this;
         stage->on_resize(swapchain_extent, render_extent);

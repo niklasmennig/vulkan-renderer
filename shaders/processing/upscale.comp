@@ -1,12 +1,11 @@
 #version 460
 
-#define NUM_BUFFERS 2
-
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 #include "interface.glsl"
 
-layout(set = 0, binding = 0) buffer Vec4Buffer {vec4[] data;} buffers[];
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer InputImageBuffer {vec4[] data;} input_buffer;
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer OutputImageBuffer {vec4[] data;} output_buffer;
 
 layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
 
@@ -26,15 +25,15 @@ void main() {
     uint pixel_index = pixel_position.x + pixel_position.y * output_image_width;
     uint render_pixel_index = render_pixel_position.x + render_pixel_position.y * input_image_width;
 
-    vec4 color_00 = buffers[0].data[render_pixel_index];
-    vec4 color_10 = buffers[0].data[render_pixel_index + 1];
-    vec4 color_01 = buffers[0].data[render_pixel_index + input_image_width];
-    vec4 color_11 = buffers[0].data[render_pixel_index + 1 + input_image_width];
+    vec4 color_00 = input_buffer.data[render_pixel_index];
+    vec4 color_10 = input_buffer.data[render_pixel_index + 1];
+    vec4 color_01 = input_buffer.data[render_pixel_index + input_image_width];
+    vec4 color_11 = input_buffer.data[render_pixel_index + 1 + input_image_width];
 
     vec4 color_0 = mix(color_00, color_10, render_pixel_position_frac.x);
     vec4 color_1 = mix(color_01, color_11, render_pixel_position_frac.x);
 
     vec4 color = mix(color_0, color_1, render_pixel_position_frac.y);
 
-    buffers[1].data[pixel_index] = color;
+    output_buffer.data[pixel_index] = color;
 }
