@@ -6,8 +6,8 @@
 
 #include "payload.glsl"
 #include "../../common.glsl"
+#include "../../random.glsl"
 #include "../interface.glsl"
-#include "../random.glsl"
 #include "../lights.glsl"
 #include "../environment.glsl"
 #include "../bsdf.glsl"
@@ -31,15 +31,15 @@ vec3 compute_ray_direction(vec2 ndc) {
 }
 
 uint pixel_to_index(uvec2 pixel_coordinates) {
-    return pixel_coordinates.x + pixel_coordinates.y * push_constants.constants.image_extent.x;
+    return pixel_coordinates.x + pixel_coordinates.y * push_constants.constants.render_extent.x;
 }
 
 vec2 pixel_to_ndc(vec2 pixel_coordinates) {
-    return ((pixel_coordinates / push_constants.constants.image_extent) * 2.0) - 1.0;
+    return ((pixel_coordinates / push_constants.constants.render_extent) * 2.0) - 1.0;
 }
 
 vec2 ndc_to_pixel(vec2 ndc) {
-    return ((ndc + 1.0) / 2.0) * push_constants.constants.image_extent;
+    return ((ndc + 1.0) / 2.0) * push_constants.constants.render_extent;
 }
 
 void main() {
@@ -49,17 +49,11 @@ void main() {
     uint restir_index = push_constants.constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
 
-    // clear restir reservoirs when camera is moved
-    // if (sample_count == 1) {
-    //     clear_reservoir(restir_reservoirs[restir_index].reservoirs[pixel_index]);
-    //     clear_reservoir(restir_reservoirs[restir_index_previous].reservoirs[pixel_index]);
-    // }
-
     payload.seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, hash_combine(push_constants.constants.frame, hash_init))));
     payload.pixel_index = pixel_index;
     payload.restir_index = restir_index;
 
-    vec3 ray_origin = push_constants.constants.camera_position;
+    vec3 ray_origin = push_constants.constants.camera_position.xyz;
     vec3 ray_direction;
 
     vec3 multisample_color = vec3(0.0);

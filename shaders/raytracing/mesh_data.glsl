@@ -3,6 +3,7 @@
 
 #include "interface.glsl"
 
+#ifndef NO_LAYOUT
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_INDICES) readonly buffer IndexData {uint data[];} indices;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_VERTICES) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_NORMALS) readonly buffer NormalData {vec4 data[];} normals;
@@ -10,6 +11,7 @@ layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_TEXCOORDS
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_TANGENTS) readonly buffer TangentData {vec4 data[];} tangents;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_DATA_OFFSETS) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_OFFSET_INDICES) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
+#endif
 
 #define MESH_DATA_OFFSET_ENTRIES 5
 

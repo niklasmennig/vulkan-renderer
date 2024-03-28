@@ -3,12 +3,15 @@
 
 #include "../common.glsl"
 #include "../structs.glsl"
-#include "mesh_data.glsl"
 #include "texture_data.glsl"
 #include "material.glsl"
-#include "random.glsl"
+#include "../random.glsl"
 #include "push_constants.glsl"
 #include "environment.glsl"
+
+#ifndef IGNORE_AREA_LIGHTS
+#include "mesh_data.glsl"
+#endif
 
 #ifndef NO_LAYOUT
 layout(std430, set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_LIGHTS) readonly buffer LightsData {Light[] lights;} lights_data;
@@ -39,6 +42,7 @@ LightSample sample_light(vec3 position, uint seed, Light light) {
             light_sample.weight = max(vec3(0), vec3(light.float_data[3], light.float_data[4], light.float_data[5]) * attenuation);
             light_sample.pdf = FLT_MAX;
             break;
+        #ifndef IGNORE_AREA_LIGHTS
         case 1: // AREA LIGHT
             uint instance = light.uint_data[1];
             uint vertex_count = light.uint_data[2];
@@ -75,11 +79,12 @@ LightSample sample_light(vec3 position, uint seed, Light light) {
 
             float pdf = 1.0 / (pdf_area_light(instance, primitive, transform) / primitive_count);
 
-            MaterialParameters material_parameters = get_material_parameters(instance);
             vec2 uv = get_vertex_uv(instance, primitive, vec2(random_float(seed), random_float(seed)));
-            light_sample.weight = (sample_texture(instance, uv, TEXTURE_OFFSET_EMISSIVE).rgb * material_parameters.emissive) * material_parameters.emission_strength / pdf;
+            Material material = get_material(instance, uv);
+            light_sample.weight = material.emission / pdf;
             light_sample.pdf = pdf;
             break;
+        #endif
         case 2: // DIRECTIONAL LIGHT
             light_sample.direction = -normalize(vec3(light.float_data[0], light.float_data[1], light.float_data[2]));
             light_sample.distance = FLT_MAX;

@@ -7,8 +7,10 @@
 #include "lights.glsl"
 #include "output.glsl"
 
-#ifndef NO_LAYOUT
+#ifndef USE_CUSTOM_BINDING
 layout(std430, set = DESCRIPTOR_SET_CUSTOM, binding = DESCRIPTOR_BINDING_RESTIR_RESERVOIRS) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
+#else
+layout(std430, set = CUSTOM_DESCRIPTOR_SET_RESTIR, binding = CUSTOM_DESCRIPTOR_BINDING_RESTIR) buffer ReSTIRReservoirBuffers {Reservoir reservoirs[];} restir_reservoirs[];
 #endif
 
 // reservoirs are continuously resampled and updated to find good NEE paths to reproduce

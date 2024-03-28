@@ -3,17 +3,72 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 #include "interface.glsl"
 #include "../structs.glsl"
+#include "../random.glsl"
 
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer ImageBuffer {vec4[] data;} image_buffer;
-layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer RestirBuffer {Reservoir [] reservoirs;} restir_reservoirs[2];
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer AOVBuffer {vec4[] data;} aov_buffers[2];
+layout(set=DESCRIPTOR_SET_BUFFERS, binding = 2) buffer RestirBuffer {Reservoir [] reservoirs;} restir_reservoirs[2];
 
-layout(push_constant) uniform PConstants {PushConstantsP constants;} push_constants;
+layout(std430, set = DESCRIPTOR_SET_BUFFERS, binding = 3) readonly buffer LightsData {Light[] lights;} lights_data;
 
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 4) readonly buffer IndexData {uint data[];} indices;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 5) readonly buffer VertexData {vec4 data[];} vertices;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 6) readonly buffer NormalData {vec4 data[];} normals;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 7) readonly buffer TexcoordData {vec2 data[];} texcoords;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 8) readonly buffer TangentData {vec4 data[];} tangents;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 9) readonly buffer OffsetData {uint data[];} mesh_data_offsets;
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 10) readonly buffer OffsetIndexData {uint data[];} mesh_offset_indices;
+
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 11) uniform sampler2D tex[];
+layout(set = DESCRIPTOR_SET_BUFFERS, binding = 12) readonly buffer TextureIndexData {uint data[];} texture_indices;
+
+#define NO_LAYOUT
+#include "../raytracing/mesh_data.glsl"
+#include "../raytracing/texture_data.glsl"
+#include "../raytracing/lights.glsl"
+
+
+// reservoirs are continuously resampled and updated to find good NEE paths to reproduce
+float restir_p_hat(uint pixel_index, uint seed) {
+    vec3 position = aov_buffers[0].data[pixel_index].xyz;
+    vec3 normal = aov_buffers[1].data[pixel_index].xyz;
+    LightSample light_sample = sample_direct_light(seed, position);
+    // return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+    return length(light_sample.weight);
+}
+
+void update_reservoir(inout Reservoir r, uint sample_seed, float weight, uint seed) {
+    r.sum_weights = r.sum_weights + weight;
+    r.num_samples = r.num_samples + 1;
+    if (random_float(seed) < weight / r.sum_weights) {
+        r.sample_seed = sample_seed;
+    }
+}
+
+void clear_reservoir(inout Reservoir r) {
+    r.sum_weights = 0.0;
+    r.num_samples = 0;
+    r.sample_seed = 0;
+    r.weight = 0.0;
+}
+
+Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint seed) {
+    Reservoir s;
+    clear_reservoir(s);
+
+    update_reservoir(s, r0.sample_seed, restir_p_hat(pixel_index, r0.sample_seed) * r0.weight * r0.num_samples, random_uint(seed));
+    update_reservoir(s, r1.sample_seed, restir_p_hat(pixel_index, r1.sample_seed) * r1.weight * r1.num_samples, random_uint(seed));
+
+    s.num_samples = r0.num_samples + r1.num_samples;
+    s.weight = (1.0 / restir_p_hat(pixel_index, s.sample_seed)) * (s.sum_weights / s.num_samples);
+
+    return s;
+}
 
 void main() {
     uint pixel_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * push_constants.constants.render_extent.x;
     if (gl_GlobalInvocationID.x % 15 == 0) {
-        vec4 color = vec4(1,0,0,1);
+        vec4 color = aov_buffers[0].data[pixel_index];
         image_buffer.data[pixel_index] = color;
     } 
 

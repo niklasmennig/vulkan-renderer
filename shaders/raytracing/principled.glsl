@@ -1,5 +1,5 @@
 #include "../common.glsl"
-#include "random.glsl"
+#include "../random.glsl"
 #include "sampling.glsl"
 #include "material.glsl"
 
@@ -80,7 +80,7 @@ float pdf_principled(vec3 ray_in, vec3 ray_out, Material material) {
         float cos_theta = dot(ray_out, normal);
 
         float pdf_diffuse = cos_theta / PI;
-        float pdf_specular = d * cos_theta * sin(theta);
+        float pdf_specular = d * cos_theta * sin(acos(cos_theta));
 
         return (pdf_diffuse + pdf_specular) / 2.0;
 }

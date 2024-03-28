@@ -1,5 +1,5 @@
 #include "../common.glsl"
-#include "random.glsl"
+#include "../random.glsl"
 #include "sampling.glsl"
 #include "material.glsl"
 

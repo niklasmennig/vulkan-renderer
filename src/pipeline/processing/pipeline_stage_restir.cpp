@@ -13,14 +13,16 @@ void ProcessingPipelineStageRestir::initialize() {
 }
 
 void ProcessingPipelineStageRestir::on_resize(VkExtent2D swapchain_extent, VkExtent2D render_extent) {
-    
+    compute_shader->set_buffer(1, &builder->rt_pipeline->get_output_buffer("Position").buffer, 0);
+    compute_shader->set_buffer(1, &builder->rt_pipeline->get_output_buffer("Normals").buffer, 1);
 }
 
-void ProcessingPipelineStageRestir::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
+void ProcessingPipelineStageRestir::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants &push_constants) {
     Buffer* image_buffer = &builder->rt_pipeline->get_output_buffer("Result Image").buffer;
     compute_shader->set_buffer(0, image_buffer);
+    
     // compute_shader->set_buffer(1, &output_buffer);
-    compute_shader->dispatch(command_buffer, swapchain_extent, render_extent);
+    compute_shader->dispatch(command_buffer, swapchain_extent, render_extent, push_constants);
 }
 
 void ProcessingPipelineStageRestir::free() {

@@ -2,6 +2,7 @@
 
 #include "core/vulkan.h"
 #include "core/device.h"
+#include "shader_interface.h"
 
 #include <vector>
 #include <memory>
@@ -18,7 +19,7 @@ struct ProcessingPipeline {
 
     ProcessingPipelineBuilder* builder;
 
-    void run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);
+    void run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants &push_constants);
 
     void free();
 };

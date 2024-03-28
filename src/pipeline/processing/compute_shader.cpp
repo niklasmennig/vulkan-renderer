@@ -91,12 +91,15 @@ void ComputeShader::build() {
                 auto array_brace_end = line.rfind("];");
                 // descriptor is array descriptor
                 if (array_brace_start != std::string::npos && array_brace_end != std::string::npos) {
-                    auto count_literal_length = array_brace_end - array_brace_start;
-                    // array has count literal
-                    if (count_literal_length > 1) {
-                        count = std::stoi(line.substr(array_brace_start+1, count_literal_length-1));
-                    } else {
-                        count = 16;
+                    // check if closing brace is at end of line
+                    if (array_brace_end + 2 == line.size()) {
+                        auto count_literal_length = array_brace_end - array_brace_start;
+                        // array has count literal
+                        if (count_literal_length > 1) {
+                            count = std::stoi(line.substr(array_brace_start+1, count_literal_length-1));
+                        } else {
+                            count = 16;
+                        }
                     }
                 }
 
@@ -203,7 +206,7 @@ void ComputeShader::build() {
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;
-    push_constant_range.size = sizeof(Shaders::PushConstantsP);
+    push_constant_range.size = sizeof(Shaders::PushConstants);
     push_constant_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkPipelineLayoutCreateInfo layout_create_info{};
@@ -230,21 +233,16 @@ void ComputeShader::build() {
     std::cout << "compute shader built" << std::endl;
 }
 
-void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
-    Shaders::PushConstantsP push_constants;
-    push_constants.swapchain_extent = Shaders::ivec2(swapchain_extent.width, swapchain_extent.height);
-    push_constants.render_extent = Shaders::ivec2(render_extent.width, render_extent.height);
-
-    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstantsP), &push_constants);
-
-    dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1);
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants push_constants) {
+    dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1, push_constants);
 }
 
-void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) {
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, Shaders::PushConstants push_constants) {
     std::array<VkDescriptorSet, 2> descriptor_sets = {
         descriptor_set_buffers,
         descriptor_set_images
     };
+    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstants), &push_constants);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 2, descriptor_sets.data(), 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdDispatch(command_buffer, groups_x, groups_y, groups_z);

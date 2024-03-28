@@ -2,6 +2,7 @@
 
 #include "core/vulkan.h"
 #include "core/image.h"
+#include "shader_interface.h"
 
 #include <string>
 
@@ -27,8 +28,8 @@ struct ComputeShader {
     void set_buffer(int index, Buffer* buffer, int array_index = 0);
 
     void build();
-    void dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent);
-    void dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z);
+    void dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants push_constants);
+    void dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, Shaders::PushConstants push_constants);
     void free();
 
     ComputeShader(Device* device, std::string code_path);

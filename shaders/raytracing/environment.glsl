@@ -3,7 +3,7 @@
 
 #include "texture_data.glsl"
 #include "../structs.glsl"
-#include "random.glsl"
+#include "../random.glsl"
 
 #define TEXTURE_ID_ENVIRONMENT_ALBEDO 0
 #define TEXTURE_ID_ENVIRONMENT_MARGINAL 1

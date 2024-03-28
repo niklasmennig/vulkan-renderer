@@ -20,10 +20,10 @@ void ProcessingPipelineStageUpscale::on_resize(VkExtent2D swapchain_extent, VkEx
     builder->output_extent = swapchain_extent;
 }
 
-void ProcessingPipelineStageUpscale::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent) {
+void ProcessingPipelineStageUpscale::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants &push_constants) {
     compute_shader->set_buffer(0, builder->input_buffer);
     compute_shader->set_buffer(1, &output_buffer);
-    compute_shader->dispatch(command_buffer, swapchain_extent, render_extent);
+    compute_shader->dispatch(command_buffer, swapchain_extent, render_extent, push_constants);
 }
 
 void ProcessingPipelineStageUpscale::free() {
