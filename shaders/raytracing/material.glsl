@@ -2,8 +2,12 @@
 #define MATERIAL_GLSL
 
 #include "../structs.glsl"
+#include "texture_data.glsl"
 
+#ifndef NO_LAYOUT
+#include "interface.glsl"
 layout(std430, set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MATERIAL_PARAMETERS) readonly buffer MaterialParameterData {MaterialParameters[] data;} material_parameters;
+#endif
 
 MaterialParameters get_material_parameters(uint instance) {
     return material_parameters.data[instance];

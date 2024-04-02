@@ -501,7 +501,7 @@ void VulkanApplication::create_default_descriptor_writes() {
     restir_reservoir_buffer_0 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     restir_reservoir_buffer_1 = device.create_buffer(sizeof(Shaders::Reservoir) * swap_chain_extent.width * swap_chain_extent.height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-    prev_camera_matrix_buffer = device.create_buffer(sizeof(mat4) + sizeof(vec4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+    prev_camera_matrix_buffer = device.create_buffer(sizeof(mat4) + sizeof(vec4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     VkCommandBuffer cmdbuf = device.begin_single_use_command_buffer();
     vkCmdFillBuffer(cmdbuf, restir_reservoir_buffer_0.buffer_handle, 0, VK_WHOLE_SIZE, 0);
@@ -1638,14 +1638,6 @@ void VulkanApplication::setup() {
 
     rt_pipeline = rt_pipeline_builder.build();
 
-    // create process pipeline
-    p_pipeline_builder = device.create_processing_pipeline_builder()
-                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
-                    // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
-                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir()));
-                    ;
-
-    p_pipeline = p_pipeline_builder.build();
     
 
 
@@ -1659,8 +1651,20 @@ void VulkanApplication::setup() {
     while(vkWaitForFences(logical_device, 1, &tlas_fence, VK_FALSE, UINT64_MAX) != VK_SUCCESS);
     create_default_descriptor_writes();
 
-    std::cout << "pipeline created" << std::endl;
+    std::cout << "raytracing pipeline created" << std::endl;
 
+    // create process pipeline
+    p_pipeline_builder = device.create_processing_pipeline_builder()
+                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
+                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir(
+                        scene_tlas.acceleration_structure, &index_buffer, &vertex_buffer, &normal_buffer, &texcoord_buffer, &tangent_buffer, &mesh_data_offset_buffer, &mesh_offset_index_buffer, &loaded_textures, &texture_index_buffer, &material_parameter_buffer, &lights_buffer, &prev_camera_matrix_buffer
+                    )));
+                    ;
+
+    p_pipeline = p_pipeline_builder.build();
+
+    std::cout << "processing pipeline created" << std::endl;
 
     // set glfw callbacks
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {

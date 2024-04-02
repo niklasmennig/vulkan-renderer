@@ -20,17 +20,25 @@ void ComputeShader::set_image(int index, Image* img, int array_index) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
     compute_descriptor_image_info.imageLayout = img->layout;
     compute_descriptor_image_info.imageView = img->view_handle;
+    compute_descriptor_image_info.sampler = img->sampler_handle;
 
     VkWriteDescriptorSet compute_descriptor_write{};
     compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     compute_descriptor_write.dstSet = descriptor_set_images;
     compute_descriptor_write.dstBinding = index;
     compute_descriptor_write.dstArrayElement = array_index;
-    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pImageInfo = &compute_descriptor_image_info;
 
     vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
+}
+
+void ComputeShader::set_images(int index, std::vector<Image>* images) {
+    for (int i = 0; i < image_descriptor_counts[index]; i++) {
+        if (i < images->size()) set_image(index, &images->at(i), i);
+        else set_image(index, &images->at(0), i);
+    }
 }
 
 void ComputeShader::set_buffer(int index, Buffer* buffer, int array_index) {
@@ -48,6 +56,24 @@ void ComputeShader::set_buffer(int index, Buffer* buffer, int array_index) {
     compute_descriptor_write.descriptorCount = 1;
     compute_descriptor_write.pBufferInfo = &compute_descriptor_buffer_info;
 
+    vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
+}
+
+void ComputeShader::set_acceleration_structure(int index, VkAccelerationStructureKHR acceleration_structure) {
+    VkWriteDescriptorSetAccelerationStructureKHR descriptor_write_as_data{};
+    descriptor_write_as_data.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    descriptor_write_as_data.accelerationStructureCount = 1;
+    descriptor_write_as_data.pAccelerationStructures = &acceleration_structure;
+
+    VkWriteDescriptorSet compute_descriptor_write{};
+    compute_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    compute_descriptor_write.dstSet = descriptor_set_as;
+    compute_descriptor_write.dstBinding = index;
+    compute_descriptor_write.dstArrayElement = 0;
+    compute_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    compute_descriptor_write.descriptorCount = 1;
+
+    compute_descriptor_write.pNext = &descriptor_write_as_data;
     vkUpdateDescriptorSets(device->vulkan_device, 1, &compute_descriptor_write, 0, nullptr);
 }
 
@@ -111,6 +137,13 @@ void ComputeShader::build() {
                     std::cout << "image descriptor detected, descriptor count: " << count << std::endl;
                 }
             }
+
+            // acceleration structure declaration
+            auto as_set_pos = line.find("set=DESCRIPTOR_SET_ACCELERATION_STRUCTURES");
+            if (as_set_pos != std::string::npos) {
+                as_descriptor_count++;
+                std::cout << "acceleration structure descriptor detected" << std::endl;
+            }
         }
     }
 
@@ -146,8 +179,20 @@ void ComputeShader::build() {
         layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
         layout_binding.binding = i;
         layout_binding.descriptorCount = image_descriptor_counts[i];
-        layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        layout_binding.pImmutableSamplers = nullptr;
         image_layout_bindings.push_back(layout_binding);
+    }
+
+    std::vector<VkDescriptorSetLayoutBinding> as_layout_bindings;
+
+    for (int i = 0; i < as_descriptor_count; i++) {
+        VkDescriptorSetLayoutBinding layout_binding;
+        layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        layout_binding.binding = i;
+        layout_binding.descriptorCount = 1;
+        layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        as_layout_bindings.push_back(layout_binding);
     }
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
@@ -162,6 +207,11 @@ void ComputeShader::build() {
 
     vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout_images);
 
+    descriptor_set_layout_create_info.bindingCount = as_layout_bindings.size();
+    descriptor_set_layout_create_info.pBindings = as_layout_bindings.data();
+
+    vkCreateDescriptorSetLayout(device->vulkan_device, &descriptor_set_layout_create_info, nullptr, &descriptor_set_layout_as);
+
     VkDescriptorPoolSize pool_size_buffers{};
     pool_size_buffers.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     pool_size_buffers.descriptorCount = 0;
@@ -169,40 +219,48 @@ void ComputeShader::build() {
     if (pool_size_buffers.descriptorCount < 1) pool_size_buffers.descriptorCount = 1;
 
     VkDescriptorPoolSize pool_size_images{};
-    pool_size_images.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    pool_size_images.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     pool_size_images.descriptorCount = 0;
     for (auto count : image_descriptor_counts) pool_size_images.descriptorCount += count;
     if (pool_size_images.descriptorCount < 1) pool_size_images.descriptorCount = 1;
 
+    VkDescriptorPoolSize pool_size_as{};
+    pool_size_as.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    pool_size_as.descriptorCount = as_descriptor_count;
+    if (pool_size_as.descriptorCount < 1) pool_size_as.descriptorCount = 1;
+
     VkDescriptorPoolSize pool_sizes[] = {
         pool_size_buffers,
-        pool_size_images
+        pool_size_images,
+        pool_size_as
     };
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info{};
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptor_pool_create_info.maxSets = 2;
-    descriptor_pool_create_info.poolSizeCount = 2;
+    descriptor_pool_create_info.maxSets = 3;
+    descriptor_pool_create_info.poolSizeCount = 3;
     descriptor_pool_create_info.pPoolSizes = pool_sizes;
 
     vkCreateDescriptorPool(device->vulkan_device, &descriptor_pool_create_info, nullptr, &descriptor_pool);
 
-    std::array<VkDescriptorSetLayout, 2> descriptor_set_layouts = {
+    VkDescriptorSetLayout descriptor_set_layouts[] = {
         descriptor_set_layout_buffers,
-        descriptor_set_layout_images
+        descriptor_set_layout_images,
+        descriptor_set_layout_as
     };
 
     VkDescriptorSetAllocateInfo descriptor_set_allocate_info{};
     descriptor_set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     descriptor_set_allocate_info.descriptorPool = descriptor_pool;
-    descriptor_set_allocate_info.descriptorSetCount = 2;
-    descriptor_set_allocate_info.pSetLayouts = descriptor_set_layouts.data();
+    descriptor_set_allocate_info.descriptorSetCount = 3;
+    descriptor_set_allocate_info.pSetLayouts = descriptor_set_layouts;
 
-    std::array<VkDescriptorSet, 2> descriptor_sets;
+    std::array<VkDescriptorSet, 3> descriptor_sets;
 
     vkAllocateDescriptorSets(device->vulkan_device, &descriptor_set_allocate_info, descriptor_sets.data());
     descriptor_set_buffers = descriptor_sets[DESCRIPTOR_SET_BUFFERS];
     descriptor_set_images = descriptor_sets[DESCRIPTOR_SET_IMAGES];
+    descriptor_set_as = descriptor_sets[DESCRIPTOR_SET_ACCELERATION_STRUCTURES];
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;
@@ -211,8 +269,8 @@ void ComputeShader::build() {
 
     VkPipelineLayoutCreateInfo layout_create_info{};
     layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_create_info.setLayoutCount = 2;
-    layout_create_info.pSetLayouts = descriptor_set_layouts.data();
+    layout_create_info.setLayoutCount = 3;
+    layout_create_info.pSetLayouts = descriptor_set_layouts;
     layout_create_info.pushConstantRangeCount = 1;
     layout_create_info.pPushConstantRanges = &push_constant_range;
     vkCreatePipelineLayout(device->vulkan_device, &layout_create_info, nullptr, &layout);
@@ -238,12 +296,13 @@ void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchai
 }
 
 void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, Shaders::PushConstantsPacked &push_constants_packed) {
-    std::array<VkDescriptorSet, 2> descriptor_sets = {
+    std::array<VkDescriptorSet, 3> descriptor_sets = {
         descriptor_set_buffers,
-        descriptor_set_images
+        descriptor_set_images,
+        descriptor_set_as
     };
     vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstantsPacked), &push_constants_packed);
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 2, descriptor_sets.data(), 0, nullptr);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 3, descriptor_sets.data(), 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdDispatch(command_buffer, groups_x, groups_y, groups_z);
 }
@@ -254,6 +313,7 @@ void ComputeShader::free() {
     vkDestroyDescriptorPool(device->vulkan_device, descriptor_pool, nullptr);
     vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout_buffers, nullptr);
     vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout_images, nullptr);
+    vkDestroyDescriptorSetLayout(device->vulkan_device, descriptor_set_layout_as, nullptr);
     vkDestroyPipelineLayout(device->vulkan_device, layout, nullptr);
 }
 

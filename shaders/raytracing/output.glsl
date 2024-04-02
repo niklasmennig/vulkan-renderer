@@ -1,7 +1,9 @@
 #ifndef OUTPUT_GLSL
 #define OUTPUT_GLSL
 
+#ifndef NO_LAYOUT
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_OUTPUT_BUFFERS) buffer OutputBuffer { vec4 color[]; } output_buffers[];
+#endif
 
 void write_output(uint buffer_id, uint pixel_index, vec4 value) {
     output_buffers[buffer_id].color[pixel_index] = value;

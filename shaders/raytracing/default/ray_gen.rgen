@@ -31,18 +31,6 @@ vec3 compute_ray_direction(vec2 ndc) {
     return normalize(transformed.xyz);
 }
 
-uint pixel_to_index(uvec2 pixel_coordinates) {
-    return pixel_coordinates.x + pixel_coordinates.y * get_push_constants().render_extent.x;
-}
-
-vec2 pixel_to_ndc(vec2 pixel_coordinates) {
-    return ((pixel_coordinates / get_push_constants().render_extent) * 2.0) - 1.0;
-}
-
-vec2 ndc_to_pixel(vec2 ndc) {
-    return ((ndc + 1.0) / 2.0) * get_push_constants().render_extent;
-}
-
 void main() {
     PushConstants constants = get_push_constants();
 

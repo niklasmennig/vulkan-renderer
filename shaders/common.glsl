@@ -8,6 +8,8 @@
 #define EPSILON 0.00001
 #define RAY_LEN_MAX 100000.0
 
+#include "push_constants.glsl"
+
 // taken from https://www.shadertoy.com/view/tlVczh
 mat3 basis(in vec3 n)
 {
@@ -59,6 +61,18 @@ vec3 encode_uint(uint to_encode) {
 
 uint decode_uint(vec3 encoded) {
     return uint(encoded.z * 255) + uint(encoded.y * (255 * 255)) + uint(encoded.x * (255 * 255 * 255));
+}
+
+uint pixel_to_index(uvec2 pixel_coordinates) {
+    return pixel_coordinates.x + pixel_coordinates.y * get_push_constants().render_extent.x;
+}
+
+vec2 pixel_to_ndc(vec2 pixel_coordinates) {
+    return ((pixel_coordinates / get_push_constants().render_extent) * 2.0) - 1.0;
+}
+
+vec2 ndc_to_pixel(vec2 ndc) {
+    return ((ndc + 1.0) / 2.0) * get_push_constants().render_extent;
 }
 
 #endif

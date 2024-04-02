@@ -1,9 +1,9 @@
 #ifndef MESH_DATA_GLSL
 #define MESH_DATA_GLSL
 
-#include "interface.glsl"
 
 #ifndef NO_LAYOUT
+#include "interface.glsl"
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_INDICES) readonly buffer IndexData {uint data[];} indices;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_VERTICES) readonly buffer VertexData {vec4 data[];} vertices;
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = DESCRIPTOR_BINDING_MESH_NORMALS) readonly buffer NormalData {vec4 data[];} normals;

@@ -3,10 +3,11 @@
 
 #extension GL_EXT_nonuniform_qualifier : require
 
-#include "interface.glsl"
+#include "../structs.glsl"
 
 #ifndef NO_LAYOUT
-layout(set = DESCRIPTOR_SET_OBJECTS, binding = 7) uniform sampler2D tex[];
+#include "interface.glsl"
+layout(set = DESCRIPTOR_SET_OBJECTS, binding = 7) uniform sampler2D textures[];
 layout(set = DESCRIPTOR_SET_OBJECTS, binding = 8) readonly buffer TextureIndexData {uint data[];} texture_indices;
 #endif
 
@@ -23,11 +24,11 @@ bool has_texture(uint instance, uint offset) {
 }
 
 vec4 fetch_texture(uint id, ivec2 pixel) {
-    return max(texelFetch(tex[nonuniformEXT(id)], pixel, 0), vec4(0.0));
+    return max(texelFetch(textures[nonuniformEXT(id)], pixel, 0), vec4(0.0));
 }
 
 vec4 sample_texture(uint id, vec2 uv) {
-    return max(texture(tex[nonuniformEXT(id)], uv), vec4(0.0));
+    return max(texture(textures[nonuniformEXT(id)], uv), vec4(0.0));
 }
 
 vec4 sample_texture(uint instance, vec2 uv, uint offset) {

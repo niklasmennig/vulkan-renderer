@@ -1,6 +1,9 @@
 #ifndef STRUCTS_GLSL
 #define STRUCTS_GLSL
 
+#define NULL_INSTANCE 999999
+#define NULL_TEXTURE_INDEX 10000
+
 struct Light {
     uint uint_data[4];
     float float_data[16];
