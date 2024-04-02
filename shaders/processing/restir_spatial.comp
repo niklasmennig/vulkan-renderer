@@ -4,6 +4,7 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 #include "interface.glsl"
 #include "../structs.glsl"
 #include "../random.glsl"
+#include "../push_constants.glsl"
 
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer ImageBuffer {vec4[] data;} image_buffer;
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer AOVBuffer {vec4[] data;} aov_buffers[2];
@@ -66,7 +67,9 @@ Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint 
 }
 
 void main() {
-    uint pixel_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * push_constants.constants.render_extent.x;
+    PushConstants constants = get_push_constants();
+
+    uint pixel_index = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * constants.render_extent.x;
     if (gl_GlobalInvocationID.x % 15 == 0) {
         vec4 color = aov_buffers[0].data[pixel_index];
         image_buffer.data[pixel_index] = color;

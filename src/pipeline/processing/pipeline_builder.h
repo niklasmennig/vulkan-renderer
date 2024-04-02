@@ -19,7 +19,7 @@ struct ProcessingPipeline {
 
     ProcessingPipelineBuilder* builder;
 
-    void run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants &push_constants);
+    void run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstantsPacked &push_constants_packed);
 
     void free();
 };

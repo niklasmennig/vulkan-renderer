@@ -356,7 +356,7 @@ RaytracingPipeline RaytracingPipelineBuilder::build() {
 
         VkPushConstantRange push_constant_range{};
         push_constant_range.offset = 0;
-        push_constant_range.size = sizeof(Shaders::PushConstants);
+        push_constant_range.size = sizeof(Shaders::PushConstantsPacked);
         push_constant_range.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR;
 
         VkPipelineLayoutCreateInfo pipeline_layout_info{};

@@ -6,6 +6,7 @@
 
 #include "payload.glsl"
 #include "../../common.glsl"
+#include "../../push_constants.glsl"
 #include "../../random.glsl"
 #include "../interface.glsl"
 #include "../lights.glsl"
@@ -25,40 +26,42 @@ vec3 compute_ray_direction(vec2 ndc) {
     // homogeneous pixel coordinates
     vec4 hpc = vec4(ndc, -1, 1);
 
-    vec4 transformed = push_constants.constants.inv_camera_matrix * hpc;
+    vec4 transformed = get_push_constants().inv_camera_matrix * hpc;
 
     return normalize(transformed.xyz);
 }
 
 uint pixel_to_index(uvec2 pixel_coordinates) {
-    return pixel_coordinates.x + pixel_coordinates.y * push_constants.constants.render_extent.x;
+    return pixel_coordinates.x + pixel_coordinates.y * get_push_constants().render_extent.x;
 }
 
 vec2 pixel_to_ndc(vec2 pixel_coordinates) {
-    return ((pixel_coordinates / push_constants.constants.render_extent) * 2.0) - 1.0;
+    return ((pixel_coordinates / get_push_constants().render_extent) * 2.0) - 1.0;
 }
 
 vec2 ndc_to_pixel(vec2 ndc) {
-    return ((ndc + 1.0) / 2.0) * push_constants.constants.render_extent;
+    return ((ndc + 1.0) / 2.0) * get_push_constants().render_extent;
 }
 
 void main() {
-    uint sample_count = push_constants.constants.sample_count;
+    PushConstants constants = get_push_constants();
+
+    uint sample_count = constants.sample_count;
     uint pixel_index = pixel_to_index(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y));
 
-    uint restir_index = push_constants.constants.frame % 2;
+    uint restir_index = constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
 
-    payload.seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, hash_combine(push_constants.constants.frame, hash_init))));
+    payload.seed = hash_combine(gl_LaunchIDEXT.x, hash_combine(gl_LaunchIDEXT.y, hash_combine(sample_count, hash_combine(constants.frame, hash_init))));
     payload.pixel_index = pixel_index;
     payload.restir_index = restir_index;
 
-    vec3 ray_origin = push_constants.constants.camera_position.xyz;
+    vec3 ray_origin = constants.camera_position.xyz;
     vec3 ray_direction;
 
     vec3 multisample_color = vec3(0.0);
 
-    for (uint frame_sample = 0; frame_sample < push_constants.constants.frame_samples; frame_sample++) {
+    for (uint frame_sample = 0; frame_sample < constants.frame_samples; frame_sample++) {
 
         // vec2 pixel_center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
         // vec2 pixel_offset = vec2(random_float(payload.seed), random_float(payload.seed)) - vec2(0.5);
@@ -84,7 +87,7 @@ void main() {
                 0,
                 0xff,
                 0,
-                push_constants.constants.sbt_stride,
+                constants.sbt_stride,
                 0,
                 payload.origin,
                 EPSILON,
@@ -96,7 +99,7 @@ void main() {
         multisample_color += max(payload.color, vec3(0.0));
     }
 
-    vec3 multisample_color_normalized = multisample_color / push_constants.constants.frame_samples;
+    vec3 multisample_color_normalized = multisample_color / constants.frame_samples;
 
     uint hit_instance = decode_uint(read_output(OUTPUT_BUFFER_INSTANCE, pixel_index).xyz);
     // RESTIR
@@ -144,7 +147,7 @@ void main() {
         }
 
         // ReSTIR contribution
-        if (hit_instance != NULL_INSTANCE && (push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
+        if (hit_instance != NULL_INSTANCE && (constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) {
             Material material = get_material(hit_instance, payload.primary_hit_uv);
 
             uint nee_seed =  current_reservoir.sample_seed;
@@ -178,7 +181,7 @@ void main() {
     }
 
     write_output(OUTPUT_BUFFER_ACCUMULATED, pixel_index, vec4(accumulated_color, 1.0));
-    write_output(OUTPUT_BUFFER_RESULT, pixel_index, vec4(accumulated_color / sample_count * pow(2, push_constants.constants.exposure), 1.0));
+    write_output(OUTPUT_BUFFER_RESULT, pixel_index, vec4(accumulated_color / sample_count * pow(2, constants.exposure), 1.0));
 
-    write_output(OUTPUT_BUFFER_RAY_DEPTH, pixel_index, vec4(vec3(float(payload.depth) / push_constants.constants.max_depth), 1.0));
+    write_output(OUTPUT_BUFFER_RAY_DEPTH, pixel_index, vec4(vec3(float(payload.depth) / constants.max_depth), 1.0));
 }

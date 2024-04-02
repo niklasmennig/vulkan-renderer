@@ -795,25 +795,35 @@ void VulkanApplication::draw_frame() {
 
         if (accumulated_frames < std::numeric_limits<uint32_t>::max()) accumulated_frames += 1;
 
-        Shaders::PushConstants push_constants;
-        push_constants.sbt_stride = rt_pipeline.sbt_stride;
-        push_constants.frame = application_frames;
-        push_constants.sample_count = accumulated_frames;
-        push_constants.light_count = lights.size();
-        push_constants.max_depth = ui.max_ray_depth;
-        push_constants.frame_samples = ui.frame_samples;
-        push_constants.exposure = ui.exposure;
-        push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
-        push_constants.swapchain_extent = Shaders::uvec2(swap_chain_extent.width, swap_chain_extent.height);
-        push_constants.render_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
-        push_constants.inv_camera_matrix = glm::inverse(camera_matrix);
-        push_constants.camera_position = Shaders::vec4(camera_position, 1.0);
+        Shaders::PushConstantsPacked push_constants_packed;
+        push_constants_packed.stride_lcount_fsample_depth = (uint8_t)ui.max_ray_depth | ((uint8_t)ui.frame_samples << 8) | ((uint8_t)lights.size() << 16) | ((uint8_t)rt_pipeline.sbt_stride << 24);
+        push_constants_packed.sample_count = accumulated_frames;
+        push_constants_packed.frame = application_frames;
+        // push_constants.sbt_stride = rt_pipeline.sbt_stride;
+        // push_constants.frame = application_frames;
+        // push_constants.sample_count = accumulated_frames;
+        // push_constants.light_count = lights.size();
+        // push_constants.max_depth = ui.max_ray_depth;
+        // push_constants.frame_samples = ui.frame_samples;
+        // push_constants.exposure = ui.exposure;
+        push_constants_packed.exposure = ui.exposure;
+        // push_constants.environment_cdf_dimensions = Shaders::uvec2(loaded_environment.conditional_cdf_map.width, loaded_environment.conditional_cdf_map.height);
+        push_constants_packed.env_dim_xy = ((uint16_t)loaded_environment.conditional_cdf_map.width << 16) | ((uint16_t)loaded_environment.conditional_cdf_map.height);
+        // push_constants.swapchain_extent = Shaders::uvec2(swap_chain_extent.width, swap_chain_extent.height);
+        push_constants_packed.sc_ext_xy = ((uint16_t)swap_chain_extent.width << 16) | ((uint16_t)swap_chain_extent.height);
+        // push_constants.render_extent = Shaders::uvec2(render_image_extent.width, render_image_extent.height);
+        push_constants_packed.r_ext_xy = ((uint16_t)render_image_extent.width << 16) | ((uint16_t)render_image_extent.height);
+        // push_constants.inv_camera_matrix = glm::inverse(camera_matrix);
+        push_constants_packed.inv_camera_matrix = glm::inverse(camera_matrix);
+        // push_constants.camera_position = Shaders::vec4(camera_position, 1.0);
+        push_constants_packed.camera_position = Shaders::vec4(camera_position, 1.0);        
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
         if (ui.restir_enabled) flags |= ENABLE_RESTIR;
-        push_constants.flags = flags;
-        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstants), &push_constants);
+        // push_constants.flags = flags;
+        push_constants_packed.flags = flags;
+        vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstantsPacked), &push_constants_packed);
 
         // raytracer draw
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rt_pipeline.builder->pipeline_layout, 0, rt_pipeline.builder->max_set + 1, rt_pipeline.builder->descriptor_sets.data(), 0, nullptr);
@@ -879,7 +889,7 @@ void VulkanApplication::draw_frame() {
 
         if (ui.use_processing_pipeline) {
             p_pipeline_builder.input_buffer = output_image_buffer;
-            p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent, push_constants);
+            p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent, push_constants_packed);
             output_image_buffer = p_pipeline_builder.output_buffer;
             output_image_extent = p_pipeline_builder.output_extent;
         }

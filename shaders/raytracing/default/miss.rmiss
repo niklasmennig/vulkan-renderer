@@ -3,7 +3,7 @@
 #extension GL_GOOGLE_include_directive : enable
 
 #include "payload.glsl"
-#include "../push_constants.glsl"
+#include "../../push_constants.glsl"
 #include "../../common.glsl"
 #include "../texture_data.glsl"
 #include "../mis.glsl"
@@ -13,6 +13,8 @@
 layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main() {
+    PushConstants constants = get_push_constants();
+
     // calculate theta and phi for environment map
     vec2 thetaphi = thetaphi_from_dir(gl_WorldRayDirectionEXT);
 
@@ -36,11 +38,11 @@ void main() {
         write_output(OUTPUT_BUFFER_INSTANCE_COLOR, payload.pixel_index, vec4(vec3(0.0), 1.0));
     }
 
-    if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
+    if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
         // MIS!!!
         float mis = 1.0;
-        if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
-            float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, push_constants.constants.environment_cdf_dimensions);
+        if ((constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
+            float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, constants.environment_cdf_dimensions);
             mis = balance_heuristic(1.0, 1.0, 1.0, env_pdf * payload.last_bsdf_pdf_inv);
         }
         payload.color += payload.contribution * env_contribution * mis;

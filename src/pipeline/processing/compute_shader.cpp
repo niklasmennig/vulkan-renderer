@@ -206,7 +206,7 @@ void ComputeShader::build() {
 
     VkPushConstantRange push_constant_range {};
     push_constant_range.offset = 0;
-    push_constant_range.size = sizeof(Shaders::PushConstants);
+    push_constant_range.size = sizeof(Shaders::PushConstantsPacked);
     push_constant_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkPipelineLayoutCreateInfo layout_create_info{};
@@ -233,16 +233,16 @@ void ComputeShader::build() {
     std::cout << "compute shader built" << std::endl;
 }
 
-void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants push_constants) {
-    dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1, push_constants);
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstantsPacked &push_constants_packed) {
+    dispatch(command_buffer, (float)swapchain_extent.width / (float)local_dispatch_size_x, swapchain_extent.height / (float)local_dispatch_size_y, 1, push_constants_packed);
 }
 
-void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, Shaders::PushConstants push_constants) {
+void ComputeShader::dispatch(VkCommandBuffer command_buffer, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, Shaders::PushConstantsPacked &push_constants_packed) {
     std::array<VkDescriptorSet, 2> descriptor_sets = {
         descriptor_set_buffers,
         descriptor_set_images
     };
-    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstants), &push_constants);
+    vkCmdPushConstants(command_buffer, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Shaders::PushConstantsPacked), &push_constants_packed);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 2, descriptor_sets.data(), 0, nullptr);
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdDispatch(command_buffer, groups_x, groups_y, groups_z);

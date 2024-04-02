@@ -7,8 +7,6 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer InputImageBuffer {vec4[] data;} input_buffer;
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer OutputImageBuffer {vec4[] data;} output_buffer;
 
-layout(push_constant) uniform PConstants {PushConstants constants;} push_constants;
-
 
 void main() {
     ivec2 pixel_position = ivec2(gl_GlobalInvocationID.xy);

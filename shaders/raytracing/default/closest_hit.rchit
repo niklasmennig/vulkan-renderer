@@ -9,6 +9,7 @@
 #include "../material.glsl"
 #include "../../common.glsl"
 #include "../../random.glsl"
+#include "../../push_constants.glsl"
 #include "../bsdf.glsl"
 #include "../environment.glsl"
 #include "../lights.glsl"
@@ -23,7 +24,8 @@ layout(location = 0) rayPayloadInEXT RayPayload payload;
 layout(set = DESCRIPTOR_SET_FRAMEWORK, binding = DESCRIPTOR_BINDING_ACCELERATION_STRUCTURE) uniform accelerationStructureEXT as;
 
 void main() {
-    uint sample_count = push_constants.constants.sample_count;
+    PushConstants constants = get_push_constants();
+    uint sample_count = constants.sample_count;
 
     uint instance = gl_InstanceID;
     uint primitive = gl_PrimitiveID;
@@ -83,7 +85,7 @@ void main() {
     payload.direction = (to_world_space * ray_in);
     
     // direct lighting
-    if ((push_constants.constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
+    if ((constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
         uint nee_seed = random_uint(payload.seed);
         LightSample light_sample = sample_direct_light(nee_seed, position);
 
@@ -104,17 +106,17 @@ void main() {
             vec3 nee_contribution = bsdf_eval * payload.contribution * light_sample.weight * abs(light_dir_local.y);
 
             uint di_depth = 1;
-            if ((push_constants.constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
+            if ((constants.flags & ENABLE_RESTIR) == ENABLE_RESTIR) di_depth = 2;
 
             if (payload.depth >= di_depth) {
                 float mis = 1.0;
-                if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0f, 1.0, 1.0f, bsdf_pdf / light_sample.pdf); 
+                if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0f, 1.0, 1.0f, bsdf_pdf / light_sample.pdf); 
                 payload.color += mis * nee_contribution;
             }
         }
     }
     
-    if ((push_constants.constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
+    if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
         payload.color += material.emission * payload.contribution;
     }
 
@@ -132,13 +134,13 @@ void main() {
         }
     }
 
-    if (payload.depth < push_constants.constants.max_depth) {
+    if (payload.depth < constants.max_depth) {
         traceRayEXT(
             as,
             0,
             0xff,
             0,
-            push_constants.constants.sbt_stride,
+            constants.sbt_stride,
             0,
             payload.origin,
             EPSILON,

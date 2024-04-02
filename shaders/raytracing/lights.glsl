@@ -6,7 +6,7 @@
 #include "texture_data.glsl"
 #include "material.glsl"
 #include "../random.glsl"
-#include "push_constants.glsl"
+#include "../push_constants.glsl"
 #include "environment.glsl"
 
 #ifndef IGNORE_AREA_LIGHTS
@@ -96,19 +96,20 @@ LightSample sample_light(vec3 position, uint seed, Light light) {
 }
 
 LightSample sample_direct_light(uint seed, vec3 position) {
+    PushConstants constants = get_push_constants();
     LightSample light_sample;
-    if (push_constants.constants.light_count > 0) {
+    if (constants.light_count > 0) {
         if (random_float(seed) < 0.5) {
-            uint light_idx = random_uint(seed) % push_constants.constants.light_count;
+            uint light_idx = random_uint(seed) % constants.light_count;
             Light light = lights_data.lights[light_idx];
             light_sample = sample_light(position, seed, light);
-            light_sample.weight *= push_constants.constants.light_count;
+            light_sample.weight *= constants.light_count;
         } else {
-            light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+            light_sample = sample_environment(seed, constants.environment_cdf_dimensions);
         }
         light_sample.weight *= 2.0;
     } else {
-        light_sample = sample_environment(seed, push_constants.constants.environment_cdf_dimensions);
+        light_sample = sample_environment(seed, constants.environment_cdf_dimensions);
     }
     return light_sample;
 }

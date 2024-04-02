@@ -6,6 +6,22 @@ struct Light {
     float float_data[16];
 };
 
+struct PushConstantsPacked {
+    uint stride_lcount_fsample_depth;
+    uint sample_count;
+    uint frame;
+    uint flags;
+    //
+    uint env_dim_xy;
+    uint sc_ext_xy;
+    uint r_ext_xy;
+    float exposure;
+    //
+    vec4 camera_position;
+    //
+    mat4 inv_camera_matrix;
+};
+
 struct PushConstants {
     uint sbt_stride;
     uint frame;

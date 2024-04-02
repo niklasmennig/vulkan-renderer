@@ -60,7 +60,7 @@ void ProcessingPipelineStageOIDN::on_resize(VkExtent2D swapchain_extent, VkExten
     }
 }
 
-void ProcessingPipelineStageOIDN::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstants &push_constants) {
+void ProcessingPipelineStageOIDN::process(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstantsPacked &push_constants_packed) {
     oidnExecuteFilter(oidn_filter);
 
     const char* error;
