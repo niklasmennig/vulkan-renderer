@@ -20,9 +20,8 @@ struct PushConstantsPacked {
     uint r_ext_xy;
     float exposure;
     //
-    vec4 camera_position;
-    //
     mat4 inv_camera_matrix;
+    vec4 camera_position;
 };
 
 struct PushConstants {

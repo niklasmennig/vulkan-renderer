@@ -43,7 +43,7 @@ struct ProcessingPipelineBuilder {
     VkExtent2D output_extent;
 
     std::vector<CreatedPipelineImage> created_images;
-    std::vector<ComputeShader> created_compute_shaders;
+    std::vector<ComputeShader*> created_compute_shaders;
     std::vector<Buffer> created_buffers;
 
     CreatedPipelineImage* create_image(unsigned int width, unsigned int height);

@@ -54,7 +54,6 @@ struct Device
 
     RaytracingPipelineBuilder create_raytracing_pipeline_builder();
     ProcessingPipelineBuilder create_processing_pipeline_builder();
-    ComputeShader create_compute_shader(std::string code_path);
 
     // function pointers
     PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;

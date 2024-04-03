@@ -45,8 +45,9 @@ CreatedPipelineImage* ProcessingPipelineBuilder::create_image(unsigned int width
 }
 
 ComputeShader* ProcessingPipelineBuilder::create_compute_shader(std::string path) {
-    created_compute_shaders.push_back(device->create_compute_shader(path));
-    return &created_compute_shaders.back();
+    ComputeShader* shader = new ComputeShader(device, path);
+    created_compute_shaders.push_back(shader);
+    return shader;
 }
 
 Buffer ProcessingPipelineBuilder::create_buffer(uint32_t size) {
@@ -98,7 +99,7 @@ void ProcessingPipelineBuilder::free_stage_resources() {
     created_images.clear();
 
     for (auto created_compute_shader: created_compute_shaders) {
-        created_compute_shader.free();
+        created_compute_shader->free();
     }
     created_compute_shaders.clear();
 }

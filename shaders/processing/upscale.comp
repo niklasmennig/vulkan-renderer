@@ -3,22 +3,25 @@
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 #include "interface.glsl"
+#include "../push_constants.glsl"
 
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 0) buffer InputImageBuffer {vec4[] data;} input_buffer;
 layout(set=DESCRIPTOR_SET_BUFFERS, binding = 1) buffer OutputImageBuffer {vec4[] data;} output_buffer;
 
 
 void main() {
+    PushConstants constants = get_push_constants();
+
     ivec2 pixel_position = ivec2(gl_GlobalInvocationID.xy);
-    vec2 render_ratio = vec2(push_constants.constants.render_extent) / vec2(push_constants.constants.swapchain_extent);
+    vec2 render_ratio = vec2(constants.render_extent) / vec2(constants.swapchain_extent);
 
     vec2 render_pixel_position_float = vec2(pixel_position) * render_ratio;
     ivec2 render_pixel_position = ivec2(render_pixel_position_float);
     vec2 render_pixel_position_frac = render_pixel_position_float - render_pixel_position;
 
-    uint input_image_width = push_constants.constants.render_extent.x;
-    uint input_image_height = push_constants.constants.render_extent.y;
-    uint output_image_width = push_constants.constants.swapchain_extent.x;
+    uint input_image_width = constants.render_extent.x;
+    uint input_image_height = constants.render_extent.y;
+    uint output_image_width = constants.swapchain_extent.x;
 
     uint pixel_index = pixel_position.x + pixel_position.y * output_image_width;
     uint render_pixel_index = render_pixel_position.x + render_pixel_position.y * input_image_width;

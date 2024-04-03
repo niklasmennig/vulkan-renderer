@@ -8,7 +8,7 @@
 
 struct ProcessingPipelineStageRestir : ProcessingPipelineStage {
     Buffer restir_buffers[2];
-    ComputeShader* compute_shader;
+    ComputeShader *compute_shader_initial_temporal, *compute_shader_spatial;
 
     VkAccelerationStructureKHR acceleration_structure;
 

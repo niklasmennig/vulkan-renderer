@@ -44,8 +44,8 @@ float restir_p_hat(uint pixel_index, uint seed) {
     vec3 position = aov_buffers[1].data[pixel_index].xyz;
     vec3 normal = aov_buffers[2].data[pixel_index].xyz;
     LightSample light_sample = sample_direct_light(seed, position);
-    // return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
-    return length(light_sample.weight);
+    return luminance(light_sample.weight) * abs(dot(light_sample.direction, normal));
+    // return length(light_sample.weight);
 }
 
 void update_reservoir(inout Reservoir r, uint sample_seed, float weight, uint seed) {
@@ -84,8 +84,7 @@ void main() {
     uint restir_index = constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
 
-    uvec2 pixel_coordinates = gl_GlobalInvocationID.xy;
-    uint pixel_index = pixel_to_index(pixel_coordinates);
+    uint pixel_index = pixel_to_index(gl_GlobalInvocationID.xy);
     
     uint hit_instance = decode_uint(aov_buffers[0].data[pixel_index].xyz);
     vec3 hit_position = aov_buffers[1].data[pixel_index].xyz;
@@ -94,39 +93,45 @@ void main() {
     // RESTIR
     {
         Reservoir current_reservoir = restir_reservoirs[restir_index].reservoirs[pixel_index];
+        clear_reservoir(current_reservoir);
 
-        // spatial reuse
-        for (int i = 0; i < 8; i++) {
-            vec2 offset_dir = normalize(vec2(random_float(seed), random_float(seed)));
-            float offset_mag = random_float(seed) * 3;
-            uvec2 offset_pixel_coordinates = uvec2(pixel_coordinates + offset_dir * offset_mag);
-            uint offset_pixel_index = pixel_to_index(offset_pixel_coordinates);
-
-            uint resampling_seed = random_uint(seed);
-            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, restir_reservoirs[restir_index].reservoirs[offset_pixel_index], resampling_seed);
+        // initial restir sample generation
+        for (uint restir_sample = 0; restir_sample < 8; restir_sample++) {
+            uint restir_seed = random_uint(seed);
+            float p_hat = restir_p_hat(pixel_index, restir_seed);
+            uint update_seed = random_uint(seed);
+            update_reservoir(current_reservoir, restir_seed, p_hat, update_seed);
         }
 
-        // ReSTIR contribution
-        if (hit_instance != NULL_INSTANCE) {
-            Material material = get_material(hit_instance, hit_uv);
+        uint restir_seed = current_reservoir.sample_seed;
+        current_reservoir.weight = (1.0 / restir_p_hat(pixel_index, restir_seed)) * (current_reservoir.sum_weights / current_reservoir.num_samples);
 
-            uint nee_seed =  current_reservoir.sample_seed;
-            LightSample light_sample = sample_direct_light(nee_seed, hit_position);
 
-            vec3 normal = hit_normal;
+        // evaluate visibility of initial samples
+        uint initial_seed =  current_reservoir.sample_seed;
+        LightSample light_sample = sample_direct_light(initial_seed, hit_position);
+        rayQueryEXT ray_query;
+        rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, hit_position, EPSILON, light_sample.direction, light_sample.distance - 2.0 * EPSILON);
+        rayQueryProceedEXT(ray_query);
+        if (rayQueryGetIntersectionTypeEXT(ray_query, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+            current_reservoir.weight = 0;
+        }
 
-            mat3x3 to_shading_space = transpose(basis(normal));
-
-            vec3 ray_direction = normalize(hit_position - constants.camera_position.xyz);
-            vec3 ray_dir_local = normalize(to_shading_space * -ray_direction);
-            vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
-
-            vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material);
-
-            vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight * abs(light_dir_local.y);
-
-            vec3 color = image_buffer.data[pixel_index].rgb;
-            image_buffer.data[pixel_index] = vec4(color + restir_nee_contribution, 1.0);                    
+        // temporal reuse
+        vec3 hit_direction = normalize(hit_position - previous_camera_data.position.xyz);
+        // vec4 hit_direction_ortho = vec4(hit_direction, 0.0);
+        // vec3 center_direction = compute_ray_direction(vec2(0,0));
+        // float proj = dot(hit_direction, center_direction);
+        vec4 prev_pixel_homo = (previous_camera_data.matrix * vec4(hit_direction, 0.0)); 
+        vec2 prev_pixel_ndc = prev_pixel_homo.xy / prev_pixel_homo.w;
+        prev_pixel_ndc.y *= -1;
+        vec2 prev_pixel = ndc_to_pixel(prev_pixel_ndc);
+        uint prev_pixel_index = pixel_to_index(uvec2(prev_pixel.x, prev_pixel.y));
+        if (abs(prev_pixel_ndc.x) <= 1.0 && abs(prev_pixel_ndc.y) <= 1.0) {
+            Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[prev_pixel_index];
+            uint temporal_seed = random_uint(seed);
+            previous_reservoir.num_samples = clamp(previous_reservoir.num_samples, 0, 20 * current_reservoir.num_samples);
+            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, previous_reservoir, temporal_seed);       
         }
 
         restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;

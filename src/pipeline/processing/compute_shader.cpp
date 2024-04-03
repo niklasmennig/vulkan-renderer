@@ -12,9 +12,6 @@
 
 #include <glm/vec2.hpp>
 
-ComputeShader Device::create_compute_shader(std::string code_path) {
-    return ComputeShader(this, code_path);
-}
 
 void ComputeShader::set_image(int index, Image* img, int array_index) {
     VkDescriptorImageInfo compute_descriptor_image_info{};
