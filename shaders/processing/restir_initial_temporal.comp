@@ -79,7 +79,7 @@ Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint 
 void main() {
     PushConstants constants = get_push_constants();
 
-    uint seed = hash_combine(gl_GlobalInvocationID.x, hash_combine(gl_GlobalInvocationID.y, hash_combine(constants.sample_count, hash_combine(constants.frame, hash_init))));
+    uint seed = hash_combine(hash_combine(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), constants.frame);
 
     uint restir_index = constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
@@ -126,7 +126,7 @@ void main() {
         vec2 prev_pixel_ndc = prev_pixel_homo.xy / prev_pixel_homo.w;
         prev_pixel_ndc.y *= -1;
         vec2 prev_pixel = ndc_to_pixel(prev_pixel_ndc);
-        uint prev_pixel_index = pixel_to_index(uvec2(prev_pixel.x, prev_pixel.y));
+        uint prev_pixel_index = pixel_to_index(uvec2(prev_pixel.x + 0.5, prev_pixel.y + 0.5));
         if (abs(prev_pixel_ndc.x) <= 1.0 && abs(prev_pixel_ndc.y) <= 1.0) {
             Reservoir previous_reservoir = restir_reservoirs[restir_index_previous].reservoirs[prev_pixel_index];
             uint temporal_seed = random_uint(seed);

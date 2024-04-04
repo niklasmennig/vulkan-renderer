@@ -79,7 +79,7 @@ Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint 
 void main() {
     PushConstants constants = get_push_constants();
 
-    uint seed = hash_combine(gl_GlobalInvocationID.x, hash_combine(gl_GlobalInvocationID.y, hash_combine(constants.sample_count, hash_combine(constants.frame, hash_init))));
+     uint seed = hash_combine(hash_combine(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), constants.frame);
 
     uint restir_index = constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
@@ -97,13 +97,13 @@ void main() {
 
         // spatial reuse
         for (int i = 0; i < 8; i++) {
-            vec2 offset_dir = normalize(vec2(random_float(seed), random_float(seed)));
-            float offset_mag = random_float(seed) * 3;
-            uvec2 offset_pixel_coordinates = uvec2(pixel_coordinates + offset_dir * offset_mag);
-            uint offset_pixel_index = pixel_to_index(offset_pixel_coordinates);
+            uvec2 neighbor_coordinates = pixel_coordinates;
+            if (random_float(seed) > 0.5) neighbor_coordinates += uvec2(3,0);
+            else neighbor_coordinates -= uvec2(3,0);
+            uint neighbor_pixel_index = pixel_to_index(neighbor_coordinates);
 
             uint resampling_seed = random_uint(seed);
-            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, restir_reservoirs[restir_index].reservoirs[offset_pixel_index], resampling_seed);
+            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, restir_reservoirs[restir_index].reservoirs[neighbor_pixel_index], resampling_seed);
         }
 
         // ReSTIR contribution
@@ -126,7 +126,7 @@ void main() {
             vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight * abs(light_dir_local.y);
 
             vec3 color = image_buffer.data[pixel_index].rgb;
-            image_buffer.data[pixel_index] = vec4(color + restir_nee_contribution, 1.0);                    
+            image_buffer.data[pixel_index] = vec4(color + restir_nee_contribution  * pow(2, constants.exposure), 1.0);                    
         }
 
         restir_reservoirs[restir_index].reservoirs[pixel_index] = current_reservoir;
