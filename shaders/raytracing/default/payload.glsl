@@ -4,21 +4,21 @@
 struct RayPayload {
     vec3 color;
     uint depth;
-    uint pixel_index;
-
-    uint restir_index;
 
     vec3 contribution;
+    uint pixel_index;
 
     vec3 origin;
-    vec3 direction;
-
     uint seed;
+    
+    vec3 direction;
+    float last_bsdf_pdf_inv;
+
 
     vec3 primary_hit_position;
+
     vec2 primary_hit_uv;
 
-    float last_bsdf_pdf_inv;
 };
 
 #endif

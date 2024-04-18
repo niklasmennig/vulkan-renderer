@@ -45,7 +45,7 @@
 [instances]
     [instances.test]
     object = "c"
-    rotation = [90.0, 0.0, 0.0]
+    # rotation = [90.0, 0.0, 0.0]
 
     # [instances.test2]
     # object = "d"
@@ -98,10 +98,10 @@
     # position = [4.0, 2.0, 0.0]
 
 [lights]
-    [lights.red]
-    type = "point"
-    position = [-0.5, 1.0, 0.0]
-    intensity = [1.0, 0.0, 0.0]
+    # [lights.red]
+    # type = "point"
+    # position = [-0.5, 1.0, 0.0]
+    # intensity = [1.0, 0.0, 0.0]
 
     # [lights.green]
     # type = "point"

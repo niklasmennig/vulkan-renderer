@@ -25,8 +25,8 @@ void ProcessingPipelineStageOIDN::on_resize(VkExtent2D swapchain_extent, VkExten
 
     Buffer* normals_buffer = &builder->rt_pipeline->get_output_buffer("Normals").buffer;
 
-    builder->output_buffer = image_buffer;
-    builder->output_extent = render_extent;
+    builder->image_buffer = image_buffer;
+    builder->image_extent = render_extent;
 
     HANDLE input_handle, albedo_handle, normals_handle;
 

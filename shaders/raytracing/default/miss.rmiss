@@ -36,17 +36,19 @@ void main() {
 
         write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(NULL_INSTANCE), 0.0));
         write_output(OUTPUT_BUFFER_INSTANCE_COLOR, payload.pixel_index, vec4(vec3(0.0), 1.0));
+    
+        payload.color = env_contribution;
+    } else {
+        if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
+            float mis = 1.0;
+            if ((constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
+                float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, constants.environment_cdf_dimensions);
+                mis = balance_heuristic(1.0, env_pdf, 1.0, payload.last_bsdf_pdf_inv);
+            }
+            payload.color += max(vec3(0.0), payload.contribution * env_contribution * mis);
+        }
     }
 
-    if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
-        // MIS!!!
-        float mis = 1.0;
-        if ((constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
-            float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, constants.environment_cdf_dimensions);
-            mis = balance_heuristic(1.0, 1.0, 1.0, env_pdf * payload.last_bsdf_pdf_inv);
-        }
-        payload.color += payload.contribution * env_contribution * mis;
-    }
 
     return;
 }

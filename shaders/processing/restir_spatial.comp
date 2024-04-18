@@ -79,7 +79,7 @@ Reservoir combine_reservoirs(uint pixel_index, Reservoir r0, Reservoir r1, uint 
 void main() {
     PushConstants constants = get_push_constants();
 
-     uint seed = hash_combine(hash_combine(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), constants.frame);
+    uint seed = hash_combine(hash_combine(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), constants.frame);
 
     uint restir_index = constants.frame % 2;
     uint restir_index_previous = (restir_index + 1) % 2;
@@ -97,13 +97,16 @@ void main() {
 
         // spatial reuse
         for (int i = 0; i < 8; i++) {
-            uvec2 neighbor_coordinates = pixel_coordinates;
-            if (random_float(seed) > 0.5) neighbor_coordinates += uvec2(3,0);
-            else neighbor_coordinates -= uvec2(3,0);
-            uint neighbor_pixel_index = pixel_to_index(neighbor_coordinates);
+            float xoff = random_float(seed) * 2.0 - 1.0;
+            float yoff = random_float(seed) * 2.0 - 1.0;
+            uvec2 neighbor_coordinates = uvec2(vec2(pixel_coordinates) + vec2(-xoff * 5, yoff * 5));
 
-            uint resampling_seed = random_uint(seed);
-            current_reservoir = combine_reservoirs(pixel_index, current_reservoir, restir_reservoirs[restir_index].reservoirs[neighbor_pixel_index], resampling_seed);
+            if (neighbor_coordinates.x >= 0 && neighbor_coordinates.x < constants.render_extent.x && neighbor_coordinates.y >= 0 && neighbor_coordinates.y < constants.render_extent.y) {
+                uint neighbor_pixel_index = pixel_to_index(neighbor_coordinates);
+
+                uint resampling_seed = random_uint(seed);
+                // current_reservoir = combine_reservoirs(pixel_index, current_reservoir, restir_reservoirs[restir_index].reservoirs[neighbor_pixel_index], resampling_seed);
+            }
         }
 
         // ReSTIR contribution

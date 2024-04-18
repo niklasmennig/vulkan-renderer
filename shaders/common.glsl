@@ -1,7 +1,8 @@
 #ifndef COMMON_GLSL
 #define COMMON_GLSL
 
-#define FLT_MAX 30000000000000000000000.0f
+#define FLT_MAX 3.402823466e+38
+#define FLT_MIN 1.175494351e-38
 
 #define PI 3.1415926
 
@@ -14,7 +15,6 @@
 mat3 basis(in vec3 n)
 {
     vec3 f, r;
-   //looks good but has this ugly branch
   if(n.z < -0.99995)
     {
         f = vec3(0 , -1, 0);

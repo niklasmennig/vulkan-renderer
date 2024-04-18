@@ -2,6 +2,7 @@
 #include "../random.glsl"
 #include "sampling.glsl"
 #include "material.glsl"
+#include "fresnel.glsl"
 
 float d_ggx(float nh, float roughness) {
   float alpha = roughness * roughness;
@@ -26,145 +27,170 @@ float g_smith(float nv, float nl, float roughness) {
 }
 
 vec3 fresnel_schlick(float cosTheta, vec3 F0) {
-  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+  return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
 } 
 
-vec3 eval_principled(vec3 ray_in, vec3 ray_out, Material material) {
-        vec3 normal = vec3(0,1,0);
+vec3 eval_principled(vec3 ray_dir, vec3 light_dir, Material material) {
+        vec3 n = vec3(0,1,0);
+        vec3 h = normalize(ray_dir + light_dir);
+        
+        float nv = clamp(ray_dir.y, 0.0, 1.0);
+        float nl = clamp(light_dir.y, 0.0, 1.0);
+        float nh = clamp(h.y, 0.0, 1.0);
+        float vh = clamp(dot(ray_dir, h), 0.0, 1.0);
 
-        float no = dot(normal, ray_out);
-        float ni = dot(normal, ray_in);
+        vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
+        f0 = mix(f0, material.base_color, material.metallic);
 
-        if (no * ni > 0) { // non-transmissive
-                no = abs(no);
-                ni = abs(ni);
+        vec3 f = fresnel_schlick(vh, f0);
+        float d = d_ggx(nh, material.roughness);
+        float g = g_smith(nv, nl, material.roughness);
 
-                vec3 h = normalize(ray_in + ray_out);
-                float nh = clamp(dot(normal, h), 0.0, 1.0);
-                float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+        bool is_transmission = ray_dir.y * light_dir.y < 0;
 
-                vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
-                f0 = mix(f0, material.base_color, material.metallic);
-
-                // glossy
-                vec3 f = fresnel_schlick(oh, f0);
-                float d = d_ggx(nh, material.roughness);
-                float g = g_smith(no, ni, material.roughness);
-                vec3 spec = (d * g * f) / max(4.0 * no * ni, 0.001);
+        if (is_transmission) {
+                return vec3(0.0);
+        } else {
+                // specular
+                vec3 spec = (d * g * f) / max(4.0 * nv * nl, 0.001);
+                spec *= material.metallic;
 
                 // diffuse
-                vec3 rho = vec3(1.0) - f;
-                rho *= (1.0 - material.metallic) * (1.0 - material.transmission);
-                vec3 diff = rho * material.base_color / PI;
-
-                return (diff+spec) * material.opacity;
-        } else { // transmissive
-                float eta = 1.0 / material.ior;
-                vec3 h = normalize(ray_in + ray_out * eta);
-                return vec3(0.0);
+                vec3 nspec = vec3(1.0) - f;
+                nspec *= (1.0 - material.metallic) * (1.0 - material.transmission);
+                vec3 diff = nspec * material.base_color / PI;
+                return (diff + spec);
         }
 }
 
-float pdf_principled(vec3 ray_in, vec3 ray_out, Material material) {
-        vec3 normal = vec3(0,1,0);
-        vec3 h = normalize(ray_in + ray_out);
+float pdf_principled(vec3 ray_dir, vec3 light_dir, Material material) {
+        vec3 n = vec3(0,1,0);
+        vec3 h = normalize(ray_dir + light_dir);
+        
+        float nv = clamp(dot(n, ray_dir), 0.0, 1.0);
+        float nl = clamp(dot(n, light_dir), 0.0, 1.0);
+        float nh = clamp(dot(n, h), 0.0, 1.0);
+        float vh = clamp(dot(ray_dir, h), 0.0, 1.0);
 
-        float no = clamp(dot(normal, ray_out), 0.0, 1.0);
-        float ni = clamp(dot(normal, ray_in), 0.0, 1.0);
-        float nh = clamp(dot(normal, h), 0.0, 1.0);
-        float oh = clamp(dot(ray_out, h), 0.0, 1.0);
+        vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
+        f0 = mix(f0, material.base_color, material.metallic);
 
+        vec3 f = fresnel_schlick(vh, f0);
         float d = d_ggx(nh, material.roughness);
-        float g = g_smith(no, ni, material.roughness);
+        float g = g_smith(nv, nl, material.roughness);
 
-        float cos_theta = dot(ray_out, normal);
+        float theta_l = acos(light_dir.y);
+        float theta_h = acos(h.y);
 
-        float pdf_diffuse = cos_theta / PI;
-        float pdf_specular = d * cos_theta * sin(acos(cos_theta));
+        bool is_transmission = ray_dir.y * light_dir.y < 0;
 
-        return (pdf_diffuse + pdf_specular) / 2.0;
-}
+        if (is_transmission) {
+                return d * cos(theta_h) * sin(theta_h);
+        } else {
+                float pdf_diff = 1.0 / PI;
+                float pdf_spec = d * cos(theta_h) * sin(theta_h);
 
-BSDFSample sample_metallic(vec3 ray_out, Material material, inout uint seed) {
-        float a = material.roughness * material.roughness;
-        float rnd = random_float(seed);
-        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-        float phi = 2.0 * PI * random_float(seed);
-        vec3 h = dir_from_thetaphi(theta, phi);
-
-        BSDFSample result;
-        result.direction = reflect(ray_out, h);
-        result.pdf = FLT_MAX;
-        result.weight = vec3(1.0);
-        return result;
-}
-
-BSDFSample sample_transmissive(vec3 ray_out, Material material, inout uint seed) {
-        float eta = 1.0 / material.ior;
-        bool front_facing = ray_out.y > 0;
-
-        float a = material.roughness * material.roughness;
-        float rnd = random_float(seed);
-        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-        float phi = 2.0 * PI * random_float(seed);
-        vec3 h = dir_from_thetaphi(theta, phi);
-
-        if (front_facing) {
-                h.y *= -1;
-                // eta = material.ior;
+                return pdf_diff * (1.0 - material.metallic) * (1.0 - material.transmission) + pdf_spec * material.metallic;
         }
-
-
-        BSDFSample result;
-        result.direction = refract(ray_out, h, eta);
-        result.pdf = FLT_MAX;
-        result.weight = material.base_color;
-        return result;
-}
-
-BSDFSample sample_diffuse(vec3 ray_out, Material material, inout uint seed) {
-        DirectionSample hemisphere_sample = sample_cosine_hemisphere(random_float(seed), random_float(seed));
-
-        BSDFSample result;
-        result.direction = hemisphere_sample.direction;
-        result.pdf = hemisphere_sample.pdf;
-        result.weight = material.base_color;
-        return result;
 }
 
 BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
         vec3 normal = vec3(0,1,0);
 
         BSDFSample lobe_sample;
-        float lobe_pdf = 0.0;
+        lobe_sample.weight = vec3(0.0);
+        lobe_sample.pdf = 1.0;
 
-        if (random_float(seed) > material.opacity) {
-                //non-opaque
-                lobe_sample.direction = ray_out;
-                lobe_sample.pdf = FLT_MAX;
-                lobe_sample.weight = vec3(1.0);
-                lobe_pdf = 1.0 - material.opacity;
-        } else {
-                if (random_float(seed) < material.metallic) {
-                        //metallic
-                        lobe_sample = sample_metallic(ray_out, material, seed);
-                        lobe_pdf = (material.opacity) * material.metallic;             
-                } else {
-                        float pdf_difftrans = (material.opacity) * (1.0 - material.metallic);
-                        if (random_float(seed) < material.transmission) {
-                                //transmission
-                                lobe_sample = sample_transmissive(ray_out, material, seed);
-                                lobe_pdf = pdf_difftrans * material.transmission;
-                        } else {
-                                // diffuse
-                                lobe_sample = sample_diffuse(ray_out, material, seed);
-                                lobe_pdf = pdf_difftrans * (1.0 - material.transmission);
+        if (random_float(seed) < 0.5) {
+                // non-specular
+                if (random_float(seed) * 2.0 < material.transmission) {
+                        // transmission
+                        float eta = 1.0 / material.ior;
+
+                        vec3 n = vec3(0,1,0);
+                        float front_facing = dot(ray_out, n);
+
+                        if (front_facing < 0.0) {
+                                n *= -1;
+                                eta = material.ior;
                         }
+
+                        float a = material.roughness * material.roughness;
+                        float rnd = random_float(seed);
+                        float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+                        float phi = 2.0 * PI * random_float(seed);
+
+                        vec3 h = dir_from_thetaphi(theta, phi) * n.y;
+                        vec3 ray_in = refract(-ray_out, h, eta);
+
+                        float nv = clamp(dot(n, ray_out), 0.0, 1.0);
+                        float nl = clamp(dot(-n, ray_in), 0.0, 1.0);
+                        float nh = clamp(dot(n, h), 0.0, 1.0);
+                        float vh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+                        vec3 f0 = vec3(0.16 * material.fresnel * material.fresnel);
+                        f0 = mix(f0, material.base_color, material.metallic);
+                        vec3 f = fresnel_schlick(vh, f0);
+
+                        float d = d_ggx(nh, material.roughness);
+                        float g = g_smith(nv, nl, material.roughness);
+
+                        float pdf = d * cos(theta) * sin(theta);
+                        lobe_sample.weight = (material.base_color * (vec3(1.0) - f) * g * vh / max(nh * nv, 0.001)) * 2.0;
+                        lobe_sample.direction = ray_in;
+                        lobe_sample.pdf = pdf;
+                } else {
+                        // diffuse
+                        float theta = asin(sqrt(random_float(seed)));
+                        float phi = 2.0 * PI * random_float(seed);
+
+                        vec3 ray_in = dir_from_thetaphi(theta, phi);
+
+                        vec3 h = normalize(ray_out + ray_in);
+                        float vh = clamp(dot(ray_in, h), 0.0, 1.0);
+
+                        vec3 f0 = vec3(0.16 * material.fresnel * material.fresnel);
+                        f0 = mix(f0, material.base_color, material.metallic);
+                        vec3 f = fresnel_schlick(vh, f0);
+
+                        vec3 nspec = vec3(1.0) - f;
+                        nspec *= (1.0 - material.metallic);
+
+                        float pdf = cos(theta) * sin(theta) / PI;
+                        lobe_sample.weight = (nspec * material.base_color) * 2.0;
+                        lobe_sample.direction = ray_in;
+                        lobe_sample.pdf = pdf;
                 }
+        } else {
+                // specular
+                float a = material.roughness * material.roughness;
+                float rnd = random_float(seed);
+                float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
+                float phi = 2.0 * PI * random_float(seed);
+
+                vec3 h = dir_from_thetaphi(theta, phi);
+                vec3 ray_in = reflect(-ray_out, h);
+
+                float nv = clamp(ray_out.y, 0.0, 1.0);
+                float nl = clamp(ray_in.y, 0.0, 1.0);
+                float nh = clamp(h.y, 0.0, 1.0);
+                float vh = clamp(dot(ray_out, h), 0.0, 1.0);
+
+                vec3 f0 = vec3(0.16 * material.fresnel * material.fresnel);
+                f0 = mix(f0, material.base_color, material.metallic);
+                vec3 f = fresnel_schlick(vh, f0);
+
+                float d = d_ggx(nh, material.roughness);
+                float g = g_smith(nv, nl, material.roughness);
+
+                float pdf = d * cos(theta) * sin(theta);
+                lobe_sample.weight = (f * g * vh / max(nh * nv, 0.001)) * 2.0;
+                lobe_sample.direction = ray_in;
+                lobe_sample.pdf = pdf;
         }
         
         BSDFSample result;
-        result.pdf = lobe_sample.pdf * lobe_pdf;
+        result.pdf = lobe_sample.pdf;
         result.direction = lobe_sample.direction;
         result.weight = lobe_sample.weight;
         return result;

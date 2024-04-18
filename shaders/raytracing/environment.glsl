@@ -35,6 +35,21 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     int width = int(map_dimensions.x);
     int height = int(map_dimensions.y);
 
+    if (width == 1 && height == 1) {
+        float phi = random_float(seed) * 2.0 * PI;
+        float theta = random_float(seed) * PI;
+
+        float pdf = 1.0 / (abs(sin(theta)) * 2.0 * PI * PI);
+        // float pdf = 1.0;
+
+        LightSample result;
+        result.pdf = pdf;
+        result.weight = fetch_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, ivec2(0,0)).rgb / pdf;
+        result.distance = FLT_MAX;
+        result.direction = dir_from_thetaphi(theta, phi);
+        return result;
+    }
+
     float conditional_target = random_float(seed);
     int conditional_y = 0;
     float conditional_low = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y)).r;
@@ -77,9 +92,6 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     vec3 direction = dir_from_thetaphi(theta, phi);
 
     float pdf = (cdf_hi - cdf_low) * (conditional_hi - conditional_low) / (abs(sin(theta)) * 2.0 * PI * PI) * (width * height);
-    if (width == 1 && height == 1) {
-        pdf = 1.0 / (abs(sin(theta)) * 2.0 * PI * PI);
-    }
     
     LightSample result;
     result.pdf = pdf;

@@ -75,7 +75,7 @@ void ProcessingPipelineStageRestir::on_resize(VkExtent2D swapchain_extent, VkExt
     // restir buffers
     for (int i = 0; i < 2; i++) {
         restir_buffers[i].free();
-        restir_buffers[i] = builder->create_buffer(sizeof(float) * 4 * swapchain_extent.width * swapchain_extent.height);
+        restir_buffers[i] = builder->create_buffer(sizeof(float) * 4 * render_extent.width * render_extent.height);
         compute_shader_initial_temporal->set_buffer(2, &restir_buffers[i], i);
         compute_shader_spatial->set_buffer(2, &restir_buffers[i], i);
     }
@@ -100,6 +100,9 @@ void ProcessingPipelineStageRestir::process(VkCommandBuffer command_buffer, VkEx
     vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 
     compute_shader_spatial->dispatch(command_buffer, swapchain_extent, render_extent, push_constants_packed);
+
+    builder->image_buffer = image_buffer;
+    builder->image_extent = render_extent;
 }
 
 void ProcessingPipelineStageRestir::free() {

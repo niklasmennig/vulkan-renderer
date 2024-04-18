@@ -7,7 +7,7 @@ BSDFSample sample_lambert(vec3 ray_out, Material material, uint seed) {
         DirectionSample dir_sample = sample_uniform_hemisphere(random_float(seed), random_float(seed));
 
         BSDFSample result;
-        result.weight = material.base_color;
+        result.weight = material.base_color / dir_sample.pdf;
         result.direction = dir_sample.direction;
         result.pdf = dir_sample.pdf;
 

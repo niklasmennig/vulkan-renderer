@@ -17,11 +17,6 @@ ProcessingPipelineBuilder Device::create_processing_pipeline_builder() {
 }
 
 void ProcessingPipeline::run(VkCommandBuffer command_buffer, VkExtent2D swapchain_extent, VkExtent2D render_extent, Shaders::PushConstantsPacked &push_constants_packed) {
-    if (builder->output_buffer == nullptr) {
-        builder->output_buffer = builder->input_buffer;
-        builder->output_extent = render_extent;
-    }
-
     for (auto stage: builder->stages) {
         stage->process(command_buffer, swapchain_extent, render_extent, push_constants_packed);
     }

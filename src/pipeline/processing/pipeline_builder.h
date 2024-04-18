@@ -34,13 +34,12 @@ struct CreatedPipelineImage {
 struct ProcessingPipelineBuilder {
     Device* device;
 
-    Buffer* input_buffer = nullptr;
-    Buffer* output_buffer = nullptr;
+    Buffer* image_buffer;
+    VkExtent2D image_extent;
 
     std::vector<std::shared_ptr<ProcessingPipelineStage>> stages;
 
     RaytracingPipeline* rt_pipeline;
-    VkExtent2D output_extent;
 
     std::vector<CreatedPipelineImage> created_images;
     std::vector<ComputeShader*> created_compute_shaders;

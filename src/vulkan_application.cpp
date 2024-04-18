@@ -888,10 +888,11 @@ void VulkanApplication::draw_frame() {
         VkExtent2D output_image_extent = render_image_extent;
 
         if (ui.use_processing_pipeline) {
-            p_pipeline_builder.input_buffer = output_image_buffer;
+            p_pipeline_builder.image_buffer = output_image_buffer;
+            p_pipeline_builder.image_extent = output_image_extent;
             p_pipeline.run(command_buffer, swap_chain_extent, render_image_extent, push_constants_packed);
-            output_image_buffer = p_pipeline_builder.output_buffer;
-            output_image_extent = p_pipeline_builder.output_extent;
+            output_image_buffer = p_pipeline_builder.image_buffer;
+            output_image_extent = p_pipeline_builder.image_extent;
         }
 
         VkBufferImageCopy output_buffer_copy {};
