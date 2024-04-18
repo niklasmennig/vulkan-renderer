@@ -45,7 +45,6 @@ void UI::draw() {
 
     changed |= ImGui::Checkbox("Direct Lighting", &direct_lighting_enabled);
     changed |= ImGui::Checkbox("Indirect Lighting", &indirect_lighting_enabled);
-    changed |= ImGui::Checkbox("ReSTIR Direct Lighting", &restir_enabled);
 
     changed |= ImGui::Checkbox("Use Processing Pipeline", &use_processing_pipeline);
     
@@ -109,7 +108,7 @@ void UI::draw() {
             ImGui::Text("Transmission");
             changed |= ImGui::SliderFloat("##transmissive_factor_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.z, 0.0, 1.0);
             ImGui::Text("IOR");
-            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 15.0);
+            changed |= ImGui::SliderFloat("##transmissive_ior_slider", (float*)&selected_instance_parameters->roughness_metallic_transmissive_ior.a, 1.0, 2.0);
             //ImGui::EndChild();
         }
     }

@@ -124,7 +124,7 @@ void main() {
             vec3 ray_dir_local = normalize(to_shading_space * -ray_direction);
             vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
 
-            vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material);
+            vec3 bsdf_eval = eval_bsdf(light_dir_local, ray_dir_local, material).color;
 
             vec3 restir_nee_contribution = bsdf_eval * (light_sample.weight) * current_reservoir.weight * abs(light_dir_local.y);
 

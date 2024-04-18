@@ -3,12 +3,6 @@
 
 #include "../common.glsl"
 
-struct BSDFSample {
-    vec3 weight; // BSDF value / pdf
-    vec3 direction;
-    float pdf;
-};
-
 struct DirectionSample {
     vec3 direction;
     float pdf;

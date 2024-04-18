@@ -13,8 +13,7 @@ float d_ggx(float nh, float roughness) {
 }
 
 float g1_ggx_schlick(float nv, float roughness) {
-  //float r = roughness; // original
-  float r = 0.5 + 0.5 * roughness; // Disney remapping
+  float r = 0.5 + 0.5 * roughness;
   float k = (r * r) / 2.0;
   float denom = nv * (1.0 - k) + k;
   return nv / denom;
@@ -31,35 +30,41 @@ vec3 fresnel_schlick(float cosTheta, vec3 F0) {
 } 
 
 vec3 eval_principled(vec3 ray_dir, vec3 light_dir, Material material) {
+        bool is_transmission = ray_dir.y * light_dir.y < 0;
+        float eta = 1.0 / material.ior;
+        if (ray_dir.y < 0.0) eta = material.ior;
+
         vec3 n = vec3(0,1,0);
-        vec3 h = normalize(ray_dir + light_dir);
-        
+        vec3 h = is_transmission ? normalize(ray_dir + light_dir * eta) : normalize(ray_dir + light_dir);
+
         float nv = clamp(ray_dir.y, 0.0, 1.0);
         float nl = clamp(light_dir.y, 0.0, 1.0);
         float nh = clamp(h.y, 0.0, 1.0);
         float vh = clamp(dot(ray_dir, h), 0.0, 1.0);
 
-        vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
-        f0 = mix(f0, material.base_color, material.metallic);
-
-        vec3 f = fresnel_schlick(vh, f0);
+        
+        FresnelTerm f = fresnel(eta, abs(ray_dir.y));
         float d = d_ggx(nh, material.roughness);
         float g = g_smith(nv, nl, material.roughness);
 
-        bool is_transmission = ray_dir.y * light_dir.y < 0;
 
         if (is_transmission) {
-                return vec3(0.0);
+                // specular
+                vec3 spec = material.base_color * (d * g * (1.0 - f.factor)) / max(4.0 * nv * nl, 0.001);
+
+                // return spec;
+                return vec3(0);
         } else {
                 // specular
-                vec3 spec = (d * g * f) / max(4.0 * nv * nl, 0.001);
-                spec *= material.metallic;
+                vec3 spec = material.base_color * (d * g * f.factor) / max(4.0 * nv * nl, 0.001);
 
                 // diffuse
-                vec3 nspec = vec3(1.0) - f;
+                float nspec = 1.0 - f.factor;
                 nspec *= (1.0 - material.metallic) * (1.0 - material.transmission);
                 vec3 diff = nspec * material.base_color / PI;
-                return (diff + spec);
+
+                // return diff + spec;
+                return diff;
         }
 }
 
@@ -67,9 +72,9 @@ float pdf_principled(vec3 ray_dir, vec3 light_dir, Material material) {
         vec3 n = vec3(0,1,0);
         vec3 h = normalize(ray_dir + light_dir);
         
-        float nv = clamp(dot(n, ray_dir), 0.0, 1.0);
-        float nl = clamp(dot(n, light_dir), 0.0, 1.0);
-        float nh = clamp(dot(n, h), 0.0, 1.0);
+        float nv = clamp(ray_dir.y, 0.0, 1.0);
+        float nl = clamp(light_dir.y, 0.0, 1.0);
+        float nh = clamp(h.y, 0.0, 1.0);
         float vh = clamp(dot(ray_dir, h), 0.0, 1.0);
 
         vec3 f0 = vec3(0.16 * (material.fresnel * material.fresnel));
@@ -90,7 +95,7 @@ float pdf_principled(vec3 ray_dir, vec3 light_dir, Material material) {
                 float pdf_diff = 1.0 / PI;
                 float pdf_spec = d * cos(theta_h) * sin(theta_h);
 
-                return pdf_diff * (1.0 - material.metallic) * (1.0 - material.transmission) + pdf_spec * material.metallic;
+                return pdf_diff + pdf_spec;
         }
 }
 
@@ -136,7 +141,7 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
                         float g = g_smith(nv, nl, material.roughness);
 
                         float pdf = d * cos(theta) * sin(theta);
-                        lobe_sample.weight = (material.base_color * (vec3(1.0) - f) * g * vh / max(nh * nv, 0.001)) * 2.0;
+                        lobe_sample.weight = vec3(0);// (material.base_color * (vec3(1.0) - f) * g * vh / max(nh * nv, 0.001)) * 2.0;
                         lobe_sample.direction = ray_in;
                         lobe_sample.pdf = pdf;
                 } else {
@@ -184,7 +189,7 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
                 float g = g_smith(nv, nl, material.roughness);
 
                 float pdf = d * cos(theta) * sin(theta);
-                lobe_sample.weight = (f * g * vh / max(nh * nv, 0.001)) * 2.0;
+                lobe_sample.weight = (f * g * vh / max(nh * nv, 0.001)) * 0.0;
                 lobe_sample.direction = ray_in;
                 lobe_sample.pdf = pdf;
         }

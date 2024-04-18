@@ -29,7 +29,6 @@ public:
     int frame_samples = 1;
     bool direct_lighting_enabled;
     bool indirect_lighting_enabled;
-    bool restir_enabled;
 
     bool use_processing_pipeline = false;
 

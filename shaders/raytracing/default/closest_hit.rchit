@@ -101,21 +101,17 @@ void main() {
             // pointing away from surface
             vec3 light_dir_local = normalize(to_shading_space * light_sample.direction);
 
-            vec3 bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
+            BSDFEvaluation bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            float bsdf_pdf = pdf_bsdf(ray_dir_local, light_dir_local, material);
-
-            vec3 nee_contribution = max(vec3(0.0), bsdf_eval * payload.contribution * light_sample.weight * abs(light_dir_local.y));
+            vec3 nee_contribution = max(vec3(0.0), bsdf_eval.color * payload.contribution * light_sample.weight * abs(light_dir_local.y));
 
             float mis = 1.0;
-            if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0f, light_sample.pdf, 1.0f, bsdf_pdf); 
+            // if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = 1.0 / (1.0 + bsdf_eval.pdf / light_sample.pdf);
             payload.color += mis * nee_contribution;
         }
     }
     
-    if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
-        payload.color += max(vec3(0.0), material.emission * payload.contribution.rgb);
-    }
+    payload.color += max(vec3(0.0), material.emission * payload.contribution.rgb);
 
     payload.contribution *= max(vec3(0.0), bsdf_sample.weight);
     payload.last_bsdf_pdf_inv = 1.0 / bsdf_sample.pdf;
@@ -131,7 +127,7 @@ void main() {
         }
     }
 
-    if (payload.depth < constants.max_depth) {
+    if (payload.depth <= constants.max_depth) {
         traceRayEXT(
             as,
             0,

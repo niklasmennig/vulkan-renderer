@@ -820,7 +820,6 @@ void VulkanApplication::draw_frame() {
         uint32_t flags = 0;
         if (ui.direct_lighting_enabled) flags |= ENABLE_DIRECT_LIGHTING;
         if (ui.indirect_lighting_enabled) flags |= ENABLE_INDIRECT_LIGHTING;
-        if (ui.restir_enabled) flags |= ENABLE_RESTIR;
         // push_constants.flags = flags;
         push_constants_packed.flags = flags;
         vkCmdPushConstants(command_buffer, rt_pipeline.builder->pipeline_layout, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, 0, sizeof(Shaders::PushConstantsPacked), &push_constants_packed);
