@@ -392,7 +392,11 @@ void VulkanApplication::create_default_descriptor_writes() {
                 mesh_offset_indices.push_back(loaded_mesh_index[instance.object_name] + node.mesh_index + i);
                 int material_index = primitive.material_index;
                 auto texture_index_offset = loaded_texture_index[instance.object_name];
-                const auto& material = data.materials[material_index];
+
+                GLTFMaterial material;
+                if (material_index != -1) {
+                    material = data.materials[material_index];
+                }
 
                 instance.texture_indices.diffuse = material.diffuse_texture == -1 ? NULL_TEXTURE_INDEX : material.diffuse_texture + texture_index_offset;
                 instance.texture_indices.normal = material.normal_texture == -1 ? NULL_TEXTURE_INDEX : material.normal_texture + texture_index_offset;
@@ -417,7 +421,7 @@ void VulkanApplication::create_default_descriptor_writes() {
         }
     }
 
-    std::cout << texture_indices.size() << "TEXTURE INDICES" << std::endl;
+    std::cout << texture_indices.size() << " TEXTURE INDICES" << std::endl;
 
     index_buffer = device.create_buffer(sizeof(uint32_t) * indices.size());
     index_buffer.set_data(indices.data());
@@ -456,7 +460,8 @@ void VulkanApplication::create_default_descriptor_writes() {
             auto mesh = object.meshes[node.mesh_index];
             uint32_t primitive_index = 0;
             for (auto primitive : mesh.primitives) {
-                if (object.materials[primitive.material_index].emission_texture > -1) {
+                uint32_t material_index = primitive.material_index;
+                if (material_index != -1 && object.materials[primitive.material_index].emission_texture > -1) {
                     Shaders::Light light;
                     light.uint_data[0] = LightData::LightType::AREA;
                     light.uint_data[1] = instance_index + primitive_index;
@@ -1735,7 +1740,7 @@ void VulkanApplication::setup() {
 
         VulkanApplication* app = (VulkanApplication*)glfwGetWindowUserPointer(window);
 
-        if (app->mouse_look_active && !app->ui.is_hovered()) {
+        if (!app->ui.is_hovered()) {
             app->ui.camera_speed += y_offset * app->ui.camera_speed * 1e-1f;
         }
     });

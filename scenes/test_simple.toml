@@ -1,0 +1,29 @@
+[environment]
+    color = [0.584, 0.49, 0.937]
+
+[objects]
+    [objects.c]
+    path = "./gltf/simple_test/untitled.gltf"
+
+
+
+[instances]
+    [instances.test]
+    object = "c"
+
+
+[lights]
+    # [lights.red]
+    # type = "point"
+    # position = [-0.5, 1.0, 0.0]
+    # intensity = [1.0, 0.0, 0.0]
+
+    # [lights.green]
+    # type = "point"
+    # position = [0.5, 1.0, 0.0]
+    # intensity = [0.0, 1.0, 0.0]
+
+    # [lights.test1]
+    # type = "directional"
+    # direction = [1.0, -1.0, 0.0]
+    # intensity = [1.0, 1.0, 1.0]

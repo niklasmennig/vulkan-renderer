@@ -26,12 +26,13 @@ float pdf_cosine_hemisphere(float cos) {
 
 DirectionSample sample_cosine_hemisphere(float u, float v)
 {
-    float theta = acos(sqrt(u));
+    float cos_theta = sqrt(u);
+    float sin_theta = sqrt(1.0 - (cos_theta * cos_theta));
     float phi = 2.0 * PI * v;
 
     DirectionSample dir_sample;
-    dir_sample.direction = dir_from_thetaphi(theta, phi);
-    dir_sample.pdf = pdf_cosine_hemisphere(dir_sample.direction.y);
+    dir_sample.direction = dir_from_thetaphi(cos_theta, sin_theta, phi);
+    dir_sample.pdf = pdf_cosine_hemisphere(cos_theta);
 
     return dir_sample;
 }

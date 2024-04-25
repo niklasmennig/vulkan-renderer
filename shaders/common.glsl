@@ -48,6 +48,14 @@ vec3 dir_from_thetaphi(float theta, float phi) {
     return normalize(vec3(x,y,z));
 }
 
+vec3 dir_from_thetaphi(float cos_theta, float sin_theta, float phi) {
+    return vec3(
+        sin_theta * cos(phi),
+        cos_theta,
+        sin_theta * sin(phi)
+    );
+}
+
 vec2 thetaphi_from_dir(vec3 direction) {
     float theta = acos(direction.y / length(direction));
     float phi = sign(direction.z) * acos(direction.x / length(direction.xz));

@@ -37,16 +37,23 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
 
     if (width == 1 && height == 1) {
         float phi = random_float(seed) * 2.0 * PI;
-        float theta = random_float(seed) * PI;
+        
+        float cos_theta = 2.0 * random_float(seed) - 1.0;
+        float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-        float pdf = 1.0 / (abs(sin(theta)) * 2.0 * PI * PI);
-        // float pdf = 1.0;
+        vec3 dir = vec3(
+            sin_theta * cos(phi),
+            sin_theta * sin(phi),
+            cos_theta
+        );
+
+        float pdf = 1.0 / (4.0 * PI);
 
         LightSample result;
         result.pdf = pdf;
         result.weight = fetch_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, ivec2(0,0)).rgb / pdf;
         result.distance = FLT_MAX;
-        result.direction = dir_from_thetaphi(theta, phi);
+        result.direction = dir;
         return result;
     }
 

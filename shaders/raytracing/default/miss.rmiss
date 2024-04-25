@@ -23,11 +23,11 @@ void main() {
     float v = thetaphi.x / PI;
 
     // query environment map color
-    vec3 env_contribution = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb;
+    vec3 env_color = sample_texture(TEXTURE_ID_ENVIRONMENT_ALBEDO, vec2(u, v)).rgb;
 
     if (payload.depth == 1) {
         write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(NULL_INSTANCE), 0));
-        write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(env_contribution, 1.0));
+        write_output(OUTPUT_BUFFER_ALBEDO, payload.pixel_index, vec4(env_color, 1.0));
         write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(0.0));
         write_output(OUTPUT_BUFFER_POSITION, payload.pixel_index, vec4(payload.origin, 1.0));
 
@@ -37,15 +37,15 @@ void main() {
         write_output(OUTPUT_BUFFER_INSTANCE, payload.pixel_index, vec4(encode_uint(NULL_INSTANCE), 0.0));
         write_output(OUTPUT_BUFFER_INSTANCE_COLOR, payload.pixel_index, vec4(vec3(0.0), 1.0));
     
-        payload.color = env_contribution;
+        payload.color = env_color;
     } else {
         if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) {
             float mis = 1.0;
             if ((constants.flags & ENABLE_DIRECT_LIGHTING) == ENABLE_DIRECT_LIGHTING) {
                 float env_pdf = pdf_environment(gl_WorldRayDirectionEXT, constants.environment_cdf_dimensions);
-                // mis = 1.0 / (1.0 + payload.last_bsdf_pdf_inv * env_pdf);
+                mis = balance_heuristic(1.0, payload.last_bsdf_pdf_inv, 1.0, env_pdf);
             }
-            payload.color += max(vec3(0.0), payload.contribution * env_contribution * mis);
+            payload.color += max(vec3(0.0), payload.contribution * env_color * mis);
         }
     }
 

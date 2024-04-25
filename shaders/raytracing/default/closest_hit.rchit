@@ -36,25 +36,29 @@ void main() {
     vec3 position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 normal = normalize(transform_world * vec4(get_vertex_normal(instance, primitive, barycentrics), 0.0));
     vec3 face_normal = normalize(transform_world * vec4(get_face_normal(instance, primitive), 0.0));
-    vec2 uv = get_vertex_uv(instance, primitive, barycentrics);
     vec3 tangent = normalize(transform_world * vec4(get_vertex_tangent(instance, primitive, barycentrics), 0.0));
+    vec2 uv = get_vertex_uv(instance, primitive, barycentrics);
+
+    vec3 bitangent = cross(normal, tangent);
+    // ensure perpendicular tangent
+    tangent = cross(bitangent, normal);
 
 
-    vec3 bitangent = normalize(cross(normal, tangent));
-    mat3 tbn = basis(normal);
+    mat3 to_world_space = mat3(tangent, normal, bitangent);
     
     //normal mapping
     if (has_texture(instance, TEXTURE_OFFSET_NORMAL)) {
         vec3 normal_tex = sample_texture(instance, uv, TEXTURE_OFFSET_NORMAL).rbg;
         vec3 sampled_normal = (normal_tex - 0.5) * 2.0;
-        normal = normalize(tbn * sampled_normal);
+        normal = (to_world_space * sampled_normal);
+        tangent = cross(bitangent, normal);
+        to_world_space = mat3(tangent, normal, bitangent);
     }
 
-    mat3 to_world_space = basis(normal);
     mat3 to_shading_space = transpose(to_world_space);
 
     // pointing away from surface
-    vec3 ray_out = -normalize(to_shading_space * gl_WorldRayDirectionEXT);
+    vec3 ray_out = normalize(to_shading_space * -gl_WorldRayDirectionEXT);
 
     // material properties
     Material material = get_material(instance, uv);
@@ -94,6 +98,7 @@ void main() {
         rayQueryInitializeEXT(ray_query, as, gl_RayFlagsTerminateOnFirstHitEXT, 0xff, position, EPSILON, light_sample.direction, light_sample.distance - 2.0 * EPSILON);
         rayQueryProceedEXT(ray_query);
 
+        // if (true) {
         if (rayQueryGetIntersectionTypeEXT(ray_query, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
             // pointing away from surface
             vec3 ray_dir_local = ray_out;
@@ -103,10 +108,10 @@ void main() {
 
             BSDFEvaluation bsdf_eval = eval_bsdf(ray_dir_local, light_dir_local, material);
 
-            vec3 nee_contribution = max(vec3(0.0), bsdf_eval.color * payload.contribution * light_sample.weight * abs(light_dir_local.y));
+            vec3 nee_contribution = max(vec3(0.0), bsdf_eval.color * payload.contribution * light_sample.weight);
 
             float mis = 1.0;
-            // if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = 1.0 / (1.0 + bsdf_eval.pdf / light_sample.pdf);
+            if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0, bsdf_eval.pdf, 1.0, light_sample.pdf);
             payload.color += mis * nee_contribution;
         }
     }
@@ -118,16 +123,16 @@ void main() {
 
     payload.depth += 1;
 
-    if (payload.depth > 3) {
-        float rr_probability = luminance(payload.contribution);
-        if (random_float(payload.seed) > rr_probability) {
-            payload.contribution /= max(0, rr_probability);
-        } else {
-            return;
-        }
-    }
+    // if (payload.depth > 3) {
+    //     float rr_probability = luminance(payload.contribution);
+    //     if (random_float(payload.seed) > rr_probability) {
+    //         payload.contribution /= max(0, rr_probability);
+    //     } else {
+    //         return;
+    //     }
+    // }
 
-    if (payload.depth <= constants.max_depth) {
+    if (payload.depth <= constants.max_depth && payload.direction != vec3(0.0)) {
         traceRayEXT(
             as,
             0,

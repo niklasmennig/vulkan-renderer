@@ -1,6 +1,6 @@
 [environment]
-    # path = "./hdri/kloppenheim_05_puresky_4k.hdr"
-    color = [0.584, 0.49, 0.937]
+    path = "./hdri/kloppenheim_05_puresky_4k.hdr"
+    # color = [0.584, 0.49, 0.937]
 
 [objects]
     [objects.helmet]
