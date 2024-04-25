@@ -10,64 +10,59 @@
 
 BSDFEvaluation eval_lobe_transmission(vec3 ray_out, vec3 ray_in, Material material) {
     BSDFEvaluation result;
+    float alpha = max(material.roughness * material.roughness, 0.001);
 
     bool is_transmission = ray_out.y * ray_in.y < 0;
-    float eta = 1.0 / material.ior;
-    if (ray_out.y < 0.0) eta = material.ior;
-
-    vec3 n = vec3(0,1,0);
-    vec3 h = is_transmission ? normalize(ray_out + ray_in * eta) : normalize(ray_out + ray_in);
-
-    float nv = clamp(ray_out.y, 0.0, 1.0);
-    float nl = clamp(ray_in.y, 0.0, 1.0);
-    float nh = clamp(h.y, 0.0, 1.0);
-    float vh = clamp(dot(ray_out, h), 0.0, 1.0);
-
-    
-    FresnelTerm f = fresnel(eta, abs(ray_out.y));
-    float d = d_ggx(nh, material.roughness);
-    float g = g_smith(nv, nl, material.roughness);
-
-    if (is_transmission) {
-        result.color = material.base_color * (d * g * (1.0 - f.factor)) / max(4.0 * nv * nl, 0.001); // change denominator to transmissive denom
-    } else {
-        result.color = material.base_color * (d * g * f.factor) / max(4.0 * nv * nl, 0.001);
+    if (!is_transmission) {
+        result.color = vec3(0.0);
+        result.pdf = 0.0;
+        return result; 
     }
 
-    result.pdf = d * h.y;
+
+    float eta = material.ior;
+    if (ray_out.y < 0.0) eta = 1.0 / eta;
+
+    // transmissive half vector
+    vec3 h = normalize(ray_in * eta + ray_out);
+
+    float pdf = pdf_ggx(ray_out, h, alpha);
+
+    float g = g_smith(ray_in, h, alpha);
+    FresnelTerm f = fresnel(eta, dot(h, ray_out));
+
+    pdf *= (1.0 - f.factor) * det_refraction(ray_in, ray_out, h, eta);
+
+    result.color = material.base_color * g * pdf;
+    result.pdf = pdf;
 
     return result;
 }
 
 BSDFSample sample_lobe_transmission(vec3 ray_out, Material material, inout uint seed) {
     BSDFSample result;
+    float alpha = max(material.roughness * material.roughness, 0.001);
 
-    bool inner = ray_out.y < 0.0;
+    float eta = material.ior;
+    // if (ray_out.y < 0.0) eta = 1.0 / eta;
 
-    float eta = 1.0 / material.ior;
-    if (inner) eta = material.ior;
+    vec3 h = sample_ggx(ray_out, alpha, seed);
 
-    float a = material.roughness * material.roughness;
-    float rnd = random_float(seed);
-    float theta = acos(sqrt((1.0 - rnd) / (1.0 + (a * a - 1.0) * rnd)));
-    float phi = 2.0 * PI * random_float(seed);
+    float pdf = pdf_ggx(ray_out, h, alpha);
 
-    vec3 h = dir_from_thetaphi(theta, phi);
-    if (inner) h.y *= -1;
+    FresnelTerm f = fresnel(eta, ray_out.y);
 
-    vec3 ray_in = refract(-ray_out, h, eta);
+    vec3 ray_in = refract(-ray_out, h, 1.0 / eta);
+    if (ray_in.y * ray_out.y > 0) {
+        result.weight = vec3(0.0);
+        result.pdf = 0.0;
+    }
 
-    float nv = clamp(ray_out.y, 0.0, 1.0);
-    float nl = clamp(ray_in.y, 0.0, 1.0);
-    float nh = clamp(h.y, 0.0, 1.0);
-    float vh = clamp(dot(ray_out, h), 0.0, 1.0);
+    pdf *= (1.0 - f.factor) * det_refraction(ray_in, ray_out, h, eta);
 
-    FresnelTerm f = fresnel(eta, abs(ray_out.y));
-    float d = d_ggx(nh, material.roughness);
-    float g = g1_ggx_schlick(-nh, material.roughness);
+    float g = g_smith(ray_in, h, alpha);
 
-    float pdf = d * cos(theta) * sin(theta);
-    result.weight = material.base_color;
+    result.weight = material.base_color * g;
     result.direction = ray_in;
     result.pdf = pdf;
 

@@ -11,24 +11,31 @@
 
 
 float pdf_environment(vec3 direction, uvec2 map_dimensions) {
+    int width = int(map_dimensions.x);
+    int height = int(map_dimensions.y);
+
+    if (width == 1 && height == 1) {
+        return 1.0 / (4.0 * PI);
+    }
+
     vec2 thetaphi = thetaphi_from_dir(direction);
 
     // uv coordinates from theta and phi
-    float u = mod(thetaphi.y / (2.0 * PI) + 1.0, 1.0);
+    float u = thetaphi.y / (2.0 * PI);
     float v = thetaphi.x / PI;
 
-    uint pixel_x = uint(floor(u * map_dimensions.x));
-    uint pixel_y = uint(floor(v * map_dimensions.y));
+    uint pixel_x = uint(u * width);
+    uint pixel_y = uint(v * height);
 
     float conditional = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, pixel_y)).r;
     float conditional_lo = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, pixel_y - 1)).r;
-    if (pixel_y == 0) conditional_lo = 0.0;
+    if (pixel_y % height == 0) conditional_lo = 0.0;
 
     float cdf = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(pixel_x, pixel_y)).r;
     float cdf_lo = fetch_texture(TEXTURE_ID_ENVIRONMENT_MARGINAL, ivec2(pixel_x - 1, pixel_y)).r;
-    if (pixel_x % map_dimensions.x == 0) cdf_lo = 0.0;
+    if (pixel_x % width == 0) cdf_lo = 0.0;
 
-    return (cdf - cdf_lo) * (conditional - conditional_lo) * (abs(sin(thetaphi.x)) * 2.0 * PI * PI) * (map_dimensions.x * map_dimensions.y);
+    return (cdf - cdf_lo) * (conditional - conditional_lo) * (abs(sin(thetaphi.x)) * 2.0 * PI * PI) * (width * height);
 }
 
 LightSample sample_environment(uint seed, uvec2 map_dimensions) {
@@ -41,11 +48,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
         float cos_theta = 2.0 * random_float(seed) - 1.0;
         float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-        vec3 dir = vec3(
-            sin_theta * cos(phi),
-            sin_theta * sin(phi),
-            cos_theta
-        );
+        vec3 dir = dir_from_thetaphi(cos_theta, sin_theta, phi);
 
         float pdf = 1.0 / (4.0 * PI);
 

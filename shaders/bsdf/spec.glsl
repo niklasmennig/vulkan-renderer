@@ -1,5 +1,6 @@
 #include "bsdf.glsl"
 #include "lobes/specular.glsl"
+#include "lobes/transmission.glsl"
 
 BSDFEvaluation eval_spec(vec3 ray_out, vec3 ray_in, Material material) {
     BSDFEvaluation eval = eval_lobe_specular(ray_out, ray_in, material);

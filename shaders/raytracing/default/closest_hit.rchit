@@ -85,6 +85,8 @@ void main() {
 
     // pointing away from surface
     vec3 ray_in = bsdf_sample.direction;
+    BSDFEvaluation test_eval = eval_bsdf(ray_out, ray_in, material);
+    write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(abs(bsdf_sample.pdf - test_eval.pdf))); 
 
     payload.origin = position;
     payload.direction = (to_world_space * ray_in);
@@ -111,11 +113,11 @@ void main() {
             vec3 nee_contribution = max(vec3(0.0), bsdf_eval.color * payload.contribution * light_sample.weight);
 
             float mis = 1.0;
-            if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = balance_heuristic(1.0, bsdf_eval.pdf, 1.0, light_sample.pdf);
+            if ((constants.flags & ENABLE_INDIRECT_LIGHTING) == ENABLE_INDIRECT_LIGHTING) mis = 1.0 / (1.0 + bsdf_eval.pdf / light_sample.pdf);
             payload.color += mis * nee_contribution;
         }
     }
-    
+
     payload.color += max(vec3(0.0), material.emission * payload.contribution.rgb);
 
     payload.contribution *= max(vec3(0.0), bsdf_sample.weight);

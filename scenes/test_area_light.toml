@@ -14,9 +14,9 @@
     [instances.test]
     object = "a"
 
-    # [instances.bulb]
-    # object = "bulb"
-    # position = [0.0, 0.5, 0.0]
+    [instances.bulb]
+    object = "bulb"
+    position = [0.0, 0.5, 0.0]
 
 [lights]
     # [lights.red]

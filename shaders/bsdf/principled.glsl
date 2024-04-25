@@ -59,7 +59,8 @@ BSDFSample sample_principled(vec3 ray_out, Material material, inout uint seed) {
 
     if (lobe_prob < 1.0) {
         BSDFEvaluation eval = eval_principled(ray_out, bsdf_sample.direction, material);
-        // bsdf_sample.weight = eval.color;
+        bsdf_sample.weight = eval.color / eval.pdf;
+        bsdf_sample.pdf = eval.pdf;
     } else {
         bsdf_sample.pdf *= material.opacity;
     }

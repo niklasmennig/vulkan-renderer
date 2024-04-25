@@ -93,6 +93,7 @@ void main() {
     }
 
     write_output(OUTPUT_BUFFER_ACCUMULATED, pixel_index, vec4(accumulated_color, 1.0));
+
     write_output(OUTPUT_BUFFER_RESULT, pixel_index, vec4(accumulated_color / sample_count * pow(2, constants.exposure), 1.0));
 
     write_output(OUTPUT_BUFFER_RAY_DEPTH, pixel_index, vec4(vec3(float(payload.depth) / constants.max_depth), 1.0));

@@ -1660,11 +1660,11 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
                     // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
-                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir(
-                        scene_tlas.acceleration_structure, &index_buffer, &vertex_buffer, &normal_buffer, &texcoord_buffer, &tangent_buffer, &mesh_data_offset_buffer, &mesh_offset_index_buffer, &loaded_textures, &texture_index_buffer, &material_parameter_buffer, &lights_buffer, &prev_camera_matrix_buffer
-                    )));
+                    // .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir(
+                    //     scene_tlas.acceleration_structure, &index_buffer, &vertex_buffer, &normal_buffer, &texcoord_buffer, &tangent_buffer, &mesh_data_offset_buffer, &mesh_offset_index_buffer, &loaded_textures, &texture_index_buffer, &material_parameter_buffer, &lights_buffer, &prev_camera_matrix_buffer
+                    // )));
                     ;
 
     p_pipeline = p_pipeline_builder.build();
@@ -1756,12 +1756,10 @@ void VulkanApplication::run() {
     std::filesystem::path cam_path(camera_data_path);
     if (std::filesystem::exists(cam_path)) {
         std::cout << "found saved camera data. loading..." << std::endl;
-        // toml::table data = toml::parse_file(cam_path.string());
-        // camera_data.origin = vec4(data["origin"][0].value_or(0.0), data["origin"][1].value_or(0.0), data["origin"][2].value_or(0.0), 1.0);
-        // camera_data.forward = vec4(data["forward"][0].value_or(0.0), data["forward"][1].value_or(0.0), data["forward"][2].value_or(1.0), 0.0);
-        // camera_data.right = vec4(data["right"][0].value_or(1.0), data["right"][1].value_or(0.0), data["right"][2].value_or(0.0), 0.0);
-        // camera_data.up = vec4(data["up"][0].value_or(0.0), data["up"][1].value_or(1.0), data["up"][2].value_or(0.0), 0.0);
-        // ui.camera_fov = data["fov_x"].value_or(70.0);
+        toml::table data = toml::parse_file(cam_path.string());
+        camera_position = vec3(data["position"][0].value_or(0.0), data["position"][1].value_or(0.0), data["position"][2].value_or(0.0));
+        camera_pitch = data["pitch"].value_or(0.0);
+        camera_yaw = data["yaw"].value_or(0.0);
     }
 
     delta_cursor_x = 0;
@@ -1816,14 +1814,12 @@ void VulkanApplication::run() {
     }
 
     // persist camera data
-    // toml::table camera_data_out;
-    // camera_data_out.insert("origin", toml::array{camera_data.origin.x, camera_data.origin.y, camera_data.origin.z});
-    // camera_data_out.insert("forward", toml::array{camera_data.forward.x, camera_data.forward.y, camera_data.forward.z});
-    // camera_data_out.insert("right", toml::array{camera_data.right.x, camera_data.right.y, camera_data.right.z});
-    // camera_data_out.insert("up", toml::array{camera_data.up.x, camera_data.up.y, camera_data.up.z});
-    // camera_data_out.insert("fov_x", camera_data.fov_x);
-    // std::ofstream camera_data_out_file(camera_data_path);
-    // camera_data_out_file << camera_data_out;
+    toml::table camera_data_out;
+    camera_data_out.insert("position", toml::array{camera_position.x, camera_position.y, camera_position.z});
+    camera_data_out.insert("pitch", camera_pitch);
+    camera_data_out.insert("yaw", camera_yaw);
+    std::ofstream camera_data_out_file(camera_data_path);
+    camera_data_out_file << camera_data_out;
 
     vkDeviceWaitIdle(logical_device);
 }
