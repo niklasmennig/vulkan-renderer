@@ -18,8 +18,11 @@
 
 #include "pipeline/raytracing/pipeline_stage_simple.h"
 #include "pipeline/processing/pipeline_stage_upscale.h"
-#include "pipeline/processing/pipeline_stage_oidn.h"
 #include "pipeline/processing/pipeline_stage_restir.h"
+
+#ifdef LINK_OIDN
+#include "pipeline/processing/pipeline_stage_oidn.h"
+#endif
 
 #pragma region VULKAN DEBUGGING
 const std::vector<const char*> validation_layers = {

@@ -2,7 +2,9 @@ add_subdirectory(imgui)
 
 add_executable(renderer main.cpp)
 
-target_sources(renderer PRIVATE
+option(LINK_OIDN "Link to Open Image Denoise Library" OFF)
+
+set(SRCS 
     shader_compiler.cpp
     core/memory.cpp
     core/device.cpp
@@ -21,7 +23,6 @@ target_sources(renderer PRIVATE
     pipeline/raytracing/pipeline_builder.cpp
     pipeline/processing/compute_shader.cpp
     pipeline/processing/pipeline_stage_upscale.cpp
-    pipeline/processing/pipeline_stage_oidn.cpp
     pipeline/processing/pipeline_stage_restir.cpp
     pipeline/processing/pipeline_builder.cpp
     ui.cpp
@@ -29,18 +30,48 @@ target_sources(renderer PRIVATE
     main.cpp
 )
 
-set (OpenImageDenoise_INCLUDE_DIR ${CMAKE_SOURCE_DIR} CACHE PATH "Path to Open Image Denoise Include Directory")
-set (OpenImageDenoise_LIBRARY ${CMAKE_SOURCE_DIR} CACHE FILEPATH "Path to Open Image Denoise Library")
-
-target_include_directories(renderer PRIVATE 
+set(INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/includes/
     ${VULKAN_INCLUDE_DIR} 
     ${GLFW3_INCLUDE_DIR} 
-    ${OpenImageDenoise_INCLUDE_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/
 )
 
+set (LIBS
+    ${GLFW3_LIBRARY}
+    Vulkan::Vulkan
+    imgui
+)
+
+if(LINK_OIDN)
+    set (OpenImageDenoise_INCLUDE_DIR ${CMAKE_SOURCE_DIR} CACHE PATH "Path to Open Image Denoise Include Directory")
+    set (OpenImageDenoise_LIBRARY ${CMAKE_SOURCE_DIR} CACHE FILEPATH "Path to Open Image Denoise Library")
+
+    set (SRCS
+        ${SRCS}
+        pipeline/processing/pipeline_stage_oidn.cpp
+    )
+
+    set (INCLUDE_DIRS
+        ${INCLUDE_DIRS}
+        ${OpenImageDenoise_INCLUDE_DIR}
+    )
+
+    set (LIBS
+        ${LIBS}
+        ${OpenImageDenoise_LIBRARY}
+    )
+endif(LINK_OIDN)
+
+target_sources(renderer PRIVATE
+    ${SRCS}
+)
+
+target_include_directories(renderer PRIVATE 
+    ${INCLUDE_DIRS}
+)
+
 set_property(TARGET renderer PROPERTY CXX_STANDARD 17)
 target_compile_definitions(renderer PRIVATE GLSLC_EXECUTABLE="${Vulkan_GLSLC_EXECUTABLE}" SHADER_DIR="${SHADER_DIR}")
-target_link_libraries(renderer ${GLFW3_LIBRARY} Vulkan::Vulkan imgui ${OpenImageDenoise_LIBRARY})
+target_link_libraries(renderer ${LIBS})
