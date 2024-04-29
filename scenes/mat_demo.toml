@@ -6,8 +6,8 @@
     [objects.helmet]
     path = "./gltf/damaged_helmet/DamagedHelmet.gltf"
 
-    # [objects.mosquito]
-    # path = "./gltf/mosquito/MosquitoInAmber.gltf"
+    [objects.mosquito]
+    path = "./gltf/mosquito/MosquitoInAmber.gltf"
 
     [objects.bust]
     path = "./gltf/marble_bust/marble_bust_01_8k.gltf"

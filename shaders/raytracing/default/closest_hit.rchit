@@ -86,7 +86,6 @@ void main() {
     // pointing away from surface
     vec3 ray_in = bsdf_sample.direction;
     BSDFEvaluation test_eval = eval_bsdf(ray_out, ray_in, material);
-    write_output(OUTPUT_BUFFER_NORMAL, payload.pixel_index, vec4(abs(bsdf_sample.pdf - test_eval.pdf))); 
 
     payload.origin = position;
     payload.direction = (to_world_space * ray_in);

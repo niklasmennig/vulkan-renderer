@@ -11,4 +11,6 @@ x64
 *.vcxproj
 *.vcxproj.*
 *.sln
-screenshot.exr
+*.exr
+camera_data.toml
+*.spv

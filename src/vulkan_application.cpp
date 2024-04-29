@@ -1660,11 +1660,11 @@ void VulkanApplication::setup() {
 
     // create process pipeline
     p_pipeline_builder = device.create_processing_pipeline_builder()
-                    .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
+                    // .with_stage(std::make_shared<ProcessingPipelineStageOIDN>(ProcessingPipelineStageOIDN()))
                     // .with_stage(std::make_shared<ProcessingPipelineStageUpscale>(ProcessingPipelineStageUpscale()));
-                    // .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir(
-                    //     scene_tlas.acceleration_structure, &index_buffer, &vertex_buffer, &normal_buffer, &texcoord_buffer, &tangent_buffer, &mesh_data_offset_buffer, &mesh_offset_index_buffer, &loaded_textures, &texture_index_buffer, &material_parameter_buffer, &lights_buffer, &prev_camera_matrix_buffer
-                    // )));
+                    .with_stage(std::make_shared<ProcessingPipelineStageRestir>(ProcessingPipelineStageRestir(
+                        scene_tlas.acceleration_structure, &index_buffer, &vertex_buffer, &normal_buffer, &texcoord_buffer, &tangent_buffer, &mesh_data_offset_buffer, &mesh_offset_index_buffer, &loaded_textures, &texture_index_buffer, &material_parameter_buffer, &lights_buffer, &prev_camera_matrix_buffer
+                    )));
                     ;
 
     p_pipeline = p_pipeline_builder.build();
