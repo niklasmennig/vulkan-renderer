@@ -65,7 +65,7 @@ LightSample sample_environment(uint seed, uvec2 map_dimensions) {
     float conditional_low = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y)).r;
     float conditional_hi = fetch_texture(TEXTURE_ID_ENVIRONMENT_CONDITIONAL, ivec2(0, conditional_y + 1)).r;
 
-    // TODO: conditional_low != conditional_hi if no gradient in cdf
+
     while (!(conditional_target < conditional_hi && conditional_target >= conditional_low)) {
         conditional_low = conditional_hi;
         conditional_y += 1;
